@@ -1,0 +1,279 @@
+library(shiny)
+library(shinydashboard)
+
+setwd("~/qodb-shiny/")
+
+tissues <- list()
+
+# Notification menus ----
+
+notifications <- dropdownMenuOutput("notifMenu")
+
+header <- dashboardHeader(notifications,
+                          title = "qodb",
+                          tags$li(class = "dropdown",
+                                  id = "notifications-wrapper",
+                          tags$i(id = "notif-icon"),
+                          tags$div(class = "ml11",
+                                   tags$span(class = "text-wrapper2",
+                                             tags$span(class = "line line1"),
+                                             tags$span(class = "letters2")
+                                             )
+                                   )
+                                 )
+                          )
+
+# Sidebar menu ----
+
+sidebar <- dashboardSidebar(
+    sidebarMenu(
+        menuItem("Overview", tabName = "overview", icon = icon("dashboard"), selected = T),
+        menuItem("Dataset options", icon = icon("table"),
+                 menuSubItem("File input", tabName = "file-input", href = NULL, newtab = TRUE,
+                             icon = shiny::icon("angle-double-right"), selected = F),
+                 menuSubItem("ID Mapping", tabName = "id-mapping", href = NULL, newtab = TRUE,
+                             icon = shiny::icon("angle-double-right"), selected = F),
+                 menuSubItem("Filters", tabName = "filters", href = NULL, newtab = TRUE,
+                             icon = shiny::icon("angle-double-right"), selected = F),
+                 menuSubItem("Data type", tabName = "datatype", href = NULL, newtab = TRUE,
+                             icon = shiny::icon("angle-double-right"), selected = F)
+        ),
+        menuItemOutput("qualityrm"),
+        menuItemOutput("quality"),
+        menuItemOutput('diffrm'),
+        menuItemOutput("differential"),
+        menuItemOutput('enrichrm'),
+        menuItemOutput('enrichment'),
+        menuItemOutput('networkrm'),
+        menuItemOutput('network')
+        
+    )
+)
+
+
+# Main content ----
+
+body <- dashboardBody(
+    
+    # Import custom stylesheet and javascript
+    
+    tags$head(
+        tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"),
+        tags$link(rel="stylesheet", href="https://fonts.googleapis.com/css?family=Open+Sans"),
+        tags$script(src = "https://cdnjs.cloudflare.com/ajax/libs/animejs/2.0.2/anime.min.js") # To do: keep local copy
+        
+    ),
+    
+    # Clickable notifications
+    
+    # Ugly but unavoidable hack. The onInputChange function only runs on unique links,
+    # so we generate a random number to be able to click a notification item even after
+    # closing the modal dialog.
+    
+    tags$script(HTML("function clickFunction(link){
+                     var number = Math.random();
+                     link = number + link;
+                     Shiny.onInputChange('linkClicked',link);
+                     }")),
+
+
+    # Overview: settings: colors, font
+    
+    tabItems(
+        tabItem(tabName = "overview",
+                box(title = 'General settings', status = 'primary', solidHeader = F,
+                    radioButtons(inputId = 'colorScheme', label = 'Color palette',
+                                 choices = list("Normal", "Colorblind friendly"), inline = T),
+                    radioButtons(inputId = 'textSize', label = 'Text size',
+                                 choices = list("Small", "Medium", "Large"), selected = "Medium", inline = T)
+                )
+        ),
+        
+        # File input
+        
+        tabItem(tabName = "file-input",
+                
+                box(
+                    title = 'File input', status = 'primary', solidHeader = F,
+                    helpText('Upload your dataset in the requested format.'),
+                    footer = helpText('Accepted filetypes are csv, tsv and txt.'),
+                    radioButtons("sep", label = 'Separator',
+                                 choices = list("Comma" = 1, "Semicolon" = 2, "Tab" =3),
+                                 selected = 1,
+                                 inline = T),
+                    fileInput("infile", "Choose CSV File",
+                              accept = c(
+                                  "text/csv",
+                                  "text/comma-separated-values,text/plain",
+                                  ".csv")),
+                    actionButton("selectDemo", "Demo dataset")
+                )
+        ),
+        
+        # Filters: NA cutoff
+        
+        tabItem(tabName = "filters",
+                box(
+                    title = "Missing values cutoff", status = "primary", solidHeader = F, width = 3,
+                    helpText("Set maximum number allowed NA per condition."),
+                    numericInput("missingvalues", label = "NA cutoff",
+                                 min = 0, max = 50, value = 1), # max = number of samples / conditions
+                    actionButton("setcutoff", "Set cutoff")
+                ),
+                box(title = "NA frequencies", status = "warning", solidHeader = F,
+                    plotOutput("nafreq"))
+        ),
+        
+        
+        # Convert IDs
+        
+        tabItem(tabName = "id-mapping",
+                box(title = "Identifiers", width = 3,
+                selectInput("sourceIDtype",
+                            label = "Source ID",
+                            choices = list("UniProtKB" = 1,
+                                           "Entrez" = 2,
+                                           "Ensembl gene ID" = 3,
+                                           "Gene symbol" = 4),
+                            selected = 1),
+                actionButton("verifyIDs", label = "Check IDs"), textOutput("runningprocesstext")
+                )
+                
+        ),
+                
+        
+        # Data type: distributions
+        
+        tabItem(tabName = "datatype",
+                box(
+                    title = "Distributions", status = "primary", solidHeader = F,
+                    actionButton("generatedistributions", label = "Render distributions"),
+                    selectInput(inputId = "fit", label = "Fit to distribution",
+                                choices = list("Normal" = 1,
+                                               "Poisson" = 2,
+                                               "Negative binomial" = 3),
+                                selected = 1
+                    ),
+                    plotOutput("distributions"),
+                    sliderInput(
+                        "setdist",
+                        label = "Select gene",
+                        min = 1,
+                        max = 1,
+                        value = 1,
+                        step = 1,
+                        animate = animationOptions(interval = 600)
+                    )
+                    
+                ),
+                box(
+                    title = "Data type and distribution assumptions", status = "primary", solidHeader = F,
+                    helpText("What type of experiment best describes your data?"),
+                    selectInput("groups", label = "Conditions",
+                                choices = list("RNA-seq" = 1,
+                                               "Single-cell RNA" = 2,
+                                               "Microarray" = 3,
+                                               "Mass spectrometry" = 4),
+                                selected = 1),
+                    actionButton("useIDs", "Select")
+                )
+        ),
+        
+        # Quality control: PCA: 2D, 3D
+        
+        ## To do: Make tab box. Fix contribs.
+        
+        tabItem(tabName = "PCA",
+                box(title = "PCA settings",
+                    status = "warning",
+                    width = 3,
+                    helpText("hello world"),
+                    sliderInput("contribs",
+                                "Number of contributors:",
+                                min = 1,  max = 50, value = 10),
+                    sliderInput("ellipse",
+                                "Ellipse level:",
+                                min = 0,  max = 1, value = .75)
+                ),
+                tabBox(
+                    tabPanel("PCA 2D", plotOutput("pca2dplot")),
+                    tabPanel("PCA 3D", plotly::plotlyOutput("pca3dplot")))),
+        tabItem(tabName = "samplecorr",
+                box(title = "Sample correlation",
+                    plotOutput("samplecorrheatmap"))
+        ),
+        
+        # Differential expression analysis : ANOVA, Contrasts
+        
+        tabItem(tabName = "anova",
+                h1("ANOVA")),
+        
+        tabItem(tabName = "contrasts",
+                box(
+                    title = "Set contrasts", status = "primary", solidHeader = F,
+                    helpText("Which groups should be differentially expressed?"),
+                    selectInput("contrast1", label = "Condition 1",
+                                choices = list("Condition1" = 1,
+                                               "Condition2" = 2,
+                                               "Condition3" = 3),
+                                selected = 1),
+                    selectInput("contrast2", label = "Condition 2",
+                                choices = list("Condition1" = 1,
+                                               "Condition2" = 2,
+                                               "Condition3" = 3),
+                                selected = 2),
+                    radioButtons("pairing", label = "Design",
+                                 choices = list("Paired" = 1,
+                                                "Unpaired" = 2),
+                                 selected = 2,
+                                 inline = T),
+                    actionButton("setContrast", "Select")
+                )
+        ),
+        
+        # Select background data for enrichment
+
+        tabItem(tabName = "bgdata",
+                box(title = "Add custom background data",
+                    selectInput("Tissue", "Select a tissue type:",
+                                list(`Dataset: Santos, A et al. (2015)` = tissue_names)),
+                    actionButton("addbg", "Add to background"))
+        ),
+        
+        # Pathway enrichment: Table, Similarity matrix, Volcano plot
+        
+        tabItem(tabName = "pathwayenrichment",
+                box(title = "Pathway settings", status = "warning", width = 3,
+                    selectInput(inputId = "pathdb", label = "Pathway database",
+                                choices = list("REACTOME" = 'REACTOME', "KEGG" = 'KEGG', "BIOCARTA" = 'BIOCARTA'),
+                                selected = 'REACTOME'),
+                    checkboxInput(inputId = "trimprefix", label = "Hide prefixes", value = T),
+                    radioButtons(inputId = "usebackground", label = "Background genes",
+                                 choices = list("My dataset" = 1, "Extended background" = 2, "No background (entire genome)" = 3),
+                                 selected = 2)),
+                tabBox(width = 9,
+                       tabPanel("Table", DT::dataTableOutput("pathtable", width = 800)),
+                       tabPanel("Similarity matrix", plotOutput("similarity_plot", height = 750)),
+                       tabPanel("Volcano plot", plotOutput("volcano_plot", height = 750)))
+        ),
+        
+        tabItem(tabName = "network",
+                box(title = "Network settings", width = 3,
+                    numericInput(
+                        "pvaluecutoff",
+                        label = "Maximum adj. Pvalue (from diff. exp.)",
+                        min = 0,
+                        max = 1,
+                        value = 0.0001,
+                        step = 0.0001
+                    ), 
+                    sliderInput("interactioncutoff", label = "Minimum interaction score", min = 0, max = 9.9, value = 3, step = .1),
+                    actionButton("generatenetwork", label = "Generate network")),
+                box(title = "Interactions", width = 9,
+                    networkD3::forceNetworkOutput("net", width = "100%", height = "750px")))
+    )
+    )
+
+# Load dashboard page ----
+
+dashboardPage(skin = 'black', header, sidebar, body)
