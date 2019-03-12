@@ -88,7 +88,8 @@ run_volcano_plot <- function(interesting_pathways) {
   contrast$Rep.Path.Score <- 0
 
    for (i in 1:nrow(interesting_pathways)) {
-     path <- interesting_pathways[i,'Pathway_topname']
+     path_name <- interesting_pathways[i,'Pathway_name']
+     path_topname <- interesting_pathways[i,'Pathway_topname']
      score <- interesting_pathways[i,'iScore']
 
      prots <- unlist(interesting_pathways[i,'Genes'])
@@ -97,7 +98,8 @@ run_volcano_plot <- function(interesting_pathways) {
        protein <- prots[p]
 
        if (score > contrast[rownames(contrast) == protein,'Rep.Path.Score']) {
-         contrast[rownames(contrast) == protein,'Rep.Path'] <- path
+         contrast[rownames(contrast) == protein,'Rep.Path.Name'] <- path_name
+         contrast[rownames(contrast) == protein,'Rep.Path.Top'] <- path_topname
          contrast[rownames(contrast) == protein,'Rep.Path.Score'] <- score
        }
      }
@@ -117,7 +119,7 @@ run_volcano_plot <- function(interesting_pathways) {
    col_vector[2] = "black"
 
    vol <- ggplot(results, aes(x = logFC, y = -log10(P.Value))) +
-     geom_point(shape = 21, size = 2.5, aes(fill=Rep.Path)) +
+     geom_point(shape = 21, size = 2.5, aes(fill=Rep.Path.Top)) +
      scale_fill_manual(values=col_vector) +
      theme_bw(base_size = 14) +
      theme(legend.position = "right") +

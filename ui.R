@@ -27,7 +27,7 @@ header <- dashboardHeader(notifications,
 
 sidebar <- dashboardSidebar(
     sidebarMenu(
-        menuItem("Overview", tabName = "overview", icon = icon("dashboard"), selected = T),
+        menuItem("Overview", tabName = "overview", icon = icon("align-left"), selected = T),
         menuItem("Dataset options", icon = icon("table"),
                  menuSubItem("File input", tabName = "file-input", href = NULL, newtab = TRUE,
                              icon = shiny::icon("angle-double-right"), selected = F),
@@ -254,7 +254,8 @@ body <- dashboardBody(
                 tabBox(width = 9,
                        tabPanel("Table", DT::dataTableOutput("pathtable", width = 800)),
                        tabPanel("Similarity matrix", plotOutput("similarity_plot", height = 750)),
-                       tabPanel("Volcano plot", plotOutput("volcano_plot", height = 750)))
+                       tabPanel("Volcano plot", plotOutput("volcano_plot", height = 750)),
+                       tabPanel("Sankey diagram", plotOutput("sankey", height = 750)))
         ),
         
         tabItem(tabName = "network",

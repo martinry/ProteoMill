@@ -103,7 +103,7 @@ server <- function(session, input, output) {
     # Render "locked" menu items
     output$qualityrm <- renderMenu({ menuItem("Quality control", icon = icon("lock"), tabName = "") })
     output$diffrm    <- renderMenu({ menuItem("Differential analysis", icon = icon("lock"), tabName = "") })
-    output$enrichrm  <- renderMenu({ menuItem("Enrichment analysis", icon = icon("lock"), tabName = "") })
+    output$enrichrm  <- renderMenu({ menuItem("Pathway analysis", icon = icon("lock"), tabName = "") })
     output$networkrm <- renderMenu({ menuItem("Network analysis", icon = icon("lock"), tabName = "") })
     
     unlock_menus <- function() {
@@ -210,16 +210,15 @@ server <- function(session, input, output) {
     # Differential expression: set contrasts ----
     observeEvent(input$contrast1, {
         
-        if (!exists("groups")) {return(NULL)}
-        else {
-            
-            cont1 <- input$contrast1
-            
-            cont2 <- groups[groups != cont1]
-            
-            updateSelectInput(session, "contrast2", choices = cont2)
-            
-        }
+        if (!exists("groups")){
+            return(NULL)
+            } else if (exists("groups") == T){
+                print("WTF")
+                cont1 <- input$contrast1
+                cont2 <- groups[groups != cont1]
+                
+                updateSelectInput(session, "contrast2", choices = cont2)
+            }
         
     })
     
@@ -299,7 +298,6 @@ server <- function(session, input, output) {
                                            )))
         df %>% DT::formatSignif('Pvalue', digits = 2)
         
-        
     })
     
     # Similarity plot
@@ -314,6 +312,16 @@ server <- function(session, input, output) {
             run_volcano_plot(interesting_paths)
         })
     
+    output$sankey <- networkD3::renderSankeyNetwork({
+        
+        # Plot
+        s <- sankeyNetwork(Links = P$links, Nodes = P$nodes, Source = 'source',
+                      Target = 'target', Value = 'value', NodeID = 'name',
+                      fontSize = 12, fontFamily = 'sans-serif', nodeWidth = 60, sinksRight = F)
+        
+        s
+    })
+    
     observeEvent(input$generatenetwork, {
         source("bin/networks.R")
         
@@ -321,13 +329,12 @@ server <- function(session, input, output) {
             
             top <- contrast[contrast$adj.P.Val < input$pvaluecutoff,]
             top <- rownames(top)
+
+            interactions <- interactions3[(interactions3$protein1 %in% top) & (interactions3$protein2 %in% top), ]
+            interactions$combined_score <- interactions$combined_score / 100
+            interactions <- interactions[interactions$combined_score > input$interactioncutoff, ]
             
-            merged3 <- merged2[merged2$Accession.x %in% top & merged2$Accession.y %in% top,]
-            merged3$combined_score <- merged3$combined_score / 100
-            
-            merged3 <- merged3[merged3$combined_score > input$interactioncutoff, ]
-            
-            g <- graph_from_data_frame(merged3, directed = T)
+            g <- graph_from_data_frame(interactions, directed = F)
             
             g <- simplify(g, remove.multiple = F, remove.loops = T)
             
@@ -360,4 +367,6 @@ server <- function(session, input, output) {
         
         
     })
+    
+
 }

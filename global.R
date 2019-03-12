@@ -89,6 +89,8 @@ read_file <- function(infile, separator) {
 }
 
 # Build sample info ----
+
+groups <- list()
 sample_data <- function(data) {
     samples <- data.frame(colnames(data_wide))
     colnames(samples) = "SampleNames"

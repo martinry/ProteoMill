@@ -1,7 +1,13 @@
 
 /* Here we force rewrite the skin min css */
+
+body {
+    font-size:16px !important;
+}
+
 .content-wrapper {
-    background-color:#fff;
+    background-color:#F0F4F5;
+    font-size:14px !important;
 }
 
 .skin-black .main-header
@@ -11,7 +17,7 @@
 }
 .skin-black .main-header .navbar-toggle
 {
-	color: #2E3F53; /* #333 */
+/*	color: #2E3F53;  #333 */
 }
 .skin-black .main-header .navbar-brand
 {
