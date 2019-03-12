@@ -6,21 +6,21 @@ run_pathway_enrichment <- function(db, background_df) {
 
   specify_decimal <- function(x, k) as.numeric( trimws(format(round(x, k), nsmall=k, scientific = F)) )
 
-  unique_pathways <- unique(reactome$Pathway_name)
+  unique_pathways <- unique(reactome$ReactomeID)
 
   M_annotated_background <- vector()
   N_num_background <- length(background_df)
   n_num_de <- length(contrast.sign)
   k_num_annotated <- vector()
 
-  enriched_pathways <- data.frame(matrix(0, nrow = length(unique_pathways), ncol = 6))
-  colnames(enriched_pathways) <- c("Pathway", "M", "n", "Pvalue", "iScore", "Genes")
+  enriched_pathways <- data.frame(matrix(0, nrow = length(unique_pathways), ncol = 7))
+  colnames(enriched_pathways) <- c("Pathway_name", "M", "n", "Pvalue", "iScore", "Pathway_topname", "Genes")
 
   for(i in 1:length(unique_pathways)){
-    pathway1 <- reactome[reactome$Pathway_name == unique_pathways[i],]
-    M_annotated_background <- length( pathway1[pathway1$UniprotID %in% background_df, 'Pathway_name'] )
+    pathway1 <- reactome[reactome$ReactomeID == unique_pathways[i],]
+    M_annotated_background <- length( pathway1[pathway1$UniprotID %in% background_df, 'ReactomeID'] )
     
-    k_annotated_de <- length( pathway1[pathway1$UniprotID %in% contrast.sign, 'Pathway_name'] )
+    k_annotated_de <- length( pathway1[pathway1$UniprotID %in% contrast.sign, 'ReactomeID'] )
     
     
     pval <- phyper(k_annotated_de, n_num_de, N_num_background, M_annotated_background, lower.tail=FALSE) +
@@ -32,8 +32,11 @@ run_pathway_enrichment <- function(db, background_df) {
     lfc.mean <- mean( abs(lfc) )
 
     iscore <- lfc.mean * -log10( pval )
+    
+    enriched_pathways[i, "Pathway_name"] <- reactome[reactome$ReactomeID == unique_pathways[i], 4][1]
+    enriched_pathways[i, "Pathway_topname"] <- reactome[reactome$ReactomeID == unique_pathways[i], 8][1]
 
-    enriched_pathways[i, "Pathway"] <- ifelse(nchar(unique_pathways[i]) > 50, paste(substr(unique_pathways[i], 1,50), '...', sep = ''), unique_pathways[i])
+    #enriched_pathways[i, "Pathway"] <- ifelse(nchar(unique_pathways[i]) > 50, paste(substr(unique_pathways[i], 1,50), '...', sep = ''), unique_pathways[i])
     enriched_pathways[i, "M"] <- M_annotated_background
     enriched_pathways[i, "n"] <- k_annotated_de
     enriched_pathways[i, "Pvalue"] <- ifelse(is.na(pval), NA, specify_decimal(pval, 9))
@@ -50,16 +53,18 @@ run_pathway_enrichment <- function(db, background_df) {
 }
 
 run_similarity_plot <- function(interesting_pathways) {
+    
+    interesting_pathways <- interesting_pathways[1:40,]
 
-  # Plot similarity matrix
-  mat <- matrix(nrow = nrow(interesting_pathways), ncol = nrow(interesting_pathways))
-  rownames(mat) <- interesting_pathways$Pathway
-  colnames(mat) <- interesting_pathways$Pathway
+    # Plot similarity matrix
+    mat <- matrix(nrow = nrow(interesting_pathways), ncol = nrow(interesting_pathways))
+    rownames(mat) <- interesting_pathways$Pathway_name
+    colnames(mat) <- interesting_pathways$Pathway_name
 
   for(i in 1:nrow(interesting_pathways)) {
     for(j in 1:nrow(interesting_pathways)) {
-      p.i <- interesting_pathways[[i,6]]
-      p.j <- interesting_pathways[[j,6]]
+      p.i <- interesting_pathways[[i,1]]
+      p.j <- interesting_pathways[[j,1]]
       n.i <- length(p.i)
 
       x <- intersect(p.i, p.j)
@@ -83,7 +88,7 @@ run_volcano_plot <- function(interesting_pathways) {
   contrast$Rep.Path.Score <- 0
 
    for (i in 1:nrow(interesting_pathways)) {
-     path <- interesting_pathways[i,'Pathway']
+     path <- interesting_pathways[i,'Pathway_topname']
      score <- interesting_pathways[i,'iScore']
 
      prots <- unlist(interesting_pathways[i,'Genes'])
