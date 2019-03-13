@@ -2,12 +2,9 @@
 
 require(networkD3)
 
-
 results$regulation <- ifelse(results$logFC > 0, "Up-regulated", "Down-regulated")
 
 results.sign <- results[results$Rep.Path.Score > 0,]
-
-
 
 paths <-
     data.frame(

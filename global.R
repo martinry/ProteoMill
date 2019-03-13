@@ -199,3 +199,14 @@ diff_exp <- function(coeff, pairing) {
     return( contrast )
     
 }
+
+
+
+
+
+
+
+
+
+
+

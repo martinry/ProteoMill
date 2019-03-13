@@ -79,6 +79,7 @@ server <- function(session, input, output) {
         
         message <- paste(nrow(id_check[["table"]]), " updated successfully.")
         updateNotifications(message,"check-circle", "success")
+        
     })
     
     # Clicked notification item
@@ -86,14 +87,12 @@ server <- function(session, input, output) {
         
         showModal(
             modalDialog(title = "Obsolete IDs",
-                        
-                        actionButton("updateAll", "Update all"),
-                        
-                        
+
                         DT::renderDataTable({
                             id_check[["table"]]
                         }),
-                        size = "l"
+                        size = "l",
+                        actionButton("updateAll", "Update all")
             )
         )
     })
@@ -277,50 +276,85 @@ server <- function(session, input, output) {
         }
         
     })
-    
-    output$pathtable <- DT::renderDataTable({
+    observeEvent(input$generatepathways, {
         
         bg <- background_data
         
         enrichment_output <- run_pathway_enrichment('REACTOME', bg)
         
         enriched_paths <- enrichment_output[[1]]
-        
         interesting_paths <- enrichment_output[[2]]
+
+        contrast$Rep.Path.Name <- '* NOT SIGNFICANT'
+        contrast$Rep.Path.Score <- 0
         
-        assign('interesting_paths', interesting_paths, envir = .GlobalEnv)
+        for (i in 1:nrow(interesting_paths)) {
+            path_name <- interesting_paths[i,'Pathway_name']
+            path_topname <- interesting_paths[i,'Pathway_topname']
+            score <- interesting_paths[i,'iScore']
+            
+            prots <- unlist(interesting_paths[i,'Genes'])
+            
+            for (p in 1:length(prots)) {
+                protein <- prots[p]
+                
+                if (score > contrast[rownames(contrast) == protein,'Rep.Path.Score']) {
+                    contrast[rownames(contrast) == protein,'Rep.Path.Name'] <- path_name
+                    contrast[rownames(contrast) == protein,'Rep.Path.Top'] <- path_topname
+                    contrast[rownames(contrast) == protein,'Rep.Path.Score'] <- score
+                }
+            }
+        }
         
-        df <- DT::datatable(enriched_paths[,1:5],
-                            options = list(autoWidth = TRUE,
-                                           scrollX=TRUE,
-                                           columnDefs = list(
-                                               list(width = '420px', targets = c(1))
-                                           )))
-        df %>% DT::formatSignif('Pvalue', digits = 2)
+        contrast$Gene <- rownames(contrast)
+        results = dplyr::mutate(contrast, sig=ifelse(contrast$adj.P.Val<0.01, "FDR<0.01", "Not Sig"))
+        
+        assign('results', results, envir = .GlobalEnv)
+        
+        output$pathtable <- DT::renderDataTable({
+            
+            df <- DT::datatable(enriched_paths[,1:5],
+                                options = list(autoWidth = TRUE,
+                                               scrollX=TRUE,
+                                               columnDefs = list(
+                                                   list(width = '420px', targets = c(1))
+                                               )))
+            df %>% DT::formatSignif('Pvalue', digits = 2)
+            
+        })
+        
+        
+        # Similarity plot
+        output$similarity_plot <- renderPlot(
+            {
+                run_similarity_plot(interesting_paths)
+            })
+        
+        # Volcano plot
+        output$volcano_plot <- renderPlot(
+            {
+                run_volcano_plot(contrast, results)
+            })
+        
+        
+        
+        output$sankey <- networkD3::renderSankeyNetwork({
+            
+            P <- run_sankey_diagram(results)
+            
+            # Plot
+            s <- sankeyNetwork(Links = P$links, Nodes = P$nodes, Source = 'source',
+                               Target = 'target', Value = 'value', NodeID = 'name',
+                               fontSize = 12, fontFamily = 'sans-serif', nodeWidth = 60, sinksRight = F)
+            
+            s
+        })
+        
         
     })
     
-    # Similarity plot
-    output$similarity_plot <- renderPlot(
-        {
-            run_similarity_plot(interesting_paths)
-        })
     
-    # Volcano plot
-    output$volcano_plot <- renderPlot(
-        {
-            run_volcano_plot(interesting_paths)
-        })
-    
-    output$sankey <- networkD3::renderSankeyNetwork({
-        
-        # Plot
-        s <- sankeyNetwork(Links = P$links, Nodes = P$nodes, Source = 'source',
-                      Target = 'target', Value = 'value', NodeID = 'name',
-                      fontSize = 12, fontFamily = 'sans-serif', nodeWidth = 60, sinksRight = F)
-        
-        s
-    })
+
     
     observeEvent(input$generatenetwork, {
         source("bin/networks.R")
@@ -343,7 +377,7 @@ server <- function(session, input, output) {
             
             g2 <- igraph_to_networkD3(g, group = members)
             
-            g2$nodes$group <- results[results$Gene %in% g2$nodes$name,"Rep.Path"]
+            g2$nodes$group <- results[results$Gene %in% g2$nodes$name,"Rep.Path.Name"]
             
             d3 <- forceNetwork(
                 Links = g2$links,

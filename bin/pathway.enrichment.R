@@ -63,8 +63,8 @@ run_similarity_plot <- function(interesting_pathways) {
 
   for(i in 1:nrow(interesting_pathways)) {
     for(j in 1:nrow(interesting_pathways)) {
-      p.i <- interesting_pathways[[i,1]]
-      p.j <- interesting_pathways[[j,1]]
+      p.i <- interesting_pathways[[i,7]]
+      p.j <- interesting_pathways[[j,7]]
       n.i <- length(p.i)
 
       x <- intersect(p.i, p.j)
@@ -81,36 +81,10 @@ run_similarity_plot <- function(interesting_pathways) {
 
 }
 
-run_volcano_plot <- function(interesting_pathways) {
+run_volcano_plot <- function(contrast, results) {
 
   # Volcano plot
-  contrast$Rep.Path <- '* NOT SIGNFICANT'
-  contrast$Rep.Path.Score <- 0
 
-   for (i in 1:nrow(interesting_pathways)) {
-     path_name <- interesting_pathways[i,'Pathway_name']
-     path_topname <- interesting_pathways[i,'Pathway_topname']
-     score <- interesting_pathways[i,'iScore']
-
-     prots <- unlist(interesting_pathways[i,'Genes'])
-
-     for (p in 1:length(prots)) {
-       protein <- prots[p]
-
-       if (score > contrast[rownames(contrast) == protein,'Rep.Path.Score']) {
-         contrast[rownames(contrast) == protein,'Rep.Path.Name'] <- path_name
-         contrast[rownames(contrast) == protein,'Rep.Path.Top'] <- path_topname
-         contrast[rownames(contrast) == protein,'Rep.Path.Score'] <- score
-       }
-     }
-   }
-
-   contrast$Gene <- rownames(contrast)
-   results = dplyr::mutate(contrast, sig=ifelse(contrast$adj.P.Val<0.01, "FDR<0.01", "Not Sig"))
-
-   assign("results", results, envir = .GlobalEnv)
-
-   #coul = brewer.pal(11, "Spectral")
 
    qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
    col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
@@ -148,4 +122,65 @@ run_volcano_plot <- function(interesting_pathways) {
 
 }
 
+run_sankey_diagram <- function(results) {
+    require(networkD3)
+    
+    results$regulation <- ifelse(results$logFC > 0, "Up-regulated", "Down-regulated")
+    
+    results.sign <- results[results$Rep.Path.Score > 0,]
+    
+    paths <-
+        data.frame(
+            "Gene" = results.sign$Gene,
+            "Regulation" = results.sign$regulation,
+            "TopPath" = results.sign$Rep.Path.Top,
+            "PathName" = results.sign$Rep.Path.Name
+        )
+    
+    paths2 <- paths[,c(1,3,4)]
+    fr1 <- as.data.frame(table(paths[,2:3]))
+    fr2 <- as.data.frame(table(paths2[,2:3]))
+    
+    nodes <- data.frame("name" = c("Up-regulated", "Down-regulated", levels(paths$TopPath), levels(paths$PathName)))
+    links <- data.frame("source" = c(), "target" = c(), "value" = c())
+    
+    ntop <- 3+length(levels(paths$TopPath))
+    nname <- ntop + length(levels(paths$PathName)) - 1
+    
+    for(i in 3:ntop) {
+        n <- as.character(nodes[i,])
+        k <- i-1
+        
+        if(n %in% fr1$TopPath) {
+            up <- fr1[fr1$Regulation == "Up-regulated",]
+            if(up[up$TopPath == n,3] > 0){
+                links <- rbind(links, c(0, k, up[up$TopPath == n,3]))
+            }
+            down <- fr1[fr1$Regulation == "Down-regulated",]
+            if(down[down$TopPath == n,3] > 0){
+                links <- rbind(links, c(1, k, down[down$TopPath == n,3]))
+            }
+        }
+        
+        if(n %in% fr2$TopPath) {
+            for(j in (ntop):nname){
+                m <- as.character(nodes[j,])
+                l <- j-1
+                
+                tp <- fr2[fr2$TopPath == n & fr2$PathName == m & fr2$Freq > 0,]
+                
+                if(nrow(tp) > 0) {
+                    links <- rbind(links, c(k, l, tp[,3]))
+                }
+            }
+        }
+    }
+    
+    colnames(links) <- c("source", "target", "value")
+    
+    P <- list("nodes" = nodes, "links" = links)
+    
+    return (P)
+    
+}
 

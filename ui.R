@@ -75,6 +75,9 @@ body <- dashboardBody(
                      link = number + link;
                      Shiny.onInputChange('linkClicked',link);
                      }")),
+    
+    tags$script(src = "custom.js"),
+    tags$script(src = "animate-notifs.js"),
 
 
     # Overview: settings: colors, font
@@ -250,12 +253,14 @@ body <- dashboardBody(
                     checkboxInput(inputId = "trimprefix", label = "Hide prefixes", value = T),
                     radioButtons(inputId = "usebackground", label = "Background genes",
                                  choices = list("My dataset" = 1, "Extended background" = 2, "No background (entire genome)" = 3),
-                                 selected = 2)),
+                                 selected = 2),
+                    actionButton(inputId = "generatepathways", label = "Generate pathway data")
+                    ),
                 tabBox(width = 9,
                        tabPanel("Table", DT::dataTableOutput("pathtable", width = 800)),
                        tabPanel("Similarity matrix", plotOutput("similarity_plot", height = 750)),
                        tabPanel("Volcano plot", plotOutput("volcano_plot", height = 750)),
-                       tabPanel("Sankey diagram", plotOutput("sankey", height = 750)))
+                       tabPanel("Sankey diagram", networkD3::sankeyNetworkOutput("sankey", height = 750)))
         ),
         
         tabItem(tabName = "network",
