@@ -1,3 +1,22 @@
+Shiny.addCustomMessageHandler('fadeProcess', function(fadein) {
+    if (fadein > 0) {
+        $('#load-process').fadeIn();
+        var myInt = '';
+        for(var i=1;i<=100;i++){
+            setTimeout(function(i) {
+                myInt = i + '%';
+                $('#process-counter')[0].innerText = myInt;
+            }, i * fadein, i);
+        }
+        
+        
+    } else {
+        $('#load-process').fadeOut();
+    }
+    
+    
+});
+
 Shiny.addCustomMessageHandler('set-icon', function(icon) {
   
 //  fa fa-check-circle text-success

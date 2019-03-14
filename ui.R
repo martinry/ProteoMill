@@ -13,6 +13,10 @@ header <- dashboardHeader(notifications,
                           title = "qodb",
                           tags$li(class = "dropdown",
                                   id = "notifications-wrapper",
+                                  tags$div(id = 'load-process', style = 'display: none; position: absolute;',
+                                    tags$img(id = 'load-img', src = 'dna.svg', style = 'margin-top: -12px; margin-left: 5px; width: 45px;'),
+                                    tags$span(id = "process-counter", 0, style = 'font-size: 14px; font-family: "Courier"; vertical-align: top; padding-left: 3px;')
+                                  ),
                           tags$i(id = "notif-icon"),
                           tags$div(class = "ml11",
                                    tags$span(class = "text-wrapper2",
@@ -75,6 +79,7 @@ body <- dashboardBody(
                      link = number + link;
                      Shiny.onInputChange('linkClicked',link);
                      }")),
+    
     
     tags$script(src = "custom.js"),
     tags$script(src = "animate-notifs.js"),

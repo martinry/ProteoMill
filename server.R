@@ -1,10 +1,14 @@
 library(limma)
 library(Biobase)
+library(qob)
 require(ggplot2)
 require(ggrepel)
 require(RColorBrewer)
 require(dplyr)
 
+fade <- function(fadein) {
+    return(fadein)
+}
 
 # Server ----
 server <- function(session, input, output) {
@@ -164,9 +168,13 @@ server <- function(session, input, output) {
     
     observeEvent(input$verifyIDs, {
         
+        session$sendCustomMessage("fadeProcess", fade(20))
+
         id_check <- qob::update_obsolete(rownames(data_wide))
         
         obsolete <- id_check[["table"]][["Entry"]]
+        
+        session$sendCustomMessage("fadeProcess", fade(0))
         
         assign("id_check", id_check, envir = .GlobalEnv)
         
@@ -212,7 +220,6 @@ server <- function(session, input, output) {
         if (!exists("groups")){
             return(NULL)
             } else if (exists("groups") == T){
-                print("WTF")
                 cont1 <- input$contrast1
                 cont2 <- groups[groups != cont1]
                 
@@ -248,7 +255,7 @@ server <- function(session, input, output) {
         
         removeUI(selector = "#enrichrm")
         removeUI(selector = "#networkrm")
-        
+        updateNotifications("Model fitted successfully.","check-circle", "success")
     })
     
     # Enrichment ----
@@ -277,6 +284,8 @@ server <- function(session, input, output) {
         
     })
     observeEvent(input$generatepathways, {
+        
+        session$sendCustomMessage("fadeProcess", fade(100))
         
         bg <- background_data
         
@@ -311,6 +320,8 @@ server <- function(session, input, output) {
         
         assign('results', results, envir = .GlobalEnv)
         
+        session$sendCustomMessage("fadeProcess", fade(0))
+        
         output$pathtable <- DT::renderDataTable({
             
             df <- DT::datatable(enriched_paths[,1:5],
@@ -320,6 +331,7 @@ server <- function(session, input, output) {
                                                    list(width = '420px', targets = c(1))
                                                )))
             df %>% DT::formatSignif('Pvalue', digits = 2)
+            
             
         })
         
@@ -357,6 +369,8 @@ server <- function(session, input, output) {
 
     
     observeEvent(input$generatenetwork, {
+        session$sendCustomMessage("fadeProcess", fade(80))
+        
         source("bin/networks.R")
         
         output$net <- networkD3::renderForceNetwork({
@@ -378,6 +392,8 @@ server <- function(session, input, output) {
             g2 <- igraph_to_networkD3(g, group = members)
             
             g2$nodes$group <- results[results$Gene %in% g2$nodes$name,"Rep.Path.Name"]
+            
+            session$sendCustomMessage("fadeProcess", fade(0))
             
             d3 <- forceNetwork(
                 Links = g2$links,
