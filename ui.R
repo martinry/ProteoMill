@@ -7,14 +7,16 @@ tissues <- list()
 
 # Notification menus ----
 
+help <- dropdownMenuOutput("helpMenu")
 notifications <- dropdownMenuOutput("notifMenu")
 
-header <- dashboardHeader(notifications,
+header <- dashboardHeader(help,
+                          notifications,
                           title = "qodb",
                           tags$li(class = "dropdown",
                                   id = "notifications-wrapper",
-                                  tags$div(id = 'load-process', style = 'display: none; position: absolute;',
-                                    tags$img(id = 'load-img', src = 'dna.svg', style = 'margin-top: -12px; margin-left: 5px; width: 45px;'),
+                                  tags$div(id = 'load-process', style = 'display: none; position: absolute; margin-left: 6px',
+                                    tags$img(id = 'load-img', src = 'dna.svg', style = 'margin-top: -12px; margin-left: 5px; width: 45px; opacity: .9;'),
                                     tags$span(id = "process-counter", 0, style = 'font-size: 14px; font-family: "Courier"; vertical-align: top; padding-left: 3px;')
                                   ),
                           tags$i(id = "notif-icon"),
@@ -30,6 +32,13 @@ header <- dashboardHeader(notifications,
 # Sidebar menu ----
 
 sidebar <- dashboardSidebar(
+    tags$div(id = 'test', "Analysis", style = "
+             letter-spacing: 4px;
+             line-height: 42px;
+             text-transform: uppercase;
+             text-align: center;
+             background-color: #425664;
+             color: #fff;"),
     sidebarMenu(
         menuItem("Overview", tabName = "overview", icon = icon("align-left"), selected = T),
         menuItem("Dataset options", icon = icon("table"),
@@ -51,6 +60,20 @@ sidebar <- dashboardSidebar(
         menuItemOutput('networkrm'),
         menuItemOutput('network')
         
+    ),
+    tags$br(),
+    tags$div(id = 'test', "Documentation", style = "
+             letter-spacing: 3.3px;
+             line-height: 42px;
+             text-transform: uppercase;
+             text-align: center;
+             background-color: #425664;
+             margin-top: 2px;
+             color: #fff;"),
+    sidebarMenu(
+        menuItem("News", tabName = "", icon = icon("book")),
+        menuItem("Functions", tabName = "", icon = icon("book")),
+        menuItem("About", tabName = "", icon = icon("book"))
     )
 )
 
@@ -63,6 +86,7 @@ body <- dashboardBody(
     
     tags$head(
         tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"),
+        tags$link(rel="stylesheet", href="https://fonts.googleapis.com/css?family=Quicksand"),
         tags$link(rel="stylesheet", href="https://fonts.googleapis.com/css?family=Open+Sans"),
         tags$script(src = "https://cdnjs.cloudflare.com/ajax/libs/animejs/2.0.2/anime.min.js") # To do: keep local copy
         
@@ -109,12 +133,25 @@ body <- dashboardBody(
                                  choices = list("Comma" = 1, "Semicolon" = 2, "Tab" =3),
                                  selected = 1,
                                  inline = T),
-                    fileInput("infile", "Choose CSV File",
+                    fileInput("infile", "Select a file",
                               accept = c(
                                   "text/csv",
                                   "text/comma-separated-values,text/plain",
                                   ".csv")),
                     actionButton("selectDemo", "Demo dataset")
+                ),
+                
+                box(
+                    title = 'Annotation data',
+                    radioButtons("sep-anno", label = 'Separator',
+                                 choices = list("Comma" = 1, "Semicolon" = 2, "Tab" =3),
+                                 selected = 1,
+                                 inline = T),
+                    fileInput("infile-anno", "Select a file",
+                              accept = c(
+                                  "text/csv",
+                                  "text/comma-separated-values,text/plain",
+                                  ".csv"))
                 )
         ),
         
@@ -245,7 +282,8 @@ body <- dashboardBody(
                 box(title = "Add custom background data",
                     selectInput("Tissue", "Select a tissue type:",
                                 list(`Dataset: Santos, A et al. (2015)` = tissue_names)),
-                    actionButton("addbg", "Add to background"))
+                    actionButton("addbg", "Add to background"),
+                    actionButton("resetbg", "Reset background"))
         ),
         
         # Pathway enrichment: Table, Similarity matrix, Volcano plot

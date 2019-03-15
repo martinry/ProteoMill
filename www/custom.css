@@ -2,7 +2,19 @@
 /* Here we force rewrite the skin min css */
 
 body {
-    font-size:16px !important;
+    font-family: 'Quicksand', sans-serif;
+}
+
+.h1, .h2, .h3, .h4, .h5, .h6, h1, h2, h3, h4, h5, h6 {
+    font-family: 'Quicksand', sans-serif;
+}
+
+.nav-tabs-custom>.nav-tabs>li.active {
+    border-top-color: #e80032dd !important;
+}
+
+.label-primary {
+    background-color:#e80032dd !important;
 }
 
 .content-wrapper {
@@ -219,7 +231,6 @@ body {
 }
 
 .ml9 .text-wrapper {
-  font-family: 'Open Sans' !important;
   position: relative !important;
   display: inline-block !important;
   padding-top: 2.2em !important;
@@ -285,7 +296,6 @@ Notification animation
 }
 
 .ml11 {
-  font-family: 'Open Sans';
   font-size: 12px;
 }
 

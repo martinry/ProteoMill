@@ -1,7 +1,7 @@
 
 run_pathway_enrichment <- function(db, background_df) {
 
-  contrast.sign <- contrast[contrast$adj.P.Val < 0.01,]
+  contrast.sign <- contrast[contrast$adj.P.Val < 0.05,]
   contrast.sign <- rownames(contrast.sign)
 
   specify_decimal <- function(x, k) as.numeric( trimws(format(round(x, k), nsmall=k, scientific = F)) )
@@ -47,6 +47,7 @@ run_pathway_enrichment <- function(db, background_df) {
   enriched_pathways <- enriched_pathways[order(enriched_pathways$iScore, decreasing = T),]
 
   interesting_pathways <- enriched_pathways[order(enriched_pathways$iScore, decreasing = T),][1:150,]
+  interesting_pathways <- interesting_pathways[interesting_pathways$Pvalue < 0.05,]
 
   return( list(enriched_pathways, interesting_pathways) )
 

@@ -19,12 +19,19 @@ server <- function(session, input, output) {
     # Populate with updateNotifications() function
     notification_list <- list() 
     
+    messages_list <- list()
+    
     # Make notification_list global var
     assign("notification_list", notification_list, envir = .GlobalEnv)
     
     # Initialize notification menu
     output$notifMenu <- renderMenu({
         dropdownMenu(type = "notifications", .list = notification_list)
+    })
+    
+    # Initialize message menu
+    output$helpMenu <- renderMenu({
+        dropdownMenu(type = "messages", .list = messages_list)
     })
     
     # A function to append notification items to the menu
@@ -168,7 +175,7 @@ server <- function(session, input, output) {
     
     observeEvent(input$verifyIDs, {
         
-        session$sendCustomMessage("fadeProcess", fade(20))
+        session$sendCustomMessage("fadeProcess", fade(12))
 
         id_check <- qob::update_obsolete(rownames(data_wide))
         
@@ -240,8 +247,8 @@ server <- function(session, input, output) {
             )
         })
         output$network <- renderMenu({
-            menuItem("Network analysis", icon = shiny::icon("connectdevelop"),
-                     menuSubItem("Network", tabName = "network", href = NULL, newtab = TRUE,
+            menuItem("Network analysis", icon = icon("flask"),
+                     menuSubItem("Interactions", tabName = "network", href = NULL, newtab = TRUE,
                                  icon = shiny::icon("angle-double-right"), selected = F))
         })
         
@@ -259,6 +266,11 @@ server <- function(session, input, output) {
     })
     
     # Enrichment ----
+    observeEvent(input$resetbg, {
+        background_data <- input_names
+        assign("background_data", background_data, envir = .GlobalEnv)
+        updateNotifications("Background data has been reset.", "info-circle", "info")
+    })
     
     observeEvent(input$addbg, {
         
@@ -283,9 +295,10 @@ server <- function(session, input, output) {
         }
         
     })
+    
     observeEvent(input$generatepathways, {
         
-        session$sendCustomMessage("fadeProcess", fade(100))
+        session$sendCustomMessage("fadeProcess", fade(70))
         
         bg <- background_data
         
@@ -294,7 +307,7 @@ server <- function(session, input, output) {
         enriched_paths <- enrichment_output[[1]]
         interesting_paths <- enrichment_output[[2]]
 
-        contrast$Rep.Path.Name <- '* NOT SIGNFICANT'
+        contrast$Rep.Path.Top <- '* NOT SIGNFICANT'
         contrast$Rep.Path.Score <- 0
         
         for (i in 1:nrow(interesting_paths)) {
@@ -369,7 +382,7 @@ server <- function(session, input, output) {
 
     
     observeEvent(input$generatenetwork, {
-        session$sendCustomMessage("fadeProcess", fade(80))
+        session$sendCustomMessage("fadeProcess", fade(60))
         
         source("bin/networks.R")
         
@@ -391,7 +404,7 @@ server <- function(session, input, output) {
             
             g2 <- igraph_to_networkD3(g, group = members)
             
-            g2$nodes$group <- results[results$Gene %in% g2$nodes$name,"Rep.Path.Name"]
+            g2$nodes$group <- results[results$Gene %in% g2$nodes$name,"Rep.Path.Top"]
             
             session$sendCustomMessage("fadeProcess", fade(0))
             
