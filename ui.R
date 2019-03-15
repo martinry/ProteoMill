@@ -87,6 +87,7 @@ body <- dashboardBody(
     tags$head(
         tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"),
         tags$link(rel="stylesheet", href="https://fonts.googleapis.com/css?family=Quicksand"),
+        tags$link(rel="stylesheet", href="https://fonts.googleapis.com/css?family=Nunito"),
         tags$link(rel="stylesheet", href="https://fonts.googleapis.com/css?family=Open+Sans"),
         tags$script(src = "https://cdnjs.cloudflare.com/ajax/libs/animejs/2.0.2/anime.min.js") # To do: keep local copy
         
@@ -308,6 +309,8 @@ body <- dashboardBody(
         
         tabItem(tabName = "network",
                 box(title = "Network settings", width = 3,
+                    radioButtons("pathway-level", label = "Pathway annotation level",
+                                 choices = list("Highest" = 1, "Lowest" = 2), inline = T),
                     numericInput(
                         "pvaluecutoff",
                         label = "Maximum adj. Pvalue (from diff. exp.)",

@@ -19,7 +19,9 @@ server <- function(session, input, output) {
     # Populate with updateNotifications() function
     notification_list <- list() 
     
-    messages_list <- list()
+    task_list <- list(taskItem("Verify identifiers", value = 0, color = "aqua", href = NULL),
+                      taskItem("Upload a dataset", value = 100, color = "aqua", href = NULL)
+                      )
     
     # Make notification_list global var
     assign("notification_list", notification_list, envir = .GlobalEnv)
@@ -31,7 +33,7 @@ server <- function(session, input, output) {
     
     # Initialize message menu
     output$helpMenu <- renderMenu({
-        dropdownMenu(type = "messages", .list = messages_list)
+        dropdownMenu(type = "tasks", .list = task_list)
     })
     
     # A function to append notification items to the menu
@@ -247,7 +249,7 @@ server <- function(session, input, output) {
             )
         })
         output$network <- renderMenu({
-            menuItem("Network analysis", icon = icon("flask"),
+            menuItem("Network analysis", icon = icon("vector-square"),
                      menuSubItem("Interactions", tabName = "network", href = NULL, newtab = TRUE,
                                  icon = shiny::icon("angle-double-right"), selected = F))
         })

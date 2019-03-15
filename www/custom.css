@@ -13,6 +13,21 @@ body {
     border-top-color: #e80032dd !important;
 }
 
+.irs-bar {
+    border-top: 1px solid #ff1049 !important;
+    border-bottom: 1px solid #ff1049 !important;
+    background: #ff1049 !important;
+}
+
+.irs-single {
+    background: #ff0041 !important;
+}
+
+.irs-bar-edge {
+    border: 1px solid #ff0041 !important;
+    background: #ff0041 !important;
+}
+
 .label-primary {
     background-color:#e80032dd !important;
 }
@@ -72,6 +87,12 @@ body {
 	border-left:1px solid #eee;
 	border-right-width:0
 }
+
+.logo {
+    font-family: 'Nunito', sans-serif !important;
+    font-size: 28px !important;
+}
+
 .skin-black .main-header>.logo
 {
 	background-color:#fff;
