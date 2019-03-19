@@ -87,7 +87,7 @@ body <- dashboardBody(
     tags$head(
         tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"),
         tags$link(rel="stylesheet", href="https://fonts.googleapis.com/css?family=Quicksand"),
-        tags$link(rel="stylesheet", href="https://fonts.googleapis.com/css?family=Nunito"),
+        tags$link(rel="stylesheet", href="https://fonts.googleapis.com/css?family=Poiret+One"),
         tags$link(rel="stylesheet", href="https://fonts.googleapis.com/css?family=Open+Sans"),
         tags$script(src = "https://cdnjs.cloudflare.com/ajax/libs/animejs/2.0.2/anime.min.js") # To do: keep local copy
         
@@ -125,36 +125,35 @@ body <- dashboardBody(
         # File input
         
         tabItem(tabName = "file-input",
-                
-                box(
-                    title = 'File input', status = 'primary', solidHeader = F,
-                    helpText('Upload your dataset in the requested format.'),
-                    footer = helpText('Accepted filetypes are csv, tsv and txt.'),
-                    radioButtons("sep", label = 'Separator',
-                                 choices = list("Comma" = 1, "Semicolon" = 2, "Tab" =3),
-                                 selected = 1,
-                                 inline = T),
-                    fileInput("infile", "Select a file",
-                              accept = c(
-                                  "text/csv",
-                                  "text/comma-separated-values,text/plain",
-                                  ".csv")),
-                    actionButton("selectDemo", "Demo dataset")
-                ),
-                
-                box(
-                    title = 'Annotation data',
-                    radioButtons("sep-anno", label = 'Separator',
-                                 choices = list("Comma" = 1, "Semicolon" = 2, "Tab" =3),
-                                 selected = 1,
-                                 inline = T),
-                    fileInput("infile-anno", "Select a file",
-                              accept = c(
-                                  "text/csv",
-                                  "text/comma-separated-values,text/plain",
-                                  ".csv"))
-                )
-        ),
+                tabBox(
+                    tabPanel(
+                        title = "Dataset",
+                        footer = helpText('Accepted filetypes are csv, tsv and txt.'),
+                        radioButtons("sep", label = 'Separator',
+                                     choices = list("Comma" = 1, "Semicolon" = 2, "Tab" =3),
+                                     selected = 1,
+                                     inline = T),
+                        fileInput("infile", "Select a file",
+                                  accept = c(
+                                      "text/csv",
+                                      "text/comma-separated-values,text/plain",
+                                      ".csv")),
+                        helpText('Accepted filetypes are csv, tsv and txt.')
+                        ),
+                    tabPanel(
+                        title = 'Annotation data',
+                        radioButtons("sep-anno", label = 'Separator',
+                                     choices = list("Comma" = 1, "Semicolon" = 2, "Tab" =3),
+                                     selected = 1,
+                                     inline = T),
+                        fileInput("infile-anno", "Select a file",
+                                  accept = c(
+                                      "text/csv",
+                                      "text/comma-separated-values,text/plain",
+                                      ".csv")),
+                        helpText('Accepted filetypes are csv, tsv and txt.')
+                        )
+                    )),
         
         # Filters: NA cutoff
         

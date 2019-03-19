@@ -100,12 +100,12 @@ server <- function(session, input, output) {
         
         showModal(
             modalDialog(title = "Obsolete IDs",
-
+                        
                         DT::renderDataTable({
                             id_check[["table"]]
                         }),
                         size = "l",
-                        actionButton("updateAll", "Update all")
+                        footer = list(actionButton("updateAll", "Update all"), modalButton("Dismiss"))
             )
         )
     })
@@ -204,7 +204,16 @@ server <- function(session, input, output) {
             # Summary of how many TRUEs there are in each row
             NA_frequency <- table(rowSums(allNA))
             
-            graphics::barplot(NA_frequency, xlab = "Na frequency", ylab = "Number of genes")
+            naf <- as.data.frame(NA_frequency)
+            
+            theme_set(theme_classic())
+            
+            # Draw plot
+            ggplot(naf, aes(x=Var1, y=Freq)) +
+                geom_bar(stat="identity", width=.9, fill="tomato3") + 
+                theme(axis.text.x = element_text(angle=65, vjust=0.6))
+            
+            #graphics::barplot(NA_frequency, xlab = "Na frequency", ylab = "Number of genes")
             
         })
     }
@@ -354,7 +363,8 @@ server <- function(session, input, output) {
         # Similarity plot
         output$similarity_plot <- renderPlot(
             {
-                run_similarity_plot(interesting_paths)
+                mat <- run_similarity_plot(interesting_paths)
+                pheatmap::pheatmap(mat, cluster_rows = F, cluster_cols = F, fontsize = 7.5)
             })
         
         # Volcano plot

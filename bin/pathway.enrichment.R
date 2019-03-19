@@ -76,9 +76,7 @@ run_similarity_plot <- function(interesting_pathways) {
     }
   }
 
-  pathway_similarity_hm <- pheatmap::pheatmap(mat, cluster_rows = F, cluster_cols = F, fontsize = 7.5)
-
-  return( pathway_similarity_hm )
+  return( mat )
 
 }
 
