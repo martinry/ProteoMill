@@ -142,11 +142,11 @@ body <- dashboardBody(
                         ),
                     tabPanel(
                         title = 'Annotation data',
-                        radioButtons("sep-anno", label = 'Separator',
+                        radioButtons("anno_sep", label = 'Separator',
                                      choices = list("Comma" = 1, "Semicolon" = 2, "Tab" =3),
                                      selected = 1,
                                      inline = T),
-                        fileInput("infile-anno", "Select a file",
+                        fileInput("anno_infile", "Select a file",
                                   accept = c(
                                       "text/csv",
                                       "text/comma-separated-values,text/plain",
@@ -192,13 +192,14 @@ body <- dashboardBody(
         tabItem(tabName = "datatype",
                 box(
                     title = "Distributions", status = "primary", solidHeader = F,
-                    actionButton("generatedistributions", label = "Render distributions"),
                     selectInput(inputId = "fit", label = "Fit to distribution",
                                 choices = list("Normal" = 1,
                                                "Poisson" = 2,
                                                "Negative binomial" = 3),
                                 selected = 1
                     ),
+                    actionButton("generatedistributions", label = "Render distributions"),
+                    tags$p(),
                     plotOutput("distributions"),
                     sliderInput(
                         "setdist",
@@ -245,7 +246,7 @@ body <- dashboardBody(
                     tabPanel("PCA 3D", plotly::plotlyOutput("pca3dplot")))),
         tabItem(tabName = "samplecorr",
                 box(title = "Sample correlation",
-                    plotOutput("samplecorrheatmap"))
+                    plotOutput("samplecorrheatmap", width = "700px", height = "600px"))
         ),
         
         # Differential expression analysis : ANOVA, Contrasts

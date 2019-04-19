@@ -22,9 +22,19 @@ run_pathway_enrichment <- function(db, background_df) {
     
     k_annotated_de <- length( pathway1[pathway1$UniprotID %in% contrast.sign, 'ReactomeID'] )
     
+    # dhyper(x, m, n, k) gives the probability of drawing exactly x
+    # phyper(x, m, n, k) gives the probability of getting x or fewer,
     
-    pval <- phyper(k_annotated_de, n_num_de, N_num_background, M_annotated_background, lower.tail=FALSE) +
-      dhyper(k_annotated_de, n_num_de, N_num_background, M_annotated_background)
+    # n in sample
+    # n in pop
+    # pop size
+    # sample size
+    
+    #pval <- phyper(k_annotated_de, n_num_de, N_num_background, M_annotated_background, lower.tail=FALSE) +
+    #  dhyper(k_annotated_de, n_num_de, N_num_background, M_annotated_background)
+    
+    pval <- phyper(k_annotated_de, M_annotated_background, N_num_background-M_annotated_background, n_num_de, lower.tail = FALSE) +
+        dhyper(k_annotated_de, M_annotated_background, N_num_background-M_annotated_background, n_num_de)
 
     sampled <- pathway1[pathway1$UniprotID %in% contrast.sign, 'UniprotID']
 

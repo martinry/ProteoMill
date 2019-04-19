@@ -5,6 +5,7 @@ require(ggplot2)
 require(ggrepel)
 require(RColorBrewer)
 require(dplyr)
+require(fitdistrplus)
 
 fade <- function(fadein) {
     return(fadein)
@@ -146,7 +147,8 @@ server <- function(session, input, output) {
 
 
     # File input ----
-
+    
+    # Main data file input
     observeEvent(input$infile, {
         inFile <- input$infile
         
@@ -161,7 +163,7 @@ server <- function(session, input, output) {
             separator = '\t'
         }
         
-        read_file(inFile$datapath, separator)
+        read_file(inFile$datapath, separator, "main")
         
         
         updateNotifications("Dataset successfully uploaded.","check-circle", "success")
@@ -170,6 +172,27 @@ server <- function(session, input, output) {
         
     })
     
+    # Annotation file input
+    observeEvent(input$anno_infile, {
+        inFile <- input$anno_infile
+        
+        if (is.null(inFile))
+            return(NULL)
+        
+        if(input$anno_sep == 1) {
+            separator = ','
+        } else if(input$anno_sep == 2) {
+            separator = ';'
+        } else if (input$anno_sep == 3) {
+            separator = '\t'
+        }
+        
+        read_file(inFile$datapath, separator, "anno")
+        
+        
+        updateNotifications("Annotations successfully uploaded.","check-circle", "success")
+        
+    })
     
     
     
@@ -186,6 +209,9 @@ server <- function(session, input, output) {
         session$sendCustomMessage("fadeProcess", fade(0))
         
         assign("id_check", id_check, envir = .GlobalEnv)
+        
+        input_names <- rownames(data_wide)
+        assign("input_names", input_names, envir = .GlobalEnv)
         
         message <- paste(length(obsolete), " IDs are obsolete...")
         updateNotifications(message,"info-circle", "info")
@@ -231,6 +257,68 @@ server <- function(session, input, output) {
     })
     
     
+    
+    # Distributions ----
+    observeEvent(input$generatedistributions, {
+        
+        data_wide_NAex <- na.exclude(data_origin)
+        
+        fit.lnorm <- tryCatch( apply(data_wide_NAex, 1, function(x) fitdistrplus::fitdist(as.numeric(x), "lnorm")),
+                               error = function(e) print("Can't do that."))
+        
+        fit.norm <- tryCatch( apply(data_wide_NAex, 1,  function(x) fitdistrplus::fitdist(as.numeric(x), "norm")),
+                              error = function(e) print("Can't do that."))
+        
+        # Render "data type" distribution plots
+        output$distributions <- renderPlot({
+            
+            updateSliderInput(session, inputId = "setdist", max = nrow(na.omit(data_wide)))
+
+            d1 <- fit.norm
+            d2 <- fit.lnorm
+            
+            val <- input$setdist
+            
+            par(mfrow = c(2, 2))
+            
+            denscomp(list(d1[[val]], d2[[val]]))
+            qqcomp(list(d1[[val]], d2[[val]]))
+            cdfcomp(list(d1[[val]], d2[[val]]))
+            ppcomp(list(d1[[val]], d2[[val]]))
+            
+        })
+        
+    }, ignoreInit = TRUE)
+    
+    # Quality control ----
+    
+    # Render PCA plots
+    
+    output$pca2dplot <- renderPlot({
+        c <- input$contribs
+        e <- input$ellipse
+        plotPCA(c,e, '2d')
+    })
+    
+    output$pca3dplot <- plotly::renderPlotly({
+        plotPCA(0,0, '3d')
+    })
+    
+    # Render heatmap
+    
+    output$samplecorrheatmap <- renderPlot({
+        cor_mat_raw_logged <- log2(data_origin)
+        cor_mat_raw_logged[is.na(cor_mat_raw_logged)] <- 0
+        cor_mat_raw_logged <- cor(cor_mat_raw_logged)
+        
+        #annotation_col = data.frame(tmp)
+        pheatmap::pheatmap(
+         #   annotation = annotation_col,
+            cor_mat_raw_logged,
+            legend_breaks = c(min(cor_mat_raw_logged), 1),
+            legend_labels = c(0, 1)
+        )
+    })
     
     # Differential expression: set contrasts ----
     observeEvent(input$contrast1, {
@@ -288,6 +376,7 @@ server <- function(session, input, output) {
         added_bg <- tissues[,input$Tissue]
         added_bg <- added_bg[!is.na(added_bg)] # Remove empty entries
         
+        
         not_in_bg <- added_bg[!added_bg %in% background_data]
         
         exists_in_input <- added_bg[added_bg %in% input_names]
@@ -311,8 +400,13 @@ server <- function(session, input, output) {
         
         session$sendCustomMessage("fadeProcess", fade(70))
         
-        bg <- background_data
-        
+        if(input$usebackground == 1) {
+            bg <- input_names
+        } else if (input$usebackground == 2) {
+            bg <- background_data   
+        } else if (input$usebackground == 3) {
+            bg <- unique(reactome$UniprotID)
+        }
         enrichment_output <- run_pathway_enrichment('REACTOME', bg)
         
         enriched_paths <- enrichment_output[[1]]

@@ -4,12 +4,21 @@ source("bin/pathway.enrichment.R")
 # Background data ----
 
 tissues <- data.table::fread('~/Large_files/tissues.uniprot.csv', sep = '\t', header = T, data.table = F, strip.white=TRUE)
+#tissues <- data.table::fread('~/Large_files/tissues.full2.tsv', sep = '\t', header = T, data.table = F, strip.white=TRUE)
+#tissues[tissues == ""] <- NA
 tissue_names <- colnames(tissues)
 
 # Reactome
-reactome <- data.table::fread('~/Large_files/reactome/reactome.uniprot.levels.csv', sep = '\t', header = F, data.table = F, strip.white=TRUE)
+#reactome <- data.table::fread('~/Large_files/reactome/reactome.uniprot.levels.csv', sep = '\t', header = F, data.table = F, strip.white=TRUE)
+#reactome <- reactome[,2:ncol(reactome)]
+#colnames(reactome) <- c("UniprotID", "ReactomeID", "URL", "Pathway_name", "Evidence_code", "Species", "Top", "TopPathway")
+
+
+reactome <- data.table::fread('~/Large_files/reactome/mock/reactome.uniprot.levels.MOCK.csv', sep = ';', header = F, data.table = F, strip.white=TRUE)
 reactome <- reactome[,2:ncol(reactome)]
 colnames(reactome) <- c("UniprotID", "ReactomeID", "URL", "Pathway_name", "Evidence_code", "Species", "Top", "TopPathway")
+
+
 # reactome <- data.table::fread('~/Large_files/reactome/uniprot.reactome.hsa.TAS.txt', sep = '\t', header = F, data.table = F, strip.white=TRUE)
 # colnames(reactome) <- c("UniprotID", "ReactomeID", "URL", "Pathway_name", "Evidence_code", "Species")
 # 
@@ -65,26 +74,34 @@ colnames(reactome) <- c("UniprotID", "ReactomeID", "URL", "Pathway_name", "Evide
 
 # Read input file ----
 
-read_file <- function(infile, separator) {
-    assign('infile', infile, envir = .GlobalEnv) # Make infile global var
-    assign('separator', separator, envir = .GlobalEnv) # Make infile global var
+read_file <- function(infile, separator, type) {
+    #assign('infile', infile, envir = .GlobalEnv) # Make infile global var
+    #assign('separator', separator, envir = .GlobalEnv) # Make infile global var
     
-    data_wide <- data.table::fread(infile, sep = separator, dec = '.', header = T, data.table=FALSE)
+    if(type == "main") {
+        data_wide <- data.table::fread(infile, sep = separator, dec = '.', header = T, data.table=FALSE)
+        
+        rownames(data_wide) <- data_wide[,1]
+        data_wide <- data_wide[,2:ncol(data_wide)]
+        data_wide[data_wide=="Filtered"] <- NA
+        
+        empty_rows <- apply(data_wide, 1, function(x) all(is.na(x)))
+        
+        data_wide <- data_wide[!empty_rows,]
+        
+        # Set factor -> numeric
+        data_wide[] <- lapply(data_wide, function(x) {
+            if(is.factor(x)) as.numeric(as.character(x)) else x
+        })
+        
+        assign('data_wide', data_wide, envir = .GlobalEnv)
+        assign('data_origin', data_wide, envir = .GlobalEnv)
+    } else if(type == "anno") {
+        data_annotation <- read.csv(infile, sep = separator, dec = '.')
+        assign('data_annotation', data_annotation, envir = .GlobalEnv)
+    }
     
-    rownames(data_wide) <- data_wide[,1]
-    data_wide <- data_wide[,2:ncol(data_wide)]
-    data_wide[data_wide=="Filtered"] <- NA
-    
-    empty_rows <- apply(data_wide, 1, function(x) all(is.na(x)))
-    
-    data_wide <- data_wide[!empty_rows,]
-    
-    # Set factor -> numeric
-    data_wide[] <- lapply(data_wide, function(x) {
-        if(is.factor(x)) as.numeric(as.character(x)) else x
-    })
-    
-    assign('data_wide', data_wide, envir = .GlobalEnv)
+
 
 }
 
@@ -158,6 +175,38 @@ filter_na <- function(threshold) {
 }
 
 
+# PCA ----
+plotPCA <- function(contribs, ellipse, type) {
+    
+    pca.data <- log2(data_origin)
+    pca.data[is.na(pca.data)] <- 0
+    pca.data <- t(pca.data)
+    p.pca <- prcomp(pca.data, center = TRUE, scale. = TRUE)
+    
+    if(type == '2d') {
+        
+        pcaplot <- factoextra::fviz_pca_biplot(p.pca, title = '', label = "var", habillage=condition,
+                                               addEllipses=TRUE, ellipse.level=ellipse,
+                                               select.var = list(contrib = contribs), repel = TRUE)
+        
+        return (pcaplot)
+        
+    } else if (type == '3d') {
+        pcaplot <- plotly::plot_ly(x = p.pca$x[,1],
+                                   y = p.pca$x[,2],
+                                   z = p.pca$x[,3],
+                                   color = condition,
+                                   colors = c("red","green","blue"),
+                                   sizes = c(100, 150)) %>%
+            plotly::add_markers() %>%
+            plotly::layout(scene = list(xaxis = list(title = 'PC1'),
+                                        yaxis = list(title = 'PC2'),
+                                        zaxis = list(title = 'PC3')))
+        
+        return (pcaplot)
+    } else { return (FALSE) }
+    
+}
 # Differential expression ----
 diff_exp <- function(coeff, pairing) {
     phenoData <- new("AnnotatedDataFrame", data=samples)
@@ -194,7 +243,7 @@ diff_exp <- function(coeff, pairing) {
     
     contrast <- contrast[order(contrast$P.Value, decreasing = F),]
     
-    contrast$FDR <- p.adjust(contrast$P.Value, n = 510)
+    #contrast$FDR <- p.adjust(contrast$P.Value, n = 510)
     
     return( contrast )
     

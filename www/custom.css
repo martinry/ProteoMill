@@ -321,6 +321,7 @@ Notification animation
 }
 
 .ml11 .text-wrapper2 {
+  min-width: 250px;
   position: relative;
   display: inline-block;
   margin-left: 8px;
