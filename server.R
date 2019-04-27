@@ -130,9 +130,9 @@ server <- function(session, input, output) {
         })
         output$differential <- renderMenu({
             menuItem("Differential analysis", class = 'btn-10', tabName = "differential", icon = icon("adjust"), href = NULL,
-                     menuSubItem("ANOVA", tabName = "anova", href = NULL, newtab = TRUE,
-                                 icon = shiny::icon("angle-double-right"), selected = F),
                      menuSubItem("Contrasts", tabName = "contrasts", href = NULL, newtab = TRUE,
+                                 icon = shiny::icon("angle-double-right"), selected = F),
+                     menuSubItem("Differential expression", tabName = "diffexpoutput", href = NULL, newtab = TRUE,
                                  icon = shiny::icon("angle-double-right"), selected = F)
             )
         })
@@ -364,6 +364,31 @@ server <- function(session, input, output) {
         updateNotifications("Model fitted successfully.","check-circle", "success")
     })
     
+    # Differential expression: set contrasts
+    
+    output$contrasttable <- renderPlot({
+        ggplot2::ggplot(cint, aes(x = protein, y = logFC, colour = logFC)) +
+            
+            coord_flip() +
+            geom_errorbar(aes(ymin = as.numeric(CI.L), ymax = as.numeric(CI.R)), width = 2) +
+            scale_color_viridis_c() +
+            geom_line() +
+            geom_point() +
+            theme_bw() +
+            theme(
+                panel.border = element_blank(),
+                panel.grid.major = element_blank(),
+                panel.grid.minor = element_blank(),
+                axis.line = element_line(colour = "black"),
+                axis.text.y = element_text(size = 6, family = "Helvetica")
+            )
+    })
+        
+        
+ #       DT::renderDataTable({
+ #       contrast
+ #   })
+    
     # Enrichment ----
     observeEvent(input$resetbg, {
         background_data <- input_names
@@ -539,3 +564,4 @@ server <- function(session, input, output) {
     
 
 }
+

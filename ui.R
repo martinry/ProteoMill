@@ -251,8 +251,9 @@ body <- dashboardBody(
         
         # Differential expression analysis : ANOVA, Contrasts
         
-        tabItem(tabName = "anova",
-                h1("ANOVA")),
+        tabItem(tabName = "diffexpoutput",
+                plotOutput("contrasttable", width = "700px", height = "900px")),
+                #DT::dataTableOutput("contrasttable") ),
         
         tabItem(tabName = "contrasts",
                 box(

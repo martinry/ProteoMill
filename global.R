@@ -239,7 +239,21 @@ diff_exp <- function(coeff, pairing) {
     res.all <- topTable(fit.cont, n = Inf)
     res.all.sign <- res.all[res.all$adj.P.Val < 0.01,]
     
-    contrast <- topTable(fit.cont, number = Inf, coef = coeff)
+    #contrast <- topTable(fit.cont, number = Inf, coef = coeff, confint = TRUE)
+    contrast <- toptable(fit.cont, number = Inf, coef = coeff, confint = TRUE)
+    
+    #cint <- contrast[order(contrast$CI.L),]
+    cint <- within(cint,
+                   CI.L <- factor(CI.L,
+                                  levels = names(sort(table(CI.L),
+                                                      decreasing = T))))
+    cint$protein <- rownames(cint)
+    assign("cint", cint, envir = .GlobalEnv)
+    
+    #contrast2 <- topTableF(fit.cont, number = Inf, coef = coeff, confint = TRUE)
+    
+    #contrast3 <- toptable(fit.cont, number = Inf, coef = coeff, confint = TRUE)
+    #assign("contrast3", contrast3, envir = .GlobalEnv)
     
     contrast <- contrast[order(contrast$P.Value, decreasing = F),]
     
