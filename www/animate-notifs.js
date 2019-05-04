@@ -1,3 +1,14 @@
+Shiny.addCustomMessageHandler('searchProtein', function(protein) {
+    var link = 'https://www.ebi.ac.uk/pdbe/entry-files/download/pdb' + protein + '.ent';
+
+    plugin.loadMolecule({
+    id: protein,
+    url: link,
+    format: 'pdb' });
+    
+    
+});
+
 Shiny.addCustomMessageHandler('fadeProcess', function(fadein) {
     if (fadein > 0) {
         $('#load-process').fadeIn();

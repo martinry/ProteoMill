@@ -39,6 +39,7 @@ run_pathway_enrichment <- function(db, background_df) {
     sampled <- pathway1[pathway1$UniprotID %in% contrast.sign, 'UniprotID']
 
     lfc <- contrast[rownames(contrast) %in% sampled, 'logFC']
+    
     lfc.mean <- mean( abs(lfc) )
 
     iscore <- lfc.mean * -log10( pval )

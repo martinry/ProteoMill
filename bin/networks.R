@@ -17,3 +17,7 @@ interactions3 <- interactions2
 
 interactions3$protein1 <- qob::switch.items(interactions2$protein1, uniprot_to_string, 2, 1)
 interactions3$protein2 <- qob::switch.items(interactions2$protein2, uniprot_to_string, 2, 1)
+
+
+
+

@@ -26,7 +26,8 @@ header <- dashboardHeader(help,
                                              tags$span(class = "letters2")
                                              )
                                    )
-                                 )
+                                 ),
+                          tags$li(class = "dropdown", id = "test-button")
                           )
 
 # Sidebar menu ----
@@ -60,8 +61,22 @@ sidebar <- dashboardSidebar(
         menuItemOutput('networkrm'),
         menuItemOutput('network')
         
+        
     ),
     tags$br(),
+    tags$div(id = 'tools', "Additional tools", style = "
+             letter-spacing: 3.3px;
+             line-height: 42px;
+             text-transform: uppercase;
+             text-align: center;
+             background-color: #425664;
+             margin-top: 2px;
+             color: #fff;"),
+    sidebarMenu(
+        menuItem("Structures", tabName = "structures", icon = icon("fingerprint"))
+    ),
+    tags$br(),
+    
     tags$div(id = 'test', "Documentation", style = "
              letter-spacing: 3.3px;
              line-height: 42px;
@@ -84,11 +99,16 @@ body <- dashboardBody(
     
     # Import custom stylesheet and javascript
     
+    #<link rel="stylesheet" href="~/martiniry/LiteMol/css/LiteMol-plugin.css" type="text/css" />
+    #<script src="~/martiniry/LiteMol/js/LiteMol-plugin.js"></script>
+    
     tags$head(
         tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"),
         tags$link(rel="stylesheet", href="https://fonts.googleapis.com/css?family=Quicksand"),
         tags$link(rel="stylesheet", href="https://fonts.googleapis.com/css?family=Poiret+One"),
         tags$link(rel="stylesheet", href="https://fonts.googleapis.com/css?family=Open+Sans"),
+        tags$link(rel="stylesheet", href="css/LiteMol-plugin-light.css"),
+        tags$script(src = "js/LiteMol-plugin.js?lmversion=10"),
         tags$script(src = "https://cdnjs.cloudflare.com/ajax/libs/animejs/2.0.2/anime.min.js") # To do: keep local copy
         
     ),
@@ -252,7 +272,7 @@ body <- dashboardBody(
         # Differential expression analysis : ANOVA, Contrasts
         
         tabItem(tabName = "diffexpoutput",
-                plotOutput("contrasttable", width = "700px", height = "900px")),
+                plotOutput("contrasttable", width = "800px", height = "1600px")),
                 #DT::dataTableOutput("contrasttable") ),
         
         tabItem(tabName = "contrasts",
@@ -322,8 +342,21 @@ body <- dashboardBody(
                     ), 
                     sliderInput("interactioncutoff", label = "Minimum interaction score", min = 0, max = 9.9, value = 3, step = .1),
                     actionButton("generatenetwork", label = "Generate network")),
+                # box(title = "Structure",
+                #     tags$div(id = "litemol", style = 'width: 640px; height: 480px; margin-top: 200px; position: relative')),
                 box(title = "Interactions", width = 9,
-                    networkD3::forceNetworkOutput("net", width = "100%", height = "750px")))
+                    networkD3::forceNetworkOutput("net", width = "100%", height = "750px"))),
+        tabItem(tabName = "structures",
+                # box(title = "Search protein", width = 2,
+                #     textInput("proteinsearch", label = "Search"),
+                #     actionButton("searchclick", "Find structure")
+                #     ),
+                box(title = "Structure", width = 10,
+                    textInput("seachinput", "Search"),
+                    actionButton("searchclick", "Find structure"),
+                    tags$div(id = "litemol", style = 'width: 640px; margin-top: 10px; height: 480px; position: relative'),
+                    tags$script(HTML("var plugin = LiteMol.Plugin.create({ target: '#litemol', layoutState: { hideControls: true } });")))
+                )
     )
     )
 

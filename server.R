@@ -91,7 +91,7 @@ server <- function(session, input, output) {
         assign("background_data", background_data, envir = .GlobalEnv)
         assign("input_names", input_names, envir = .GlobalEnv)
         
-        message <- paste(nrow(id_check[["table"]]), " updated successfully.")
+        message <- paste(nrow(id_check[["table"]]), " IDs updated successfully.")
         updateNotifications(message,"check-circle", "success")
         
     })
@@ -368,7 +368,6 @@ server <- function(session, input, output) {
     
     output$contrasttable <- renderPlot({
         ggplot2::ggplot(cint, aes(x = protein, y = logFC, colour = logFC)) +
-            
             coord_flip() +
             geom_errorbar(aes(ymin = as.numeric(CI.L), ymax = as.numeric(CI.R)), width = 2) +
             scale_color_viridis_c() +
@@ -380,7 +379,7 @@ server <- function(session, input, output) {
                 panel.grid.major = element_blank(),
                 panel.grid.minor = element_blank(),
                 axis.line = element_line(colour = "black"),
-                axis.text.y = element_text(size = 6, family = "Helvetica")
+                axis.text.y = element_text(size = 7, family = "Helvetica")
             )
     })
         
@@ -556,11 +555,34 @@ server <- function(session, input, output) {
                 
             )
             
+           d3$x$nodes$hyperlink <- paste0(
+               'https://www.uniprot.org/uniprot/',
+               g2$nodes$name
+           )
+           
+           d3$x$options$clickAction = 'window.open(d.hyperlink)'
+            
+            # d3$x$nodes$hyperlink <- paste0(
+            #     ""
+            # )
+            
+            #d3$x$options$clickAction = "plugin.loadMolecule({id: '1tqn',url: 'https://www.ebi.ac.uk/pdbe/static/entry/1tqn_updated.cif',format: 'cif' });"
+            
             d3
         })
         
         
     })
+    
+    observeEvent(input$searchclick, {
+        
+        searchProtein <- function() {
+            return(input$seachinput)
+        }
+        
+        session$sendCustomMessage("searchProtein", searchProtein())
+    })
+
     
 
 }
