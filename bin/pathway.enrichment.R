@@ -41,7 +41,7 @@ run_pathway_enrichment <- function(db, background_df) {
     lfc <- contrast[rownames(contrast) %in% sampled, 'logFC']
     
     lfc.mean <- mean( abs(lfc) )
-
+    
     iscore <- lfc.mean * -log10( pval )
     
     enriched_pathways[i, "Pathway_name"] <- reactome[reactome$ReactomeID == unique_pathways[i], 4][1]

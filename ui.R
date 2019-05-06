@@ -202,6 +202,17 @@ body <- dashboardBody(
                                            "Gene symbol" = 4),
                             selected = 1),
                 actionButton("verifyIDs", label = "Check IDs"), textOutput("runningprocesstext")
+                ),
+                box(
+                    title = "Convert to", status = "primary", solidHeader = F, width = 3,
+                    helpText("The gene identifier to be used."),
+                    selectInput("identifiers", label = "Identifier type",
+                                choices = list("Entrez" = 1,
+                                               #"UniProtKB" = 2,
+                                               "Ensembl gene ID" = 3,
+                                               "Gene symbol" = 4), 
+                                selected = 1),
+                    actionButton("convertIDs", "Convert")
                 )
                 
         ),
@@ -323,15 +334,16 @@ body <- dashboardBody(
                     ),
                 tabBox(width = 9,
                        tabPanel("Table", DT::dataTableOutput("pathtable", width = 800)),
-                       tabPanel("Similarity matrix", plotOutput("similarity_plot", height = 750)),
+                       tabPanel("Similarity matrix", plotOutput("similarity_plot", height = 850)),
                        tabPanel("Volcano plot", plotOutput("volcano_plot", height = 750)),
                        tabPanel("Sankey diagram", networkD3::sankeyNetworkOutput("sankey", height = 750)))
         ),
         
         tabItem(tabName = "network",
                 box(title = "Network settings", width = 3,
-                    radioButtons("pathway-level", label = "Pathway annotation level",
+                    radioButtons("pathwaylevel", label = "Pathway annotation level",
                                  choices = list("Highest" = 1, "Lowest" = 2), inline = T),
+                    radioButtons("direction", label = "Regulation", choices = list("Up-regulation" = 1, "Down-regulation" = 2), inline = T),
                     numericInput(
                         "pvaluecutoff",
                         label = "Maximum adj. Pvalue (from diff. exp.)",

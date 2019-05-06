@@ -482,7 +482,7 @@ server <- function(session, input, output) {
         output$similarity_plot <- renderPlot(
             {
                 mat <- run_similarity_plot(interesting_paths)
-                pheatmap::pheatmap(mat, cluster_rows = F, cluster_cols = F, fontsize = 7.5)
+                pheatmap::pheatmap(mat, cluster_rows = F, cluster_cols = F, fontsize = 11)
             })
         
         # Volcano plot
@@ -519,7 +519,16 @@ server <- function(session, input, output) {
         output$net <- networkD3::renderForceNetwork({
             
             top <- contrast[contrast$adj.P.Val < input$pvaluecutoff,]
+            
+            if (input$direction == 1) {
+                top <- top[top$logFC > 0,]
+            } else if (input$direction == 2) {
+                top <- top[top$logFC < 0,]
+            }
+
             top <- rownames(top)
+            
+            
 
             interactions <- interactions3[(interactions3$protein1 %in% top) & (interactions3$protein2 %in% top), ]
             interactions$combined_score <- interactions$combined_score / 100
@@ -534,7 +543,12 @@ server <- function(session, input, output) {
             
             g2 <- igraph_to_networkD3(g, group = members)
             
-            g2$nodes$group <- results[results$Gene %in% g2$nodes$name,"Rep.Path.Top"]
+            if(input$pathwaylevel == 1) {
+                g2$nodes$group <- results[results$Gene %in% g2$nodes$name,"Rep.Path.Top"]
+            } else if (input$pathwaylevel == 2) {
+                g2$nodes$group <- results[results$Gene %in% g2$nodes$name,"Rep.Path.Name"]
+            }
+            
             
             session$sendCustomMessage("fadeProcess", fade(0))
             
