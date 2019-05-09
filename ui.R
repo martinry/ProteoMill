@@ -264,10 +264,9 @@ body <- dashboardBody(
                 box(title = "PCA settings",
                     status = "warning",
                     width = 3,
-                    helpText("hello world"),
                     sliderInput("contribs",
                                 "Number of contributors:",
-                                min = 1,  max = 50, value = 10),
+                                min = 1,  max = nrow(data_wide), value = 10),
                     sliderInput("ellipse",
                                 "Ellipse level:",
                                 min = 0,  max = 1, value = .75)

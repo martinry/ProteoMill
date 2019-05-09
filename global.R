@@ -9,14 +9,14 @@ tissues <- data.table::fread('~/Large_files/tissues.uniprot.csv', sep = '\t', he
 tissue_names <- colnames(tissues)
 
 # Reactome
-#reactome <- data.table::fread('~/Large_files/reactome/reactome.uniprot.levels.csv', sep = '\t', header = F, data.table = F, strip.white=TRUE)
-#reactome <- reactome[,2:ncol(reactome)]
-#colnames(reactome) <- c("UniprotID", "ReactomeID", "URL", "Pathway_name", "Evidence_code", "Species", "Top", "TopPathway")
-
-
-reactome <- data.table::fread('~/Large_files/reactome/mock/reactome.uniprot.levels.MOCK.csv', sep = ';', header = F, data.table = F, strip.white=TRUE)
+reactome <- data.table::fread('~/Large_files/reactome/reactome.uniprot.levels.csv', sep = '\t', header = F, data.table = F, strip.white=TRUE)
 reactome <- reactome[,2:ncol(reactome)]
 colnames(reactome) <- c("UniprotID", "ReactomeID", "URL", "Pathway_name", "Evidence_code", "Species", "Top", "TopPathway")
+
+
+#reactome <- data.table::fread('~/Large_files/reactome/mock/reactome.uniprot.levels.MOCK.csv', sep = ';', header = F, data.table = F, strip.white=TRUE)
+#reactome <- reactome[,2:ncol(reactome)]
+#colnames(reactome) <- c("UniprotID", "ReactomeID", "URL", "Pathway_name", "Evidence_code", "Species", "Top", "TopPathway")
 
 
 # reactome <- data.table::fread('~/Large_files/reactome/uniprot.reactome.hsa.TAS.txt', sep = '\t', header = F, data.table = F, strip.white=TRUE)
@@ -185,8 +185,8 @@ plotPCA <- function(contribs, ellipse, type) {
     
     if(type == '2d') {
         
-        pcaplot <- factoextra::fviz_pca_biplot(p.pca, title = '', label = "var", habillage=condition,
-                                               addEllipses=TRUE, ellipse.level=ellipse,
+        pcaplot <- factoextra::fviz_pca_biplot(p.pca, title = '', label = "var", habillage = condition,
+                                               addEllipses = TRUE, ellipse.level = ellipse,
                                                select.var = list(contrib = contribs), repel = TRUE)
         
         return (pcaplot)

@@ -8,7 +8,10 @@ set.seed(100)
 # Minor disease path 4 - 5, 12, 800
 # Major disease path 3 - 5, 7, 60
 
-mock = as.data.frame(matrix(runif(600, min=4e2, max=6e2), ncol=6))
+mock = as.data.frame(
+    matrix(
+        runif(600, min = 4e2, max = 6e2),
+        ncol = 6))
 colnames(mock) <- c("Control_1", "Control_2", "Control_3", "GS_1", "GS_2", "GS_3")
 
 reactome <- data.table::fread('~/Large_files/reactome/reactome.uniprot.levels.csv', sep = '\t', header = F, data.table = F, strip.white=TRUE)
