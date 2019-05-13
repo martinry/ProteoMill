@@ -13,8 +13,8 @@ run_pathway_enrichment <- function(db, background_df) {
   n_num_de <- length(contrast.sign)
   k_num_annotated <- vector()
 
-  enriched_pathways <- data.frame(matrix(0, nrow = length(unique_pathways), ncol = 7))
-  colnames(enriched_pathways) <- c("Pathway_name", "M", "n", "Pvalue", "iScore", "Pathway_topname", "Genes")
+  enriched_pathways <- data.frame(matrix(0, nrow = length(unique_pathways), ncol = 8))
+  colnames(enriched_pathways) <- c("Pathway_name", "M", "n", "Pvalue", "AdjP", "iScore", "Pathway_topname", "Genes")
 
   for(i in 1:length(unique_pathways)){
     pathway1 <- reactome[reactome$ReactomeID == unique_pathways[i],]
@@ -54,11 +54,12 @@ run_pathway_enrichment <- function(db, background_df) {
     enriched_pathways[i, "iScore"] <- ifelse(is.na(iscore), NA, specify_decimal(iscore, 9))
     enriched_pathways$Genes[i] <- list(sampled)
   }
-
+  
+  enriched_pathways$AdjP <- p.adjust(enriched_pathways$Pvalue, method = "BH")
   enriched_pathways <- enriched_pathways[order(enriched_pathways$iScore, decreasing = T),]
 
   interesting_pathways <- enriched_pathways[order(enriched_pathways$iScore, decreasing = T),][1:150,]
-  interesting_pathways <- interesting_pathways[interesting_pathways$Pvalue < 0.05,]
+  interesting_pathways <- interesting_pathways[interesting_pathways$Pvalue < 0.01,]
 
   return( list(enriched_pathways, interesting_pathways) )
 
@@ -75,8 +76,8 @@ run_similarity_plot <- function(interesting_pathways) {
 
   for(i in 1:nrow(interesting_pathways)) {
     for(j in 1:nrow(interesting_pathways)) {
-      p.i <- interesting_pathways[[i,7]]
-      p.j <- interesting_pathways[[j,7]]
+      p.i <- interesting_pathways[["Genes",8]]
+      p.j <- interesting_pathways[["Genes",8]]
       n.i <- length(p.i)
 
       x <- intersect(p.i, p.j)

@@ -266,7 +266,7 @@ body <- dashboardBody(
                     width = 3,
                     sliderInput("contribs",
                                 "Number of contributors:",
-                                min = 1,  max = nrow(data_wide), value = 10),
+                                min = 1,  max = 300, value = 10),
                     sliderInput("ellipse",
                                 "Ellipse level:",
                                 min = 0,  max = 1, value = .75)
@@ -280,9 +280,6 @@ body <- dashboardBody(
         ),
         
         # Differential expression analysis : ANOVA, Contrasts
-        
-        tabItem(tabName = "diffexpoutput",
-                plotOutput("contrasttable", width = "800px", height = "1600px")),
                 #DT::dataTableOutput("contrasttable") ),
         
         tabItem(tabName = "contrasts",
@@ -307,6 +304,10 @@ body <- dashboardBody(
                     actionButton("setContrast", "Select")
                 )
         ),
+        tabItem(tabName = "diffexpoutput",
+                plotOutput("contrasttable", width = "800px", height = "1600px")),
+        tabItem(tabName = "differentialexpression",
+                tabPanel("Table", DT::dataTableOutput("diffexptable", width = 850))),
         
         # Select background data for enrichment
 
@@ -332,7 +333,7 @@ body <- dashboardBody(
                     actionButton(inputId = "generatepathways", label = "Generate pathway data")
                     ),
                 tabBox(width = 9,
-                       tabPanel("Table", DT::dataTableOutput("pathtable", width = 800)),
+                       tabPanel("Table", DT::dataTableOutput("pathtable", width = 850)),
                        tabPanel("Similarity matrix", plotOutput("similarity_plot", height = 850)),
                        tabPanel("Volcano plot", plotOutput("volcano_plot", height = 750)),
                        tabPanel("Sankey diagram", networkD3::sankeyNetworkOutput("sankey", height = 750)))

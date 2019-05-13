@@ -22,7 +22,7 @@ server <- function(session, input, output) {
     
     task_list <- list(taskItem("Verify identifiers", value = 0, color = "aqua", href = NULL),
                       taskItem("Upload a dataset", value = 100, color = "aqua", href = NULL)
-                      )
+    )
     
     # Make notification_list global var
     assign("notification_list", notification_list, envir = .GlobalEnv)
@@ -132,7 +132,10 @@ server <- function(session, input, output) {
             menuItem("Differential analysis", class = 'btn-10', tabName = "differential", icon = icon("adjust"), href = NULL,
                      menuSubItem("Contrasts", tabName = "contrasts", href = NULL, newtab = TRUE,
                                  icon = shiny::icon("angle-double-right"), selected = F),
-                     menuSubItem("Differential expression", tabName = "diffexpoutput", href = NULL, newtab = TRUE,
+                     #differentialexpression
+                     menuSubItem("Differential expression", tabName = "differentialexpression", href = NULL, newtab = TRUE,
+                                 icon = shiny::icon("angle-double-right"), selected = F),
+                     menuSubItem("Confidence intervals", tabName = "diffexpoutput", href = NULL, newtab = TRUE,
                                  icon = shiny::icon("angle-double-right"), selected = F)
             )
         })
@@ -143,9 +146,9 @@ server <- function(session, input, output) {
         updateSelectInput(session, "contrast1", choices = groups)
         
     }
-
-
-
+    
+    
+    
     # File input ----
     
     # Main data file input
@@ -201,7 +204,7 @@ server <- function(session, input, output) {
     observeEvent(input$verifyIDs, {
         
         session$sendCustomMessage("fadeProcess", fade(12))
-
+        
         id_check <- qob::update_obsolete(rownames(data_wide))
         
         obsolete <- id_check[["table"]][["Entry"]]
@@ -215,7 +218,7 @@ server <- function(session, input, output) {
         
         message <- paste(length(obsolete), " IDs are obsolete...")
         updateNotifications(message,"info-circle", "info")
-
+        
     })
     
     
@@ -273,7 +276,7 @@ server <- function(session, input, output) {
         output$distributions <- renderPlot({
             
             updateSliderInput(session, inputId = "setdist", max = nrow(na.omit(data_wide)))
-
+            
             d1 <- fit.norm
             d2 <- fit.lnorm
             
@@ -313,7 +316,7 @@ server <- function(session, input, output) {
         
         #annotation_col = data.frame(tmp)
         pheatmap::pheatmap(
-         #   annotation = annotation_col,
+            #   annotation = annotation_col,
             cor_mat_raw_logged,
             legend_breaks = c(min(cor_mat_raw_logged), 1),
             legend_labels = c(0, 1)
@@ -325,12 +328,12 @@ server <- function(session, input, output) {
         
         if (!exists("groups")){
             return(NULL)
-            } else if (exists("groups") == T){
-                cont1 <- input$contrast1
-                cont2 <- groups[groups != cont1]
-                
-                updateSelectInput(session, "contrast2", choices = cont2)
-            }
+        } else if (exists("groups") == T){
+            cont1 <- input$contrast1
+            cont2 <- groups[groups != cont1]
+            
+            updateSelectInput(session, "contrast2", choices = cont2)
+        }
         
     })
     
@@ -364,7 +367,19 @@ server <- function(session, input, output) {
         updateNotifications("Model fitted successfully.","check-circle", "success")
     })
     
-    # Differential expression: set contrasts
+    # Differential expression: output table
+    
+    output$diffexptable <- DT::renderDataTable({
+        
+        df <- DT::datatable(contrast,
+                            options = list(autoWidth = TRUE,
+                                           scrollX=TRUE))
+        df %>% DT::formatSignif('adj.P.Val', digits = 2)
+        
+        
+    })
+    
+    # Differential expression: confidence intervals
     
     output$contrasttable <- renderPlot({
         ggplot2::ggplot(cint, aes(x = protein, y = logFC, colour = logFC)) +
@@ -382,11 +397,11 @@ server <- function(session, input, output) {
                 axis.text.y = element_text(size = 7, family = "Helvetica")
             )
     })
-        
-        
- #       DT::renderDataTable({
- #       contrast
- #   })
+    
+    
+    #       DT::renderDataTable({
+    #       contrast
+    #   })
     
     # Enrichment ----
     observeEvent(input$resetbg, {
@@ -435,7 +450,7 @@ server <- function(session, input, output) {
         
         enriched_paths <- enrichment_output[[1]]
         interesting_paths <- enrichment_output[[2]]
-
+        
         contrast$Rep.Path.Top <- '* NOT SIGNFICANT'
         contrast$Rep.Path.Score <- 0
         
@@ -466,7 +481,7 @@ server <- function(session, input, output) {
         
         output$pathtable <- DT::renderDataTable({
             
-            df <- DT::datatable(enriched_paths[,1:5],
+            df <- DT::datatable(enriched_paths[,1:6],
                                 options = list(autoWidth = TRUE,
                                                scrollX=TRUE,
                                                columnDefs = list(
@@ -509,7 +524,7 @@ server <- function(session, input, output) {
     })
     
     
-
+    
     
     observeEvent(input$generatenetwork, {
         session$sendCustomMessage("fadeProcess", fade(60))
@@ -525,30 +540,29 @@ server <- function(session, input, output) {
             } else if (input$direction == 2) {
                 top <- top[top$logFC < 0,]
             }
-
+            
             top <- rownames(top)
             
             
-
+            
             interactions <- interactions3[(interactions3$protein1 %in% top) & (interactions3$protein2 %in% top), ]
             interactions$combined_score <- interactions$combined_score / 100
             interactions <- interactions[interactions$combined_score > input$interactioncutoff, ]
             
             g <- graph_from_data_frame(interactions, directed = F)
             
-            g <- simplify(g, remove.multiple = F, remove.loops = T)
+            g <- igraph::simplify(g, remove.multiple = F, remove.loops = T)
             
-            wt <- cluster_walktrap(g)
-            members <- membership(wt)
+            wt <- igraph::cluster_walktrap(g)
+            members <- igraph::membership(wt)
             
-            g2 <- igraph_to_networkD3(g, group = members)
+            g2 <- networkD3::igraph_to_networkD3(g, group = members)
             
             if(input$pathwaylevel == 1) {
                 g2$nodes$group <- results[results$Gene %in% g2$nodes$name,"Rep.Path.Top"]
             } else if (input$pathwaylevel == 2) {
                 g2$nodes$group <- results[results$Gene %in% g2$nodes$name,"Rep.Path.Name"]
             }
-            
             
             session$sendCustomMessage("fadeProcess", fade(0))
             
@@ -569,12 +583,12 @@ server <- function(session, input, output) {
                 
             )
             
-           d3$x$nodes$hyperlink <- paste0(
-               'https://www.uniprot.org/uniprot/',
-               g2$nodes$name
-           )
-           
-           d3$x$options$clickAction = 'window.open(d.hyperlink)'
+            d3$x$nodes$hyperlink <- paste0(
+                'https://www.uniprot.org/uniprot/',
+                g2$nodes$name
+            )
+            
+            d3$x$options$clickAction = 'window.open(d.hyperlink)'
             
             # d3$x$nodes$hyperlink <- paste0(
             #     ""
@@ -596,8 +610,7 @@ server <- function(session, input, output) {
         
         session$sendCustomMessage("searchProtein", searchProtein())
     })
-
     
-
+    
+    
 }
-
