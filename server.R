@@ -442,7 +442,7 @@ server <- function(session, input, output) {
         if(input$usebackground == 1) {
             bg <- input_names
         } else if (input$usebackground == 2) {
-            bg <- background_data   
+            bg <- background_data
         } else if (input$usebackground == 3) {
             bg <- unique(reactome$UniprotID)
         }
@@ -452,6 +452,7 @@ server <- function(session, input, output) {
         interesting_paths <- enrichment_output[[2]]
         
         contrast$Rep.Path.Top <- '* NOT SIGNFICANT'
+        contrast$Rep.Path.Name <- '* NOT SIGNFICANT'
         contrast$Rep.Path.Score <- 0
         
         for (i in 1:nrow(interesting_paths)) {
@@ -473,7 +474,7 @@ server <- function(session, input, output) {
         }
         
         contrast$Gene <- rownames(contrast)
-        results = dplyr::mutate(contrast, sig=ifelse(contrast$adj.P.Val<0.01, "FDR<0.01", "Not Sig"))
+        results = dplyr::mutate(contrast, sig=ifelse(contrast$adj.P.Val<0.05, "FDR<0.05", "Not Sig"))
         
         assign('results', results, envir = .GlobalEnv)
         
@@ -559,9 +560,11 @@ server <- function(session, input, output) {
             g2 <- networkD3::igraph_to_networkD3(g, group = members)
             
             if(input$pathwaylevel == 1) {
-                g2$nodes$group <- results[results$Gene %in% g2$nodes$name,"Rep.Path.Top"]
+                #g2$nodes$group <- results[results$Gene %in% g2$nodes$name,"Rep.Path.Top"]
+                g2$nodes$group <- sapply(g2$nodes$name, FUN = function(x) results[results$Gene == x, "Rep.Path.Top"])
             } else if (input$pathwaylevel == 2) {
-                g2$nodes$group <- results[results$Gene %in% g2$nodes$name,"Rep.Path.Name"]
+                #g2$nodes$group <- results[results$Gene %in% g2$nodes$name,"Rep.Path.Name"]
+                g2$nodes$group <- sapply(g2$nodes$name, FUN = function(x) results[results$Gene == x, "Rep.Path.Name"])
             }
             
             session$sendCustomMessage("fadeProcess", fade(0))

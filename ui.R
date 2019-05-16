@@ -272,7 +272,7 @@ body <- dashboardBody(
                                 min = 0,  max = 1, value = .75)
                 ),
                 tabBox(
-                    tabPanel("PCA 2D", plotOutput("pca2dplot")),
+                    tabPanel("PCA 2D", plotOutput("pca2dplot", width = "600px", height = "520px")),
                     tabPanel("PCA 3D", plotly::plotlyOutput("pca3dplot")))),
         tabItem(tabName = "samplecorr",
                 box(title = "Sample correlation",

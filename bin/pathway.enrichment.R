@@ -33,8 +33,9 @@ run_pathway_enrichment <- function(db, background_df) {
     #pval <- phyper(k_annotated_de, n_num_de, N_num_background, M_annotated_background, lower.tail=FALSE) +
     #  dhyper(k_annotated_de, n_num_de, N_num_background, M_annotated_background)
     
-    pval <- phyper(k_annotated_de, M_annotated_background, N_num_background-M_annotated_background, n_num_de, lower.tail = FALSE) +
-        dhyper(k_annotated_de, M_annotated_background, N_num_background-M_annotated_background, n_num_de)
+    #PValue[,j] <- phyper(S[,1L+j]-0.5, nde[j], NGenes-nde[j], S[,"N"], lower.tail=FALSE)
+    pval <- phyper(k_annotated_de-1, M_annotated_background, N_num_background-M_annotated_background, n_num_de, lower.tail = FALSE)
+    #+ dhyper(k_annotated_de, M_annotated_background, N_num_background-M_annotated_background, n_num_de)
 
     sampled <- pathway1[pathway1$UniprotID %in% contrast.sign, 'UniprotID']
 
@@ -59,7 +60,7 @@ run_pathway_enrichment <- function(db, background_df) {
   enriched_pathways <- enriched_pathways[order(enriched_pathways$iScore, decreasing = T),]
 
   interesting_pathways <- enriched_pathways[order(enriched_pathways$iScore, decreasing = T),][1:150,]
-  interesting_pathways <- interesting_pathways[interesting_pathways$Pvalue < 0.01,]
+  interesting_pathways <- interesting_pathways[interesting_pathways$AdjP < 0.1,]
 
   return( list(enriched_pathways, interesting_pathways) )
 
@@ -76,8 +77,8 @@ run_similarity_plot <- function(interesting_pathways) {
 
   for(i in 1:nrow(interesting_pathways)) {
     for(j in 1:nrow(interesting_pathways)) {
-      p.i <- interesting_pathways[["Genes",8]]
-      p.j <- interesting_pathways[["Genes",8]]
+      p.i <- interesting_pathways[[i,"Genes"]]
+      p.j <- interesting_pathways[[j,"Genes"]]
       n.i <- length(p.i)
 
       x <- intersect(p.i, p.j)
@@ -120,7 +121,7 @@ run_volcano_plot <- function(contrast, results) {
      scale_y_continuous(trans = "log1p")
 
    volcano_plot <- vol + geom_text_repel(
-     data = filter(results, logFC > 3.5),
+     data = filter(results, abs(logFC) > 3.5),
      aes(label = Gene),
      box.padding = unit(0.5, 'lines'),
      point.padding = unit(1, 'lines'),
@@ -135,6 +136,21 @@ run_volcano_plot <- function(contrast, results) {
 
 run_sankey_diagram <- function(results) {
     require(networkD3)
+    
+    # new_df <- data.frame()
+    # 
+    # for (i in 1:nrow(interesting_paths)) {
+    #     P <- interesting_paths[i,]
+    #     G <- P$Genes
+    #     
+    #     for (j in 1:length(G)) {
+    #         g <- G[[1]][j]
+    #         cg <- contrast[g,]
+    #         fc <- cg$logFC
+    #         
+    #     }
+    # }
+    
     
     results$regulation <- ifelse(results$logFC > 0, "Up-regulated", "Down-regulated")
     
