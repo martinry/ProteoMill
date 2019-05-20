@@ -132,7 +132,6 @@ server <- function(session, input, output) {
             menuItem("Differential analysis", class = 'btn-10', tabName = "differential", icon = icon("adjust"), href = NULL,
                      menuSubItem("Contrasts", tabName = "contrasts", href = NULL, newtab = TRUE,
                                  icon = shiny::icon("angle-double-right"), selected = F),
-                     #differentialexpression
                      menuSubItem("Differential expression", tabName = "differentialexpression", href = NULL, newtab = TRUE,
                                  icon = shiny::icon("angle-double-right"), selected = F),
                      menuSubItem("Confidence intervals", tabName = "diffexpoutput", href = NULL, newtab = TRUE,
@@ -203,21 +202,28 @@ server <- function(session, input, output) {
     
     observeEvent(input$verifyIDs, {
         
-        session$sendCustomMessage("fadeProcess", fade(12))
+        if(input$sourceIDtype == 1) {
         
-        id_check <- qob::update_obsolete(rownames(data_wide))
-        
-        obsolete <- id_check[["table"]][["Entry"]]
-        
-        session$sendCustomMessage("fadeProcess", fade(0))
-        
-        assign("id_check", id_check, envir = .GlobalEnv)
-        
-        input_names <- rownames(data_wide)
-        assign("input_names", input_names, envir = .GlobalEnv)
-        
-        message <- paste(length(obsolete), " IDs are obsolete...")
-        updateNotifications(message,"info-circle", "info")
+            session$sendCustomMessage("fadeProcess", fade(12))
+            
+            id_check <- qob::update_obsolete(rownames(data_wide))
+            
+            obsolete <- id_check[["table"]][["Entry"]]
+            
+            session$sendCustomMessage("fadeProcess", fade(0))
+            
+            assign("id_check", id_check, envir = .GlobalEnv)
+            
+            input_names <- rownames(data_wide)
+            assign("input_names", input_names, envir = .GlobalEnv)
+            
+            message <- paste(length(obsolete), " IDs are obsolete...")
+            updateNotifications(message,"info-circle", "info")
+            
+        } else {
+            message <- paste("Currently only UniProtKB IDs can be verified.")
+            updateNotifications(message,"exclamation-triangle", "danger")
+        }
         
     })
     
@@ -284,7 +290,7 @@ server <- function(session, input, output) {
             
             par(mfrow = c(2, 2))
             
-            denscomp(list(d1[[val]], d2[[val]]))
+            ?denscomp(list(d1[[val]], d2[[val]]))
             qqcomp(list(d1[[val]], d2[[val]]))
             cdfcomp(list(d1[[val]], d2[[val]]))
             ppcomp(list(d1[[val]], d2[[val]]))
@@ -446,7 +452,17 @@ server <- function(session, input, output) {
         } else if (input$usebackground == 3) {
             bg <- unique(reactome$UniprotID)
         }
-        enrichment_output <- run_pathway_enrichment('REACTOME', bg)
+        
+        if(input$abstractionlevel == 1) {
+            abstraction = 'global'
+        } else if(input$abstractionlevel == 2) {
+            abstraction = 'lowest'
+        }
+        
+        #enrichment_output_up <- run_pathway_enrichment('REACTOME', bg, 'up')
+        #enrichment_output_down <- run_pathway_enrichment('REACTOME', bg, 'down')
+        
+        enrichment_output <- run_pathway_enrichment('REACTOME', bg, abstraction)
         
         enriched_paths <- enrichment_output[[1]]
         interesting_paths <- enrichment_output[[2]]
@@ -534,7 +550,8 @@ server <- function(session, input, output) {
         
         output$net <- networkD3::renderForceNetwork({
             
-            top <- contrast[contrast$adj.P.Val < input$pvaluecutoff,]
+            top <- contrast[contrast$adj.P.Val <= input$pvaluecutoff,]
+            top <- top[abs(top$logFC) >= input$fccutoff,]
             
             if (input$direction == 1) {
                 top <- top[top$logFC > 0,]

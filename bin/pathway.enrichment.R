@@ -1,7 +1,18 @@
 
-run_pathway_enrichment <- function(db, background_df) {
+run_pathway_enrichment <- function(db, background_df, abstraction) {
 
   contrast.sign <- contrast[contrast$adj.P.Val < 0.05,]
+  
+  if (abstraction == 'lowest') {
+      reactome <- lowest
+  }
+  
+  # if(regulation == 'up') {
+  #     contrast.sign <- contrast[contrast$logFC > 0,]
+  # } else if(regulation == 'down') {
+  #     contrast.sign <- contrast[contrast$logFC < 0,]
+  # }
+  
   contrast.sign <- rownames(contrast.sign)
 
   specify_decimal <- function(x, k) as.numeric( trimws(format(round(x, k), nsmall=k, scientific = F)) )
@@ -30,12 +41,7 @@ run_pathway_enrichment <- function(db, background_df) {
     # pop size
     # sample size
     
-    #pval <- phyper(k_annotated_de, n_num_de, N_num_background, M_annotated_background, lower.tail=FALSE) +
-    #  dhyper(k_annotated_de, n_num_de, N_num_background, M_annotated_background)
-    
-    #PValue[,j] <- phyper(S[,1L+j]-0.5, nde[j], NGenes-nde[j], S[,"N"], lower.tail=FALSE)
     pval <- phyper(k_annotated_de-1, M_annotated_background, N_num_background-M_annotated_background, n_num_de, lower.tail = FALSE)
-    #+ dhyper(k_annotated_de, M_annotated_background, N_num_background-M_annotated_background, n_num_de)
 
     sampled <- pathway1[pathway1$UniprotID %in% contrast.sign, 'UniprotID']
 
@@ -48,7 +54,6 @@ run_pathway_enrichment <- function(db, background_df) {
     enriched_pathways[i, "Pathway_name"] <- reactome[reactome$ReactomeID == unique_pathways[i], 4][1]
     enriched_pathways[i, "Pathway_topname"] <- reactome[reactome$ReactomeID == unique_pathways[i], 8][1]
 
-    #enriched_pathways[i, "Pathway"] <- ifelse(nchar(unique_pathways[i]) > 50, paste(substr(unique_pathways[i], 1,50), '...', sep = ''), unique_pathways[i])
     enriched_pathways[i, "M"] <- M_annotated_background
     enriched_pathways[i, "n"] <- k_annotated_de
     enriched_pathways[i, "Pvalue"] <- ifelse(is.na(pval), NA, specify_decimal(pval, 9))
@@ -58,17 +63,25 @@ run_pathway_enrichment <- function(db, background_df) {
   
   enriched_pathways$AdjP <- p.adjust(enriched_pathways$Pvalue, method = "BH")
   enriched_pathways <- enriched_pathways[order(enriched_pathways$iScore, decreasing = T),]
-
-  interesting_pathways <- enriched_pathways[order(enriched_pathways$iScore, decreasing = T),][1:150,]
-  interesting_pathways <- interesting_pathways[interesting_pathways$AdjP < 0.1,]
-
+  
+  enriched_sign <- enriched_pathways[enriched_pathways$AdjP < 0.05,]
+  lowest_sign <- enriched_sign[enriched_sign$AdjP == max(enriched_sign$AdjP),]
+  lowest_sign_min_score <- min(lowest_sign$iScore)
+  interesting_pathways <- enriched_pathways[enriched_pathways$iScore >= lowest_sign_min_score,]
+  interesting_pathways <- interesting_pathways[!is.na(interesting_pathways$iScore),]
+  
+  #enriched_sign <- enriched_paths[enriched_paths$AdjP < 0.05,]
+  #
+  #interesting_pathways <- enriched_pathways[order(enriched_pathways$iScore, decreasing = T),][1:150,]
+  #interesting_pathways <- interesting_pathways[interesting_pathways$AdjP < 0.1,]
+#
   return( list(enriched_pathways, interesting_pathways) )
 
 }
 
 run_similarity_plot <- function(interesting_pathways) {
     
-    interesting_pathways <- interesting_pathways[1:40,]
+    #interesting_pathways <- interesting_pathways[1:40,]
 
     # Plot similarity matrix
     mat <- matrix(nrow = nrow(interesting_pathways), ncol = nrow(interesting_pathways))

@@ -9,6 +9,16 @@ body {
     font-family: 'Quicksand', sans-serif;
 }
 
+hr {
+    margin-top: 0px !important;
+    margin-bottom: 10px !important;
+}
+
+.help-block {
+    margin-top: 0px !important;
+    margin-bottom: 0px !important;
+}
+
 .nav-tabs-custom>.nav-tabs>li.active {
     border-top-color: #e80032dd !important;
 }

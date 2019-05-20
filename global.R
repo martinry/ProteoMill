@@ -4,8 +4,6 @@ source("bin/pathway.enrichment.R")
 # Background data ----
 
 tissues <- data.table::fread('~/Large_files/tissues.uniprot.csv', sep = '\t', header = T, data.table = F, strip.white=TRUE)
-#tissues <- data.table::fread('~/Large_files/tissues.full2.tsv', sep = '\t', header = T, data.table = F, strip.white=TRUE)
-#tissues[tissues == ""] <- NA
 tissue_names <- colnames(tissues)
 
 # Reactome
@@ -13,40 +11,11 @@ reactome <- data.table::fread('~/Large_files/reactome/reactome.uniprot.levels.cs
 reactome <- reactome[,2:ncol(reactome)]
 colnames(reactome) <- c("UniprotID", "ReactomeID", "URL", "Pathway_name", "Evidence_code", "Species", "Top", "TopPathway")
 
+# Lowest abstraction level
+lowest <- data.table::fread('~/Large_files/reactome/reactome.uniprot.lowest.levels.csv', sep = '\t', header = F, data.table = F, strip.white = T)
+lowest <- lowest[,2:ncol(lowest)]
+colnames(lowest) <- c("UniprotID", "ReactomeID", "URL", "Pathway_name", "Evidence_code", "Species", "Top", "TopPathway")
 
-# reactome <- data.table::fread('~/Large_files/reactome/uniprot.reactome.hsa.TAS.txt', sep = '\t', header = F, data.table = F, strip.white=TRUE)
-# colnames(reactome) <- c("UniprotID", "ReactomeID", "URL", "Pathway_name", "Evidence_code", "Species")
-# 
-# # Reactome hierarchy
-# hier <- data.table::fread('~/Large_files/reactome/reactome.relations.hsa.txt', sep = '\t', header = F, data.table = F, strip.white=TRUE)
-# 
-# G <- graph.data.frame(d = data.frame(hier$V2, hier$V1), directed = T)
-# #plot(df.g, vertex.label = V(df.g)$name)
-# 
-# reactome$Top <- ''
-# 
-# top_level <- function(id) {
-#     SUB = induced_subgraph(G, subcomponent(G, id, mode="out"))
-#     top = farthest.nodes(SUB)$vertices[2]$name
-#     return(top)
-# }
-# 
-# seen <- c()
-# for(i in 1:nrow(reactome)) {
-#     id <- reactome[i,"ReactomeID"]
-#     if(!id %in% seen) {
-#         print(paste(i, "out of", nrow(reactome), sep = ' '))
-#         top <- top_level(reactome[i,"ReactomeID"])
-#         reactome[reactome$ReactomeID == id, "Top"] <- top
-#         seen <- c(seen, id)
-#     }
-#     
-# }
-# 
-# toppaths <- qob::switch.items(reactome$Top, reactome, 2, 4, no_targets = "NA", multiple_targets = "first")
-# reactome$TopPathways <- toppaths
-# 
-# write.table(file = "reactome.uniprot.levels.csv", reactome, sep = '\t', quote = F)
 
 # Read input file ----
 
@@ -161,7 +130,7 @@ plotPCA <- function(contribs, ellipse, type) {
     
     if(type == '2d') {
         
-        pcaplot <- factoextra::fviz_pca_biplot(p.pca, title = '', label = "var", habillage = condition,
+        pcaplot <- factoextra::fviz_pca_biplot(p.pca, title = '', label = "ind", habillage = condition,
                                                addEllipses = TRUE, ellipse.level = ellipse,
                                                select.var = list(contrib = contribs), repel = TRUE)
         
