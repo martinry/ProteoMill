@@ -1,3 +1,4 @@
+# Description
 Quantative Omics Discovery Base is a fast, efficient web-based tool for exploring functional enrichment of expression sets.
 
 ui.R contains the structure of visual components
@@ -25,9 +26,9 @@ git clone https://github.com/martinry/qodb-shiny.git
 
 
 The software has been tested in RStudio. Open one of the following files in RStudio:
-ui.R
-server.R
-global.R
+- ui.R
+- server.R
+- global.R
 
 and click the options for "Run App". Select "Run External". This way the software will run in your browser.
 
