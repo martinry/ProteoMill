@@ -290,7 +290,7 @@ server <- function(session, input, output) {
             
             par(mfrow = c(2, 2))
             
-            ?denscomp(list(d1[[val]], d2[[val]]))
+            denscomp(list(d1[[val]], d2[[val]]))
             qqcomp(list(d1[[val]], d2[[val]]))
             cdfcomp(list(d1[[val]], d2[[val]]))
             ppcomp(list(d1[[val]], d2[[val]]))
@@ -404,11 +404,6 @@ server <- function(session, input, output) {
             )
     })
     
-    
-    #       DT::renderDataTable({
-    #       contrast
-    #   })
-    
     # Enrichment ----
     observeEvent(input$resetbg, {
         background_data <- input_names
@@ -458,9 +453,6 @@ server <- function(session, input, output) {
         } else if(input$abstractionlevel == 2) {
             abstraction = 'lowest'
         }
-        
-        #enrichment_output_up <- run_pathway_enrichment('REACTOME', bg, 'up')
-        #enrichment_output_down <- run_pathway_enrichment('REACTOME', bg, 'down')
         
         enrichment_output <- run_pathway_enrichment('REACTOME', bg, abstraction)
         
@@ -537,11 +529,7 @@ server <- function(session, input, output) {
             s
         })
         
-        
     })
-    
-    
-    
     
     observeEvent(input$generatenetwork, {
         session$sendCustomMessage("fadeProcess", fade(60))
@@ -560,9 +548,7 @@ server <- function(session, input, output) {
             }
             
             top <- rownames(top)
-            
-            
-            
+
             interactions <- interactions3[(interactions3$protein1 %in% top) & (interactions3$protein2 %in% top), ]
             interactions$combined_score <- interactions$combined_score / 100
             interactions <- interactions[interactions$combined_score > input$interactioncutoff, ]
@@ -577,10 +563,8 @@ server <- function(session, input, output) {
             g2 <- networkD3::igraph_to_networkD3(g, group = members)
             
             if(input$pathwaylevel == 1) {
-                #g2$nodes$group <- results[results$Gene %in% g2$nodes$name,"Rep.Path.Top"]
                 g2$nodes$group <- sapply(g2$nodes$name, FUN = function(x) results[results$Gene == x, "Rep.Path.Top"])
             } else if (input$pathwaylevel == 2) {
-                #g2$nodes$group <- results[results$Gene %in% g2$nodes$name,"Rep.Path.Name"]
                 g2$nodes$group <- sapply(g2$nodes$name, FUN = function(x) results[results$Gene == x, "Rep.Path.Name"])
             }
             
@@ -609,12 +593,6 @@ server <- function(session, input, output) {
             )
             
             d3$x$options$clickAction = 'window.open(d.hyperlink)'
-            
-            # d3$x$nodes$hyperlink <- paste0(
-            #     ""
-            # )
-            
-            #d3$x$options$clickAction = "plugin.loadMolecule({id: '1tqn',url: 'https://www.ebi.ac.uk/pdbe/static/entry/1tqn_updated.cif',format: 'cif' });"
             
             d3
         })

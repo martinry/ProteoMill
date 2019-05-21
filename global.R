@@ -123,10 +123,12 @@ filter_na <- function(threshold) {
 # PCA ----
 plotPCA <- function(contribs, ellipse, type) {
     
-    pca.data <- log2(data_origin)
-    pca.data[is.na(pca.data)] <- 0
-    pca.data <- t(pca.data)
-    p.pca <- prcomp(pca.data, center = TRUE, scale. = TRUE)
+    pca.data <- log2(data_origin)  # Log2 transform data
+    pca.data[is.na(pca.data)] <- 0 # "Impute" missing values as 0
+    pca.data <- t(pca.data)        # # Transpose dataset
+    p.pca <- prcomp(pca.data, center = TRUE, scale. = TRUE) # Perform principal component analysis
+    
+    # Biplot extension displaying top contributing proteins currently only available for 2D plot.
     
     if(type == '2d') {
         
@@ -152,8 +154,21 @@ plotPCA <- function(contribs, ellipse, type) {
     } else { return (FALSE) }
     
 }
+
 # Differential expression ----
 diff_exp <- function(coeff, pairing) {
+    
+    # Which model should be used? Currently (May 2019) limma is used as default. Additional testing needed here.
+    best_fit = 'normal'
+    
+    if(best_fit == 'nbinom') {
+        dds <- DESeqDataSetFromMatrix(countData  = data_wide,
+                                      colData    = samples,
+                                      design     = ~ condition + replicate)
+        dds <- DESeq(dds)
+    }
+    
+    # Create Annotation data and expression set (Biobase)
     phenoData <- new("AnnotatedDataFrame", data=samples)
     exampleSet <- ExpressionSet(assayData=as.matrix(data_wide), phenoData=phenoData)
     
@@ -169,34 +184,27 @@ diff_exp <- function(coeff, pairing) {
     # Fit the linear model
     fit <- lmFit(exampleSet, design)
     
+    # Decide possible contrasts
     c <- expand.grid(groups, groups)
     cc <- factor(ifelse(c$Var1 != c$Var2, paste(c$Var1, c$Var2, sep = '-'), NA ))
     cc <- cc[!is.na(cc)]
     names(cc) <- gsub('-','', gsub('condition','',cc))
     
-    
     cont.matrix <- makeContrasts(contrasts = cc, levels = design) # All possible contrasts
     
-    
+    # Contrast groups, run empirical bayes statistics
     fit.cont <- contrasts.fit(fit,cont.matrix)
     fit.cont <- eBayes(fit.cont, robust = T)
     
-    res.all <- topTable(fit.cont, n = Inf)
-    res.all.sign <- res.all[res.all$adj.P.Val < 0.01,]
-    
-    #contrast <- topTable(fit.cont, number = Inf, coef = coeff, confint = TRUE)
+    # Generate data frame with results from linear model fit, with confidence intervals.
     contrast <- toptable(fit.cont, number = Inf, coef = coeff, confint = TRUE)
     
+    # Confidence intervals used for plot, global var
     cint <- contrast
     cint$protein <- rownames(cint)
     cint$protein <- factor(cint$protein, levels = cint$protein[order(cint$logFC)])
     
     assign("cint", cint, envir = .GlobalEnv)
-    
-    #contrast2 <- topTableF(fit.cont, number = Inf, coef = coeff, confint = TRUE)
-    
-    #contrast3 <- toptable(fit.cont, number = Inf, coef = coeff, confint = TRUE)
-    #assign("contrast3", contrast3, envir = .GlobalEnv)
     
     contrast <- contrast[order(contrast$P.Value, decreasing = F),]
     

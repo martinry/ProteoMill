@@ -129,7 +129,6 @@ body <- dashboardBody(
     tags$script(src = "custom.js"),
     tags$script(src = "animate-notifs.js"),
 
-
     # Overview: settings: colors, font
     
     tabItems(
@@ -143,7 +142,6 @@ body <- dashboardBody(
         ),
         
         # File input
-        
         tabItem(tabName = "file-input",
                 tabBox(
                     tabPanel(
