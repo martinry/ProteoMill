@@ -7,6 +7,8 @@ require(RColorBrewer)
 require(dplyr)
 require(fitdistrplus)
 
+# Passing arguments from R Shiny to external jQuery scripts unfortunately requires som workarounds
+# This function is actually necessary...
 fade <- function(fadein) {
     return(fadein)
 }
@@ -200,6 +202,7 @@ server <- function(session, input, output) {
     
     # Identifiers ----
     
+    # Verify IDs
     observeEvent(input$verifyIDs, {
         
         if(input$sourceIDtype == 1) {
@@ -227,14 +230,15 @@ server <- function(session, input, output) {
         
     })
     
+    # Convert IDs
     observeEvent(input$convertIDs, {
         if (input$sourceIDtype == 1) {
             si = 'UniprotAC'
         } else if (input$sourceIDtype == 2) {
             si = 'GeneID'
-        } else if (input$sourceIDtype == 2) {
+        } else if (input$sourceIDtype == 3) {
             si = 'Ensembl'
-        } else if (input$sourceIDtype == 2) {
+        } else if (input$sourceIDtype == 4) {
             si = 'Gene_Name'
         }
         
@@ -258,9 +262,7 @@ server <- function(session, input, output) {
         assign("data_wide", data_wide, envir = .GlobalEnv)
         
         updateNotifications(paste(nrow(data_wide), "genes successfully mapped."),"check-circle", "success")
-        
-        
-        
+
     })
     
     
