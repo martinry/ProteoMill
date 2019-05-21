@@ -7,12 +7,6 @@ run_pathway_enrichment <- function(db, background_df, abstraction) {
       reactome <- lowest
   }
   
-  # if(regulation == 'up') {
-  #     contrast.sign <- contrast[contrast$logFC > 0,]
-  # } else if(regulation == 'down') {
-  #     contrast.sign <- contrast[contrast$logFC < 0,]
-  # }
-  
   contrast.sign <- rownames(contrast.sign)
 
   specify_decimal <- function(x, k) as.numeric( trimws(format(round(x, k), nsmall=k, scientific = F)) )

@@ -227,6 +227,42 @@ server <- function(session, input, output) {
         
     })
     
+    observeEvent(input$convertIDs, {
+        if (input$sourceIDtype == 1) {
+            si = 'UniprotAC'
+        } else if (input$sourceIDtype == 2) {
+            si = 'GeneID'
+        } else if (input$sourceIDtype == 2) {
+            si = 'Ensembl'
+        } else if (input$sourceIDtype == 2) {
+            si = 'Gene_Name'
+        }
+        
+        if (input$identifiers == 1) {
+            ti = 'GeneID'
+        } else if (input$identifiers == 2) {
+            ti = 'UniprotAC'
+        } else if (input$identifiers == 3) {
+            ti = 'Ensembl'
+        } else if (input$identifiers == 4) {
+            ti = 'Gene_Name'
+        }
+        
+        dw <- qob::mapify(rownames(data_wide), source_id = si, target_id = ti)
+        data_wide$mapped <- dw
+        data_wide <- data_wide[!duplicated(data_wide$mapped),]
+        data_wide <- data_wide[!rownames(data_wide) %in% data_wide$mapped,]
+        rownames(data_wide) <- data_wide$mapped
+        data_wide <- data_wide[,c(1:ncol(data_wide)-1)]
+        
+        assign("data_wide", data_wide, envir = .GlobalEnv)
+        
+        updateNotifications(paste(nrow(data_wide), "genes successfully mapped."),"check-circle", "success")
+        
+        
+        
+    })
+    
     
     # NA frequency plot ----
     
