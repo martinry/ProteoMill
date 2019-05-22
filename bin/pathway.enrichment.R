@@ -1,11 +1,13 @@
 
 run_pathway_enrichment <- function(db, background_df, abstraction) {
-
+  
   contrast.sign <- contrast[contrast$adj.P.Val < 0.05,]
   
   if (abstraction == 'lowest') {
       reactome <- lowest
   }
+  
+  
   
   contrast.sign <- rownames(contrast.sign)
 
