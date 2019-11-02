@@ -132,7 +132,7 @@ plotPCA <- function(contribs, ellipse, type) {
     
     if(type == '2d') {
         
-        pcaplot <- factoextra::fviz_pca_biplot(p.pca, title = '', label = "ind", habillage = condition,
+        pcaplot <- factoextra::fviz_pca_biplot(p.pca, title = '', label = "var", habillage = condition,
                                                addEllipses = TRUE, ellipse.level = ellipse,
                                                select.var = list(contrib = contribs), repel = TRUE)
         

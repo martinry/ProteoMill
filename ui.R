@@ -128,16 +128,35 @@ body <- dashboardBody(
     
     tags$script(src = "custom.js"),
     tags$script(src = "animate-notifs.js"),
+    
+    
+    # Intro animation
+    
+   #tags$div(class = "overlay",
+   #         tags$h1(class = "ml9",
+   #                 tags$span(class = "text-wrapper",
+   #                           tags$span(class = "letters", "Quantitative Omics Discovery Base"))),
+   #         tags$div(class = 'begindiv',
+   #                  actionLink('removeBanner', label = 'LAUNCH')
+   #         )
+   #),
+    tags$script(src = "custom.js"),
+    tags$script(src = "animate-notifs.js"),
 
     # Overview: settings: colors, font
     
     tabItems(
         tabItem(tabName = "overview",
                 box(title = 'General settings', status = 'primary', solidHeader = F,
+                    hr(),
                     radioButtons(inputId = 'colorScheme', label = 'Color palette',
                                  choices = list("Normal", "Colorblind friendly"), inline = T),
                     radioButtons(inputId = 'textSize', label = 'Text size',
-                                 choices = list("Small", "Medium", "Large"), selected = "Medium", inline = T)
+                                 choices = list("Small", "Medium", "Large"), selected = "Medium", inline = T),
+                    hr(),
+                    selectInput("species", "Select species",
+                                list("Species" = list("Human (Homo sapiens)")))
+                    
                 )
         ),
         
@@ -305,7 +324,7 @@ body <- dashboardBody(
         tabItem(tabName = "diffexpoutput",
                 plotOutput("contrasttable", width = "800px", height = "1600px")),
         tabItem(tabName = "differentialexpression",
-                tabPanel("Table", DT::dataTableOutput("diffexptable", width = 850))),
+                tabPanel("Table", DT::dataTableOutput("diffexptable", width = 1000))),
         
         # Select background data for enrichment
 

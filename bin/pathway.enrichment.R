@@ -7,13 +7,13 @@ run_pathway_enrichment <- function(db, background_df, abstraction) {
       reactome <- lowest
   }
   
-  
-  
   contrast.sign <- rownames(contrast.sign)
 
+  reactome_rel <- reactome[reactome$UniprotID %in% background_df,]
+  
   specify_decimal <- function(x, k) as.numeric( trimws(format(round(x, k), nsmall=k, scientific = F)) )
 
-  unique_pathways <- unique(reactome$ReactomeID)
+  unique_pathways <- unique(reactome_rel$ReactomeID)
 
   M_annotated_background <- vector()
   N_num_background <- length(background_df)
@@ -24,7 +24,7 @@ run_pathway_enrichment <- function(db, background_df, abstraction) {
   colnames(enriched_pathways) <- c("Pathway_name", "M", "n", "Pvalue", "AdjP", "iScore", "Pathway_topname", "Genes")
 
   for(i in 1:length(unique_pathways)){
-    pathway1 <- reactome[reactome$ReactomeID == unique_pathways[i],]
+    pathway1 <- reactome_rel[reactome_rel$ReactomeID == unique_pathways[i],]
     M_annotated_background <- length( pathway1[pathway1$UniprotID %in% background_df, 'ReactomeID'] )
     
     k_annotated_de <- length( pathway1[pathway1$UniprotID %in% contrast.sign, 'ReactomeID'] )
@@ -47,8 +47,8 @@ run_pathway_enrichment <- function(db, background_df, abstraction) {
     
     iscore <- lfc.mean * -log10( pval )
     
-    enriched_pathways[i, "Pathway_name"] <- reactome[reactome$ReactomeID == unique_pathways[i], 4][1]
-    enriched_pathways[i, "Pathway_topname"] <- reactome[reactome$ReactomeID == unique_pathways[i], 8][1]
+    enriched_pathways[i, "Pathway_name"] <- reactome_rel[reactome_rel$ReactomeID == unique_pathways[i], 4][1]
+    enriched_pathways[i, "Pathway_topname"] <- reactome_rel[reactome_rel$ReactomeID == unique_pathways[i], 8][1]
 
     enriched_pathways[i, "M"] <- M_annotated_background
     enriched_pathways[i, "n"] <- k_annotated_de
@@ -57,7 +57,7 @@ run_pathway_enrichment <- function(db, background_df, abstraction) {
     enriched_pathways$Genes[i] <- list(sampled)
   }
   
-  enriched_pathways$AdjP <- p.adjust(enriched_pathways$Pvalue, method = "BH")
+  enriched_pathways$AdjP <- specify_decimal(p.adjust(enriched_pathways$Pvalue, method = "BH"), 9)
   enriched_pathways <- enriched_pathways[order(enriched_pathways$iScore, decreasing = T),]
   
   enriched_sign <- enriched_pathways[enriched_pathways$AdjP < 0.05,]

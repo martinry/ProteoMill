@@ -40,23 +40,32 @@ server <- function(session, input, output) {
     })
     
     # A function to append notification items to the menu
-    updateNotifications <- function(notif, icon, status) {
+    updateNotifications <- function(notif, icon, status, clickable = F) {
         
-        item <- notificationItem(
-            text = notif,
-            icon = shiny::icon(icon),
-            status = status,
-            paste0("noti")
-        )
+        if (clickable) {
+            
+            item <- notificationItem(
+                text = notif,
+                icon = shiny::icon(icon),
+                status = status,
+                paste0("noti")
+            )
         
-        # A hack to make the notification item clickable
-        # Onclick opens a modal dialog
-        item$children[[1]] <- a(
-            href = "#shiny-tab-dashboard", # Remove this then test
-            "onclick" = paste0("clickFunction('", paste0(notif), "'); return false;"),
-            list(item$children[[1]]$children)
-        )
-        
+            # A hack to make the notification item clickable
+            # Onclick opens a modal dialog
+            item$children[[1]] <- a(
+                href = "#shiny-tab-dashboard", # Remove this then test
+                "onclick" = paste0("clickFunction('", paste0(notif), "'); return false;"),
+                list(item$children[[1]]$children)
+            )
+        } else {
+            item <- notificationItem(
+                text = notif,
+                icon = shiny::icon(icon),
+                status = status
+            )
+        }
+
         item <- list(item)
         
         notification_list <- append(item, base::get("notification_list", envir = .GlobalEnv))
@@ -100,7 +109,6 @@ server <- function(session, input, output) {
     
     # Clicked notification item
     observeEvent(input$linkClicked, {
-        
         showModal(
             modalDialog(title = "Obsolete IDs",
                         
@@ -169,7 +177,6 @@ server <- function(session, input, output) {
         
         read_file(inFile$datapath, separator, "main")
         
-        
         updateNotifications("Dataset successfully uploaded.","check-circle", "success")
         
         sample_data(data_wide)
@@ -198,8 +205,6 @@ server <- function(session, input, output) {
         
     })
     
-    
-    
     # Identifiers ----
     
     # Verify IDs
@@ -221,7 +226,7 @@ server <- function(session, input, output) {
             assign("input_names", input_names, envir = .GlobalEnv)
             
             message <- paste(length(obsolete), " IDs are obsolete...")
-            updateNotifications(message,"info-circle", "info")
+            updateNotifications(message,"info-circle", "info", clickable = T)
             
         } else {
             message <- paste("Currently only UniProtKB IDs can be verified.")
