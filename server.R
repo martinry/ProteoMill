@@ -6,6 +6,8 @@ require(ggrepel)
 require(RColorBrewer)
 require(dplyr)
 require(fitdistrplus)
+library(plotly)
+library(data.table)
 
 # Passing arguments from R Shiny to external jQuery scripts unfortunately requires som workarounds
 # This function is actually necessary...
@@ -50,7 +52,7 @@ server <- function(session, input, output) {
                 status = status,
                 paste0("noti")
             )
-        
+            
             # A hack to make the notification item clickable
             # Onclick opens a modal dialog
             item$children[[1]] <- a(
@@ -65,7 +67,7 @@ server <- function(session, input, output) {
                 status = status
             )
         }
-
+        
         item <- list(item)
         
         notification_list <- append(item, base::get("notification_list", envir = .GlobalEnv))
@@ -211,7 +213,7 @@ server <- function(session, input, output) {
     observeEvent(input$verifyIDs, {
         
         if(input$sourceIDtype == 1) {
-        
+            
             session$sendCustomMessage("fadeProcess", fade(12))
             
             id_check <- qob::update_obsolete(rownames(data_wide))
@@ -267,7 +269,7 @@ server <- function(session, input, output) {
         assign("data_wide", data_wide, envir = .GlobalEnv)
         
         updateNotifications(paste(nrow(data_wide), "genes successfully mapped."),"check-circle", "success")
-
+        
     })
     
     
@@ -400,6 +402,8 @@ server <- function(session, input, output) {
         output$network <- renderMenu({
             menuItem("Network analysis", icon = icon("vector-square"),
                      menuSubItem("Interactions", tabName = "network", href = NULL, newtab = TRUE,
+                                 icon = shiny::icon("angle-double-right"), selected = F),
+                     menuSubItem("Interactions2", tabName = "interactions", href = NULL, newtab = TRUE,
                                  icon = shiny::icon("angle-double-right"), selected = F))
         })
         
@@ -413,6 +417,7 @@ server <- function(session, input, output) {
         
         removeUI(selector = "#enrichrm")
         removeUI(selector = "#networkrm")
+        removeUI(selector = "#interactionsrm")
         updateNotifications("Model fitted successfully.","check-circle", "success")
     })
     
@@ -558,6 +563,11 @@ server <- function(session, input, output) {
                 run_volcano_plot(contrast, results)
             })
         
+        # Volcano plot
+        output$volcano_plot2 <- renderPlotly(
+            {
+                plotly::ggplotly(run_volcano_plot(contrast, results), width = 650, height = 400)
+            })
         
         
         output$sankey <- networkD3::renderSankeyNetwork({
@@ -574,74 +584,74 @@ server <- function(session, input, output) {
         
     })
     
-    observeEvent(input$generatenetwork, {
-        session$sendCustomMessage("fadeProcess", fade(60))
-        
-        source("bin/networks.R")
-        
-        output$net <- networkD3::renderForceNetwork({
-            
-            top <- contrast[contrast$adj.P.Val <= input$pvaluecutoff,]
-            top <- top[abs(top$logFC) >= input$fccutoff,]
-            
-            if (input$direction == 1) {
-                top <- top[top$logFC > 0,]
-            } else if (input$direction == 2) {
-                top <- top[top$logFC < 0,]
-            }
-            
-            top <- rownames(top)
-
-            interactions <- interactions3[(interactions3$protein1 %in% top) & (interactions3$protein2 %in% top), ]
-            interactions$combined_score <- interactions$combined_score / 100
-            interactions <- interactions[interactions$combined_score > input$interactioncutoff, ]
-            
-            g <- graph_from_data_frame(interactions, directed = F)
-            
-            g <- igraph::simplify(g, remove.multiple = F, remove.loops = T)
-            
-            wt <- igraph::cluster_walktrap(g)
-            members <- igraph::membership(wt)
-            
-            g2 <- networkD3::igraph_to_networkD3(g, group = members)
-            
-            if(input$pathwaylevel == 1) {
-                g2$nodes$group <- sapply(g2$nodes$name, FUN = function(x) results[results$Gene == x, "Rep.Path.Top"])
-            } else if (input$pathwaylevel == 2) {
-                g2$nodes$group <- sapply(g2$nodes$name, FUN = function(x) results[results$Gene == x, "Rep.Path.Name"])
-            }
-            
-            session$sendCustomMessage("fadeProcess", fade(0))
-            
-            d3 <- forceNetwork(
-                Links = g2$links,
-                Nodes = g2$nodes,
-                Source = "source",
-                Target = "target",
-                Value = "value",
-                NodeID = "name",
-                Group = "group",
-                fontSize = 24,
-                fontFamily = "sans-serif",
-                opacity = 1,
-                zoom = T,
-                legend = T,
-                charge = -20
-                
-            )
-            
-            d3$x$nodes$hyperlink <- paste0(
-                'https://www.uniprot.org/uniprot/',
-                g2$nodes$name
-            )
-            
-            d3$x$options$clickAction = 'window.open(d.hyperlink)'
-            
-            d3
-        })
-        
-        
-    })
+    # observeEvent(input$generatenetwork, {
+    #     session$sendCustomMessage("fadeProcess", fade(60))
+    #     
+    #     source("bin/networks.R")
+    #     
+    #     output$net <- networkD3::renderForceNetwork({
+    #         
+    #         top <- contrast[contrast$adj.P.Val <= input$pvaluecutoff,]
+    #         top <- top[abs(top$logFC) >= input$fccutoff,]
+    #         
+    #         if (input$direction == 1) {
+    #             top <- top[top$logFC > 0,]
+    #         } else if (input$direction == 2) {
+    #             top <- top[top$logFC < 0,]
+    #         }
+    #         
+    #         top <- rownames(top)
+    # 
+    #         interactions <- interactions3[(interactions3$protein1 %in% top) & (interactions3$protein2 %in% top), ]
+    #         interactions$combined_score <- interactions$combined_score / 100
+    #         interactions <- interactions[interactions$combined_score > input$interactioncutoff, ]
+    #         
+    #         g <- graph_from_data_frame(interactions, directed = F)
+    #         
+    #         g <- igraph::simplify(g, remove.multiple = F, remove.loops = T)
+    #         
+    #         wt <- igraph::cluster_walktrap(g)
+    #         members <- igraph::membership(wt)
+    #         
+    #         g2 <- networkD3::igraph_to_networkD3(g, group = members)
+    #         
+    #         if(input$pathwaylevel == 1) {
+    #             g2$nodes$group <- sapply(g2$nodes$name, FUN = function(x) results[results$Gene == x, "Rep.Path.Top"])
+    #         } else if (input$pathwaylevel == 2) {
+    #             g2$nodes$group <- sapply(g2$nodes$name, FUN = function(x) results[results$Gene == x, "Rep.Path.Name"])
+    #         }
+    #         
+    #         session$sendCustomMessage("fadeProcess", fade(0))
+    #         
+    #         d3 <- forceNetwork(
+    #             Links = g2$links,
+    #             Nodes = g2$nodes,
+    #             Source = "source",
+    #             Target = "target",
+    #             Value = "value",
+    #             NodeID = "name",
+    #             Group = "group",
+    #             fontSize = 24,
+    #             fontFamily = "sans-serif",
+    #             opacity = 1,
+    #             zoom = T,
+    #             legend = T,
+    #             charge = -20
+    #             
+    #         )
+    #         
+    #         d3$x$nodes$hyperlink <- paste0(
+    #             'https://www.uniprot.org/uniprot/',
+    #             g2$nodes$name
+    #         )
+    #         
+    #         d3$x$options$clickAction = 'window.open(d.hyperlink)'
+    #         
+    #         d3
+    #     })
+    #     
+    #     
+    # })
     
     observeEvent(input$searchclick, {
         
@@ -650,6 +660,78 @@ server <- function(session, input, output) {
         }
         
         session$sendCustomMessage("searchProtein", searchProtein())
+    })
+    
+    # Network ----
+    
+    output$xxxx <- renderVisNetwork({
+        
+        layout <- function(type) {
+            switch(type,
+                   "1" = "layout_nicely",
+                   "2" = "layout_in_circle",
+                   "3" = "layout_on_grid",
+                   "4" = "layout_on_sphere",
+                   "5" = "layout_randomly",
+                   "6" = "layout_with_dh")
+        }
+        
+        
+        #visNetwork(nodes, edges, layout = layout(input$network_layout_options))
+        
+        p <- rownames(contrast[contrast$adj.P.Val < 0.05,])
+        
+        if(!exists("uniprot_to_string")){
+            uniprot_to_string <- knee::collect('https://string-db.org/mapping_files/uniprot/human.uniprot_2_string.2018.tsv.gz')
+            uniprot_to_string <- data.table::fread(uniprot_to_string)
+            uniprot_to_string$up <- gsub("\\|.*", "", uniprot_to_string$V2)
+            uniprot_to_string <- uniprot_to_string[up %in% p, c(3, 4, 6)]
+            assign("uniprot_to_string", uniprot_to_string, envir = .GlobalEnv)
+        }
+        
+        
+        
+        if(!exists("interactions")){
+            interactions <- knee::get_interactions()
+            assign("interactions", interactions, envir = .GlobalEnv)
+        }
+        
+        if(!exists("g")){
+            ints <- interactions[protein1 %in% uniprot_to_string$V3,]
+            ints <- ints[protein2 %in% uniprot_to_string$V3,]
+            ints$combined_score <- ints$combined_score / 100
+            
+            setkey(uniprot_to_string, V3)
+            setkey(ints, protein1)
+            ints <- ints[uniprot_to_string, nomatch = 0]
+            setkey(ints, protein2)
+            ints <- ints[uniprot_to_string, nomatch = 0]
+            ints <- ints[,c(5,7)]
+            colnames(ints) <- c("protein1", "protein2")
+            
+            g <- igraph::graph_from_data_frame(ints, directed = F)
+            g <- igraph::simplify(g, remove.multiple = F, remove.loops = T)
+            wt <- igraph::cluster_walktrap(g)
+            members <- igraph::membership(wt)
+            V(g)$color <- sapply(V(g)$name, FUN = function(x) results[results$Gene == x, "col"], USE.NAMES = T)
+            V(g)$group <- sapply(V(g)$name, FUN = function(x) results[results$Gene == x, "Rep.Path.Name"], USE.NAMES = T)
+        }
+        
+        
+        
+        #v <- visNetwork::visIgraph(g, layout = layout(input$network_layout_options))
+        
+        #v$x$nodes$group <- sapply(v$x$nodes$id, FUN = function(x) results[results$Gene == x, "Rep.Path.Name"])
+        
+        v <- visNetwork::visIgraph(g, layout = layout(input$network_layout_options)) %>% visOptions(selectedBy = list(variable = "group"))
+        
+        #v %>% visOptions(selectedBy = list(variable = "group"))
+        
+        #visNetwork::visIgraph(v)
+        
+        
+        # visNetwork(nodes, edges) %>%
+        #     visIgraphLayout(layout = layout(input$network_layout_options))
     })
     
     

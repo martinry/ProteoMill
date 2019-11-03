@@ -59,7 +59,9 @@ sidebar <- dashboardSidebar(
         menuItemOutput('enrichrm'),
         menuItemOutput('enrichment'),
         menuItemOutput('networkrm'),
-        menuItemOutput('network')
+        menuItemOutput('network'),
+        menuItemOutput('interactionsrm'),
+        menuItemOutput('interactions')
         
         
     ),
@@ -359,37 +361,93 @@ body <- dashboardBody(
                        tabPanel("Sankey diagram", networkD3::sankeyNetworkOutput("sankey", height = 750)))
         ),
         
-        tabItem(tabName = "network",
-                box(title = "Network settings", width = 3,
-                    radioButtons("pathwaylevel", label = "Pathway annotation level",
-                                 choices = list("Highest" = 1, "Lowest" = 2), inline = T),
-                    helpText("Differential expression"),
-                    hr(),
-                    radioButtons("direction", label = "Regulation", choices = list("Up-regulation" = 1, "Down-regulation" = 2), inline = T),
-                    numericInput(
-                        "pvaluecutoff",
-                        label = "Maximum adj. Pvalue",
-                        min = 0,
-                        max = 1,
-                        value = 0.0001,
-                        step = 0.0001
-                    ), 
-                    numericInput(
-                        "fccutoff",
-                        label = "Minimum log2FC",
-                        min = 0,
-                        max = 100,
-                        value = 1,
-                        step = 0.1
-                    ), 
-                    helpText("Interactions"),
-                    hr(),
-                    sliderInput("interactioncutoff", label = "Minimum interaction score", min = 0, max = 9.9, value = 3, step = .1),
-                    actionButton("generatenetwork", label = "Generate network")),
-                # box(title = "Structure",
-                #     tags$div(id = "litemol", style = 'width: 640px; height: 480px; margin-top: 200px; position: relative')),
-                box(title = "Interactions", width = 9,
-                    networkD3::forceNetworkOutput("net", width = "100%", height = "750px"))),
+        # tabItem(tabName = "network",
+        #         box(title = "Network settings", width = 3,
+        #             radioButtons("pathwaylevel", label = "Pathway annotation level",
+        #                          choices = list("Highest" = 1, "Lowest" = 2), inline = T),
+        #             helpText("Differential expression"),
+        #             hr(),
+        #             radioButtons("direction", label = "Regulation", choices = list("Up-regulation" = 1, "Down-regulation" = 2), inline = T),
+        #             numericInput(
+        #                 "pvaluecutoff",
+        #                 label = "Maximum adj. Pvalue",
+        #                 min = 0,
+        #                 max = 1,
+        #                 value = 0.0001,
+        #                 step = 0.0001
+        #             ), 
+        #             numericInput(
+        #                 "fccutoff",
+        #                 label = "Minimum log2FC",
+        #                 min = 0,
+        #                 max = 100,
+        #                 value = 1,
+        #                 step = 0.1
+        #             ), 
+        #             helpText("Interactions"),
+        #             hr(),
+        #             sliderInput("interactioncutoff", label = "Minimum interaction score", min = 0, max = 9.9, value = 3, step = .1),
+        #             actionButton("generatenetwork", label = "Generate network")),
+        #         # box(title = "Structure",
+        #         #     tags$div(id = "litemol", style = 'width: 640px; height: 480px; margin-top: 200px; position: relative')),
+        #         box(title = "Interactions", width = 9,
+        #             networkD3::forceNetworkOutput("net", width = "100%", height = "750px"))),
+        tabItem(tabName = "interactions",
+                fluidRow(
+                    box(
+                        width = 6,
+                        height = 464,
+                        visNetworkOutput("xxxx")
+                    ),
+                    tabBox(width = 6,
+                        tabPanel("volcano_network_tab", plotly::plotlyOutput("volcano_plot2")),
+                        tabPanel("pca_network_tab", "PCA goes here")
+                    )
+                ),
+                
+                fluidRow(
+                    column(width = 4,
+                           box(
+                               title = "Title 1", width = NULL, solidHeader = TRUE, status = "primary",
+                               radioButtons("network_layout_options", label = "Layout options",
+                                            choices = list(
+                                                "Nicely" = 1,
+                                                "Circle" = 2,
+                                                "Grid" = 3,
+                                                "Sphere" = 4,
+                                                "Randomly" = 5,
+                                                "DH" = 6
+                                            ), inline = T)
+                           ),
+                           box(
+                               width = NULL, background = "black",
+                               "A box with a solid black background"
+                           )
+                    ),
+                    
+                    column(width = 4,
+                           box(
+                               title = "Title 3", width = NULL, solidHeader = TRUE, status = "warning",
+                               "Test3"
+                           ),
+                           box(
+                               title = "Title 5", width = NULL, background = "light-blue",
+                               "A box with a solid light-blue background"
+                           )
+                    ),
+                    
+                    column(width = 4,
+                           box(
+                               title = "Title 2", width = NULL, solidHeader = TRUE,
+                               "Hello"
+                           ),
+                           box(
+                               title = "Title 6", width = NULL, background = "maroon",
+                               "A box with a solid maroon background"
+                           )
+                    )
+                )
+        ),
         tabItem(tabName = "structures",
                 # box(title = "Search protein", width = 2,
                 #     textInput("proteinsearch", label = "Search"),

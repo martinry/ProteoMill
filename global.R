@@ -1,4 +1,5 @@
 library(igraph)
+library(visNetwork)
 source("bin/pathway.enrichment.R")
 
 # Background data ----

@@ -102,22 +102,36 @@ run_similarity_plot <- function(interesting_pathways) {
 
 }
 
+set_color_by_group <- function(x){
+    
+}
+
 run_volcano_plot <- function(contrast, results) {
 
   # Volcano plot
-
+    
+    
 
    qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
    col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
-
-   col_vector[1] = "grey"
-   col_vector[2] = "black"
+   col_vector <- c("grey", "black", col_vector)
+   
+   sorted_paths <- sort(unique(results$Rep.Path.Name))
+   sorted_path_names <- col_vector[1:length(sorted_paths)]
+   names(sorted_path_names) <- sorted_paths
+   assign("sorted_path_names", sorted_path_names, envir = .GlobalEnv)
+   results$col <- sorted_path_names[results$Rep.Path.Name]
 
    vol <- ggplot(results, aes(x = logFC, y = -log10(P.Value))) +
-     geom_point(shape = 21, size = 2.5, aes(fill=Rep.Path.Top)) +
-     scale_fill_manual(values=col_vector) +
-     theme_bw(base_size = 14) +
-     theme(legend.position = "right") +
+     geom_point(shape = 21, size = 2.5, stroke = .2, aes(fill = Rep.Path.Name)) +
+     scale_fill_manual(values = sorted_path_names) +
+     # scale_fill_discrete(values = col_vector,
+     #                     drop=TRUE,
+     #                     limits = levels(results$Rep.Path.Top)) +
+     theme_bw(base_size = 10) +
+     theme(legend.position = "right",
+           legend.title = element_blank(),
+           legend.text = element_text(size = 7.5)) +
      geom_hline(yintercept = 1.3,
                 colour = "#990000",
                 linetype = "dashed") +
@@ -132,10 +146,10 @@ run_volcano_plot <- function(contrast, results) {
    volcano_plot <- vol + geom_text_repel(
      data = filter(results, abs(logFC) > 3.5),
      aes(label = Gene),
-     box.padding = unit(0.5, 'lines'),
-     point.padding = unit(1, 'lines'),
-     segment.color = '#cccccc',
-     segment.size = 0.5,
+     #box.padding = unit(0.5, 'lines'),
+     #point.padding = unit(1, 'lines'),
+     #segment.color = '#cccccc',
+     #segment.size = 0.5,
      arrow = arrow(length = unit(0.01, 'npc'))
    )
 

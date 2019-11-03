@@ -20,3 +20,23 @@ interactions3$protein2 <- qob::switch.items(interactions2$protein2, uniprot_to_s
 
 
 
+interaction_network <- function(p, layout = "layout_nicely"){
+    
+    uniprot_to_string <- knee::collect('https://string-db.org/mapping_files/uniprot/human.uniprot_2_string.2018.tsv.gz')
+    uniprot_to_string <- data.table::fread(uniprot_to_string)
+    uniprot_to_string$up <- gsub("\\|.*", "", uniprot_to_string$V2)
+    uniprot_to_string <- uniprot_to_string[up %in% p, c(3, 4, 6)]
+    
+    interactions <- knee::get_interactions()
+    
+    ints <- interactions[protein1 %in% uniprot_to_string$V3,]
+    ints <- ints[protein2 %in% uniprot_to_string$V3,]
+    ints$combined_score <- ints$combined_score / 100
+    
+    g <- igraph::graph_from_data_frame(ints, directed = F)
+    g <- igraph::simplify(g, remove.multiple = F, remove.loops = T)
+    wt <- igraph::cluster_walktrap(g)
+    members <- igraph::membership(wt)
+    
+    return(visNetwork::visIgraph(g, layout = layout))
+}
