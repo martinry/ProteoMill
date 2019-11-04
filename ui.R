@@ -332,8 +332,8 @@ body <- dashboardBody(
 
         tabItem(tabName = "bgdata",
                 box(title = "Add custom background data",
-                    selectInput("Tissue", "Select a tissue type:",
-                                list(`Dataset: Santos, A et al. (2015)` = tissue_names)),
+                    # selectInput("Tissue", "Select a tissue type:",
+                    #             list(`Dataset: Santos, A et al. (2015)` = tissue_names)),
                     actionButton("addbg", "Add to background"),
                     actionButton("resetbg", "Reset background"))
         ),
