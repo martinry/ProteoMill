@@ -2,21 +2,14 @@ library(igraph)
 library(visNetwork)
 source("bin/pathway.enrichment.R")
 
-# Background data ----
+# Gene annotation data ----
 
-tissues <- data.table::fread('~/Large_files/tissues.uniprot.csv', sep = '\t', header = T, data.table = F, strip.white=TRUE)
-tissue_names <- colnames(tissues)
+# tissues <- data.table::fread('~/Large_files/tissues.uniprot.csv', sep = '\t', header = T, data.table = F, strip.white=TRUE)
+# tissue_names <- colnames(tissues)
 
-# Reactome
-reactome <- data.table::fread('~/Large_files/reactome/reactome.uniprot.levels.csv', sep = '\t', header = F, data.table = F, strip.white=TRUE)
-reactome <- reactome[,2:ncol(reactome)]
-colnames(reactome) <- c("UniprotID", "ReactomeID", "URL", "Pathway_name", "Evidence_code", "Species", "Top", "TopPathway")
 
-# Lowest abstraction level
-lowest <- data.table::fread('~/Large_files/reactome/reactome.uniprot.lowest.levels.csv', sep = '\t', header = F, data.table = F, strip.white = T)
-lowest <- lowest[,2:ncol(lowest)]
-colnames(lowest) <- c("UniprotID", "ReactomeID", "URL", "Pathway_name", "Evidence_code", "Species", "Top", "TopPathway")
-
+REACTOME_all <- data.table::fread('data/REACTOME_all.tsv.gz', sep = '\t', header = T)
+REACTOME_low <- data.table::fread('data/REACTOME_all.tsv.gz', sep = '\t', header = T)
 
 # Read input file ----
 

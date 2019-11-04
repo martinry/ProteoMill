@@ -1,5 +1,5 @@
 # Reactome hierarchy
-hier <- data.table::fread('~/Large_files/reactome/reactome.relations.hsa.txt', sep = '\t', header = F, data.table = F, strip.white=TRUE)
+hier <- data.table::fread('~/Large_files/reactome/reactome.relations.hsa.txt', sep = '\t', header = F, data.table = F, strip.white = TRUE)
 
 lowest <- data.table::fread('~/Large_files/reactome/lowest.level.paths.HS.TAS.txt', sep = '\t', header = F, data.table = F, strip.white=TRUE)
 colnames(lowest) <- c("UniprotID", "ReactomeID", "URL", "Pathway_name", "Evidence_code", "Species")

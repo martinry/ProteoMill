@@ -15,6 +15,18 @@ fade <- function(fadein) {
     return(fadein)
 }
 
+
+get_interactions <- function(){
+
+  url <- "https://stringdb-static.org/download/protein.links.v11.0/9606.protein.links.v11.0.txt.gz"
+
+  interactions <- data.table::fread(knee::collect(url),
+                                    sep = ' ',
+                                    header = T)
+  return(interactions)
+}
+
+
 # Server ----
 server <- function(session, input, output) {
     
@@ -459,30 +471,30 @@ server <- function(session, input, output) {
         updateNotifications("Background data has been reset.", "info-circle", "info")
     })
     
-    observeEvent(input$addbg, {
-        
-        added_bg <- tissues[,input$Tissue]
-        added_bg <- added_bg[!is.na(added_bg)] # Remove empty entries
-        
-        
-        not_in_bg <- added_bg[!added_bg %in% background_data]
-        
-        exists_in_input <- added_bg[added_bg %in% input_names]
-        
-        
-        background_data <- c(background_data, not_in_bg)
-        
-        assign("background_data", background_data, envir = .GlobalEnv)
-        
-        if(length(exists_in_input) > 0) {
-            updateNotifications(paste(length(exists_in_input), " genes already in input dataset."), "info-circle", "info")
-        }
-        
-        if(length(not_in_bg) > 0) {
-            updateNotifications(paste("Added ", length(not_in_bg), " genes to background."), "check-circle", "success")
-        }
-        
-    })
+    # observeEvent(input$addbg, {
+    #     
+    #     added_bg <- tissues[,input$Tissue]
+    #     added_bg <- added_bg[!is.na(added_bg)] # Remove empty entries
+    #     
+    #     
+    #     not_in_bg <- added_bg[!added_bg %in% background_data]
+    #     
+    #     exists_in_input <- added_bg[added_bg %in% input_names]
+    #     
+    #     
+    #     background_data <- c(background_data, not_in_bg)
+    #     
+    #     assign("background_data", background_data, envir = .GlobalEnv)
+    #     
+    #     if(length(exists_in_input) > 0) {
+    #         updateNotifications(paste(length(exists_in_input), " genes already in input dataset."), "info-circle", "info")
+    #     }
+    #     
+    #     if(length(not_in_bg) > 0) {
+    #         updateNotifications(paste("Added ", length(not_in_bg), " genes to background."), "check-circle", "success")
+    #     }
+    #     
+    # })
     
     observeEvent(input$generatepathways, {
         
@@ -692,7 +704,7 @@ server <- function(session, input, output) {
         
         
         if(!exists("interactions")){
-            interactions <- knee::get_interactions()
+            interactions <- get_interactions()
             assign("interactions", interactions, envir = .GlobalEnv)
         }
         
@@ -723,7 +735,9 @@ server <- function(session, input, output) {
         
         #v$x$nodes$group <- sapply(v$x$nodes$id, FUN = function(x) results[results$Gene == x, "Rep.Path.Name"])
         
-        v <- visNetwork::visIgraph(g, layout = layout(input$network_layout_options)) %>% visOptions(selectedBy = list(variable = "group"))
+        v <- visNetwork::visIgraph(g,
+                                   layout = layout(input$network_layout_options)) %>%
+            visOptions(selectedBy = list(variable = "group"))
         
         #v %>% visOptions(selectedBy = list(variable = "group"))
         
