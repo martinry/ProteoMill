@@ -8,6 +8,7 @@ require(dplyr)
 require(fitdistrplus)
 library(plotly)
 library(data.table)
+require(AnnotationDbi)
 
 # Passing arguments from R Shiny to external jQuery scripts unfortunately requires som workarounds
 # This function is actually necessary...
@@ -25,6 +26,7 @@ get_interactions <- function(){
                                     header = T)
   return(interactions)
 }
+
 
 
 # Server ----
@@ -221,27 +223,27 @@ server <- function(session, input, output) {
     
     # Identifiers ----
     
+    
+    
     # Verify IDs
     observeEvent(input$verifyIDs, {
         
         if(input$sourceIDtype == 1) {
+          
             
-            session$sendCustomMessage("fadeProcess", fade(12))
-            
-            id_check <- qob::update_obsolete(rownames(data_wide))
-            
-            obsolete <- id_check[["table"]][["Entry"]]
-            
-            session$sendCustomMessage("fadeProcess", fade(0))
-            
-            assign("id_check", id_check, envir = .GlobalEnv)
-            
-            input_names <- rownames(data_wide)
-            assign("input_names", input_names, envir = .GlobalEnv)
-            
-            message <- paste(length(obsolete), " IDs are obsolete...")
-            updateNotifications(message,"info-circle", "info", clickable = T)
-            
+            # session$sendCustomMessage("fadeProcess", fade(12))
+            # 
+            # id_check <- qob::update_obsolete(rownames(data_wide))
+            # 
+            # obsolete <- id_check[["table"]][["Entry"]]
+            # 
+            # session$sendCustomMessage("fadeProcess", fade(0))
+            # 
+            # assign("id_check", id_check, envir = .GlobalEnv)
+            # 
+            # input_names <- rownames(data_wide)
+            # assign("input_names", input_names, envir = .GlobalEnv)
+          
         } else {
             message <- paste("Currently only UniProtKB IDs can be verified.")
             updateNotifications(message,"exclamation-triangle", "danger")
@@ -389,9 +391,9 @@ server <- function(session, input, output) {
     # Differential expression: set contrasts ----
     observeEvent(input$contrast1, {
         
-        if (!exists("groups")){
+        if (!exists("groups", envir = .GlobalEnv)){
             return(NULL)
-        } else if (exists("groups") == T){
+        } else if (exists("groups", envir = .GlobalEnv)){
             cont1 <- input$contrast1
             cont2 <- groups[groups != cont1]
             
@@ -404,8 +406,6 @@ server <- function(session, input, output) {
         output$enrichment <- renderMenu({
             menuItem("Enrichment analysis", icon = icon("flask"), href = NULL,
                      menuSubItem("Background data", tabName = "bgdata", href = NULL, newtab = TRUE,
-                                 icon = shiny::icon("angle-double-right"), selected = F),
-                     menuSubItem("GO enrichment", tabName = "goenrichment", href = NULL, newtab = TRUE,
                                  icon = shiny::icon("angle-double-right"), selected = F),
                      menuSubItem("Pathway enrichment", tabName = "pathwayenrichment", href = NULL, newtab = TRUE,
                                  icon = shiny::icon("angle-double-right"), selected = F)
@@ -464,13 +464,28 @@ server <- function(session, input, output) {
             )
     })
     
-    # Enrichment ----
-    observeEvent(input$resetbg, {
-        background_data <- input_names
-        assign("background_data", background_data, envir = .GlobalEnv)
-        updateNotifications("Background data has been reset.", "info-circle", "info")
+    
+    observeEvent(input$generate_pathways, {
+      
+      UPREGULATED_genes <- contrast[logFC >= 0, rn]
+      DOWNREGULATED_genes <- contrast[logFC < 0, rn]
+      
+      UPREGULATED_pathways <- knee::ora(UPREGULATED_genes)
+      DOWNREGULATED_PATHWAYS<- knee::ora(DOWNREGULATED_genes)
+      
+      UPREGULATED_pathways$k
+      
+
+      
     })
     
+    # # Enrichment ----
+    # observeEvent(input$resetbg, {
+    #     background_data <- input_names
+    #     assign("background_data", background_data, envir = .GlobalEnv)
+    #     updateNotifications("Background data has been reset.", "info-circle", "info")
+    # })
+    # 
     # observeEvent(input$addbg, {
     #     
     #     added_bg <- tissues[,input$Tissue]
@@ -495,106 +510,106 @@ server <- function(session, input, output) {
     #     }
     #     
     # })
-    
-    observeEvent(input$generatepathways, {
-        
-        session$sendCustomMessage("fadeProcess", fade(70))
-        
-        if(input$usebackground == 1) {
-            bg <- input_names
-        } else if (input$usebackground == 2) {
-            bg <- background_data
-        } else if (input$usebackground == 3) {
-            bg <- unique(reactome$UniprotID)
-        }
-        
-        if(input$abstractionlevel == 1) {
-            abstraction = 'global'
-        } else if(input$abstractionlevel == 2) {
-            abstraction = 'lowest'
-        }
-        
-        enrichment_output <- run_pathway_enrichment('REACTOME', bg, abstraction)
-        
-        enriched_paths <- enrichment_output[[1]]
-        interesting_paths <- enrichment_output[[2]]
-        
-        contrast$Rep.Path.Top <- '* NOT SIGNFICANT'
-        contrast$Rep.Path.Name <- '* NOT SIGNFICANT'
-        contrast$Rep.Path.Score <- 0
-        
-        for (i in 1:nrow(interesting_paths)) {
-            path_name <- interesting_paths[i,'Pathway_name']
-            path_topname <- interesting_paths[i,'Pathway_topname']
-            score <- interesting_paths[i,'iScore']
-            
-            prots <- unlist(interesting_paths[i,'Genes'])
-            
-            for (p in 1:length(prots)) {
-                protein <- prots[p]
-                
-                if (score > contrast[rownames(contrast) == protein,'Rep.Path.Score']) {
-                    contrast[rownames(contrast) == protein,'Rep.Path.Name'] <- path_name
-                    contrast[rownames(contrast) == protein,'Rep.Path.Top'] <- path_topname
-                    contrast[rownames(contrast) == protein,'Rep.Path.Score'] <- score
-                }
-            }
-        }
-        
-        contrast$Gene <- rownames(contrast)
-        results = dplyr::mutate(contrast, sig=ifelse(contrast$adj.P.Val<0.05, "FDR<0.05", "Not Sig"))
-        
-        assign('results', results, envir = .GlobalEnv)
-        
-        session$sendCustomMessage("fadeProcess", fade(0))
-        
-        output$pathtable <- DT::renderDataTable({
-            
-            df <- DT::datatable(enriched_paths[,1:6],
-                                options = list(autoWidth = TRUE,
-                                               scrollX=TRUE,
-                                               columnDefs = list(
-                                                   list(width = '420px', targets = c(1))
-                                               )))
-            df %>% DT::formatSignif('Pvalue', digits = 2)
-            
-            
-        })
-        
-        
-        # Similarity plot
-        output$similarity_plot <- renderPlot(
-            {
-                mat <- run_similarity_plot(interesting_paths)
-                pheatmap::pheatmap(mat, cluster_rows = F, cluster_cols = F, fontsize = 11)
-            })
-        
-        # Volcano plot
-        output$volcano_plot <- renderPlot(
-            {
-                run_volcano_plot(contrast, results)
-            })
-        
-        # Volcano plot
-        output$volcano_plot2 <- renderPlotly(
-            {
-                plotly::ggplotly(run_volcano_plot(contrast, results), width = 650, height = 400)
-            })
-        
-        
-        output$sankey <- networkD3::renderSankeyNetwork({
-            
-            P <- run_sankey_diagram(results)
-            
-            # Plot
-            s <- sankeyNetwork(Links = P$links, Nodes = P$nodes, Source = 'source',
-                               Target = 'target', Value = 'value', NodeID = 'name',
-                               fontSize = 12, fontFamily = 'sans-serif', nodeWidth = 60, sinksRight = F)
-            
-            s
-        })
-        
-    })
+    # 
+    # observeEvent(input$generatepathways, {
+    #     
+    #     session$sendCustomMessage("fadeProcess", fade(70))
+    #     
+    #     if(input$usebackground == 1) {
+    #         bg <- input_names
+    #     } else if (input$usebackground == 2) {
+    #         bg <- background_data
+    #     } else if (input$usebackground == 3) {
+    #         bg <- unique(reactome$UniprotID)
+    #     }
+    #     
+    #     if(input$abstractionlevel == 1) {
+    #         abstraction = 'global'
+    #     } else if(input$abstractionlevel == 2) {
+    #         abstraction = 'lowest'
+    #     }
+    #     
+    #     enrichment_output <- run_pathway_enrichment('REACTOME', bg, abstraction)
+    #     
+    #     enriched_paths <- enrichment_output[[1]]
+    #     interesting_paths <- enrichment_output[[2]]
+    #     
+    #     contrast$Rep.Path.Top <- '* NOT SIGNFICANT'
+    #     contrast$Rep.Path.Name <- '* NOT SIGNFICANT'
+    #     contrast$Rep.Path.Score <- 0
+    #     
+    #     for (i in 1:nrow(interesting_paths)) {
+    #         path_name <- interesting_paths[i,'Pathway_name']
+    #         path_topname <- interesting_paths[i,'Pathway_topname']
+    #         score <- interesting_paths[i,'iScore']
+    #         
+    #         prots <- unlist(interesting_paths[i,'Genes'])
+    #         
+    #         for (p in 1:length(prots)) {
+    #             protein <- prots[p]
+    #             
+    #             if (score > contrast[rownames(contrast) == protein,'Rep.Path.Score']) {
+    #                 contrast[rownames(contrast) == protein,'Rep.Path.Name'] <- path_name
+    #                 contrast[rownames(contrast) == protein,'Rep.Path.Top'] <- path_topname
+    #                 contrast[rownames(contrast) == protein,'Rep.Path.Score'] <- score
+    #             }
+    #         }
+    #     }
+    #     
+    #     contrast$Gene <- rownames(contrast)
+    #     results = dplyr::mutate(contrast, sig=ifelse(contrast$adj.P.Val<0.05, "FDR<0.05", "Not Sig"))
+    #     
+    #     assign('results', results, envir = .GlobalEnv)
+    #     
+    #     session$sendCustomMessage("fadeProcess", fade(0))
+    #     
+    #     output$pathtable <- DT::renderDataTable({
+    #         
+    #         df <- DT::datatable(enriched_paths[,1:6],
+    #                             options = list(autoWidth = TRUE,
+    #                                            scrollX=TRUE,
+    #                                            columnDefs = list(
+    #                                                list(width = '420px', targets = c(1))
+    #                                            )))
+    #         df %>% DT::formatSignif('Pvalue', digits = 2)
+    #         
+    #         
+    #     })
+    #     
+    #     
+    #     # Similarity plot
+    #     output$similarity_plot <- renderPlot(
+    #         {
+    #             mat <- run_similarity_plot(interesting_paths)
+    #             pheatmap::pheatmap(mat, cluster_rows = F, cluster_cols = F, fontsize = 11)
+    #         })
+    #     
+    #     # Volcano plot
+    #     output$volcano_plot <- renderPlot(
+    #         {
+    #             run_volcano_plot(contrast, results)
+    #         })
+    #     
+    #     # Volcano plot
+    #     output$volcano_plot2 <- renderPlotly(
+    #         {
+    #             plotly::ggplotly(run_volcano_plot(contrast, results), width = 650, height = 400)
+    #         })
+    #     
+    #     
+    #     output$sankey <- networkD3::renderSankeyNetwork({
+    #         
+    #         P <- run_sankey_diagram(results)
+    #         
+    #         # Plot
+    #         s <- sankeyNetwork(Links = P$links, Nodes = P$nodes, Source = 'source',
+    #                            Target = 'target', Value = 'value', NodeID = 'name',
+    #                            fontSize = 12, fontFamily = 'sans-serif', nodeWidth = 60, sinksRight = F)
+    #         
+    #         s
+    #     })
+    #     
+    # })
     
     # observeEvent(input$generatenetwork, {
     #     session$sendCustomMessage("fadeProcess", fade(60))

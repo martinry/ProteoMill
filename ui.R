@@ -1,7 +1,7 @@
 library(shiny)
 library(shinydashboard)
 
-setwd("~/qodb-shiny/")
+#setwd("~/qodb-shiny/")
 
 tissues <- list()
 
@@ -343,16 +343,15 @@ body <- dashboardBody(
         tabItem(tabName = "pathwayenrichment",
                 box(title = "Pathway settings", status = "warning", width = 3,
                     selectInput(inputId = "pathdb", label = "Pathway database",
-                                choices = list("REACTOME" = 'REACTOME', "KEGG" = 'KEGG', "BIOCARTA" = 'BIOCARTA'),
+                                choices = list("REACTOME" = 'REACTOME'),
                                 selected = 'REACTOME'),
-                    checkboxInput(inputId = "trimprefix", label = "Hide prefixes", value = T),
                     radioButtons(inputId = "abstractionlevel", label = "Level of abstraction",
                                  choices = list("Global" = 1, "Lowest" = 2),
-                                 selected = 1, inline = T),
+                                 selected = 2, inline = T),
                     radioButtons(inputId = "usebackground", label = "Background genes",
                                  choices = list("My dataset" = 1, "Extended background" = 2, "No background (entire genome)" = 3),
                                  selected = 2),
-                    actionButton(inputId = "generatepathways", label = "Generate pathway data")
+                    actionButton(inputId = "generate_pathways", label = "Generate pathway data")
                     ),
                 tabBox(width = 9,
                        tabPanel("Table", DT::dataTableOutput("pathtable", width = 900)),

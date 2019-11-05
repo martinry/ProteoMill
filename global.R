@@ -1,6 +1,5 @@
 library(igraph)
 library(visNetwork)
-source("bin/pathway.enrichment.R")
 
 # Gene annotation data ----
 
@@ -201,6 +200,7 @@ diff_exp <- function(coeff, pairing) {
     assign("cint", cint, envir = .GlobalEnv)
     
     contrast <- contrast[order(contrast$P.Value, decreasing = F),]
+    contrast <- data.table::as.data.table(contrast, keep.rownames = T)
     
     #contrast$FDR <- p.adjust(contrast$P.Value, n = 510)
     
