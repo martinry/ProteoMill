@@ -470,11 +470,15 @@ server <- function(session, input, output) {
       UPREGULATED_genes <- contrast[logFC >= 0, rn]
       DOWNREGULATED_genes <- contrast[logFC < 0, rn]
       
-      UPREGULATED_pathways <- knee::ora(UPREGULATED_genes)
-      DOWNREGULATED_PATHWAYS<- knee::ora(DOWNREGULATED_genes)
+      UPREGULATED_pathways <- knee::ora(UPREGULATED_genes)@output
+      DOWNREGULATED_pathways<- knee::ora(DOWNREGULATED_genes)@output
       
-      UPREGULATED_pathways$k
+      # UPREGULATED_pathways[p.adj < 0.05, .N]
+      # DOWNREGULATED_pathways[p.adj < 0.05, .N]
       
+      output$upregulated_pathways_table <- DT::renderDataTable({
+        UPREGULATED_pathways[, -c("genes", "background")]
+      })
 
       
     })

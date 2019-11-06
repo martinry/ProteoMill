@@ -7,8 +7,6 @@ library(visNetwork)
 # tissue_names <- colnames(tissues)
 
 
-REACTOME_all <- data.table::fread('data/REACTOME_all.tsv.gz', sep = '\t', header = T)
-REACTOME_low <- data.table::fread('data/REACTOME_all.tsv.gz', sep = '\t', header = T)
 
 # Read input file ----
 
