@@ -480,6 +480,9 @@ server <- function(session, input, output) {
         UPREGULATED_pathways[, -c("genes", "background")]
       })
 
+      output$downregulated_pathways_table <- DT::renderDataTable({
+          DOWNREGULATED_pathways[, -c("genes", "background")]
+      })
       
     })
     
