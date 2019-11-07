@@ -354,7 +354,7 @@ body <- dashboardBody(
                     actionButton(inputId = "generate_pathways", label = "Generate pathway data")
                     ),
                 tabBox(width = 9,
-                       tabsetPanel(
+                       tabsetPanel("Over-representation",
                            tabPanel("Enrichment of up-regulated genes", DT::dataTableOutput("upregulated_pathways_table", width = 900)),
                            tabPanel("Enrichment of down-regulated genes", DT::dataTableOutput("downregulated_pathways_table", width = 900))),
                        #tabPanel("Table", tabpan

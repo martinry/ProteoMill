@@ -476,13 +476,29 @@ server <- function(session, input, output) {
       # UPREGULATED_pathways[p.adj < 0.05, .N]
       # DOWNREGULATED_pathways[p.adj < 0.05, .N]
       
-      output$upregulated_pathways_table <- DT::renderDataTable({
-        UPREGULATED_pathways[, -c("genes", "background")]
-      })
+      output$upregulated_pathways_table <- DT::renderDT(
+        
+        DT::datatable(UPREGULATED_pathways[, -c("genes", "background")],
+                      options = list(autoWidth = TRUE,
+                                     scrollX=TRUE,
+                                     columnDefs = list(
+                                       list(width = '100px', targets = c(1, 3)),
+                                       list(width = '60px', targets = c(6, 7))
+                                     ))),
+        server = F
+        
+      )
 
-      output$downregulated_pathways_table <- DT::renderDataTable({
-          DOWNREGULATED_pathways[, -c("genes", "background")]
-      })
+      output$downregulated_pathways_table <- DT::renderDT(
+        DT::datatable(DOWNREGULATED_pathways[, -c("genes", "background")],
+                      options = list(autoWidth = TRUE,
+                                     scrollX=TRUE,
+                                     columnDefs = list(
+                                       list(width = '100px', targets = c(1, 3)),
+                                       list(width = '60px', targets = c(6, 7))
+                                     ))),
+        server = F
+      )
       
     })
     
