@@ -357,7 +357,6 @@ body <- dashboardBody(
                        tabsetPanel("Over-representation",
                            tabPanel("Enrichment of up-regulated genes", DT::dataTableOutput("upregulated_pathways_table", width = 900)),
                            tabPanel("Enrichment of down-regulated genes", DT::dataTableOutput("downregulated_pathways_table", width = 900))),
-                       #tabPanel("Table", tabpan
                        tabPanel("Similarity matrix", plotOutput("similarity_plot", height = 850)),
                        tabPanel("Volcano plot", plotOutput("volcano_plot", height = 750)),
                        tabPanel("Sankey diagram", networkD3::sankeyNetworkOutput("sankey", height = 750)))
