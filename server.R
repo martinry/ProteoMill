@@ -464,18 +464,26 @@ server <- function(session, input, output) {
             )
     })
     
+    observeEvent(input$min_fc, {
+      
+      output$number_of_genes <- renderUI({
+        
+        up <- paste("Up-regulated:", contrast[logFC >= input$min_fc, .N], "genes", sep = " ")
+        down <- paste("Down-regulated:", contrast[logFC < (input$min_fc * -1), .N], "genes", sep = " ")
+        
+        HTML(paste(up, down, '<br/>', sep = '<br/>'))
+        
+      })
+    })
     
     observeEvent(input$generate_pathways, {
       
-      UPREGULATED_genes <- contrast[logFC >= 0, rn]
-      DOWNREGULATED_genes <- contrast[logFC < 0, rn]
+      UPREGULATED_genes <- contrast[logFC >= input$min_fc, rn]
+      DOWNREGULATED_genes <- contrast[logFC < (input$min_fc * -1), rn]
       
       UPREGULATED_pathways <- knee::ora(UPREGULATED_genes)@output
       DOWNREGULATED_pathways<- knee::ora(DOWNREGULATED_genes)@output
-      
-      # UPREGULATED_pathways[p.adj < 0.05, .N]
-      # DOWNREGULATED_pathways[p.adj < 0.05, .N]
-      
+
       output$upregulated_pathways_table <- DT::renderDT(
         
         DT::datatable(UPREGULATED_pathways[, -c("genes", "background")],

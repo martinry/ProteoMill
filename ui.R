@@ -348,13 +348,15 @@ body <- dashboardBody(
                     radioButtons(inputId = "abstractionlevel", label = "Level of abstraction",
                                  choices = list("Global" = 1, "Lowest" = 2),
                                  selected = 2, inline = T),
+                    numericInput("min_fc", "Min. log2 fold change", value = 0, min = 0, max = 50, step = .5),
+                    htmlOutput("number_of_genes"),
                     radioButtons(inputId = "usebackground", label = "Background genes",
                                  choices = list("My dataset" = 1, "Extended background" = 2, "No background (entire genome)" = 3),
                                  selected = 2),
                     actionButton(inputId = "generate_pathways", label = "Generate pathway data")
                     ),
                 tabBox(width = 9,
-                       tabsetPanel("Over-representation",
+                       tabsetPanel(
                            tabPanel("Enrichment of up-regulated genes", DT::dataTableOutput("upregulated_pathways_table", width = 900)),
                            tabPanel("Enrichment of down-regulated genes", DT::dataTableOutput("downregulated_pathways_table", width = 900))),
                        tabPanel("Similarity matrix", plotOutput("similarity_plot", height = 850)),
