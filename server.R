@@ -482,7 +482,10 @@ server <- function(session, input, output) {
       DOWNREGULATED_genes <- contrast[logFC < (input$min_fc * -1), rn]
       
       UPREGULATED_pathways <- knee::ora(UPREGULATED_genes)@output
+      assign(UPREGULATED_pathways, "UPREGULATED_pathways", envir = .GlobalEnv)
+      
       DOWNREGULATED_pathways<- knee::ora(DOWNREGULATED_genes)@output
+      assign(DOWNREGULATED_pathways, "DOWNREGULATED_pathways", envir = .GlobalEnv)
 
       output$upregulated_pathways_table <- DT::renderDT(
         
@@ -509,6 +512,17 @@ server <- function(session, input, output) {
       )
       
     })
+    
+    # Volcano plot
+    output$volcano_plot <- renderPlotly(
+      {
+        res <- knee::enrichment_results(UPREGULATED_pathways, DOWNREGULATED_pathways)
+        
+        plotly::ggplotly(knee::volcano(res))
+        
+      })
+    
+    
     
     # # Enrichment ----
     # observeEvent(input$resetbg, {
