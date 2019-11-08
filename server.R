@@ -518,7 +518,7 @@ server <- function(session, input, output) {
       {
         res <- knee::enrichment_results(UPREGULATED_pathways, DOWNREGULATED_pathways)
         
-        v <- volcano(res)
+        v <- knee::volcano(res)
         
         assign("v", v, envir = .GlobalEnv)
         
@@ -765,49 +765,41 @@ server <- function(session, input, output) {
     #     visSetSelection(nodesId = relayout_data())
     # })
     
-    observeEvent(event_data("plotly_selected"),{
-      
-      # d$e <- unlist(event_data("plotly_selected")$key)
-      # if(length(d$e) < 2) d$e <- contrast$rn
-      # 
-      # print(d$e)
-      # 
-      
-      mynodes <- unlist(event_data("plotly_selected")$key)
-      
-      visNetworkProxy("xxxx") %>%
-        visUnselectAll() %>%
-        visSelectNodes(id = mynodes, clickEvent = F) 
-      
-      # %>%
-      #   visOptions(selectedBy = list(variable = "group"))
-      
-    })
+    # observeEvent(event_data("plotly_selected"), {
+    #     
+    #     mynodes <- unlist(event_data("plotly_selected")$key)
+    #     
+    #     
+    #     visNetworkProxy("xxxx") %>%
+    #         visUpdateNodes(nodes = mynodes)
+    #     
+    #         #visSetSelection(nodesId = mynodes, unselectAll = T)
+    #     
+    # })
+    
+     # tmp <- function(event){
+     # 
+     #   mynodes <- unlist(event$key)
+     #   print(mynodes)
+     #   
+     #   visNetworkProxy("xxxx") %>%
+     #       visSetSelection(nodesId = mynodes, unselectAll = T, clickEvent = F)
+     # }
     
     output$xxxx <- renderVisNetwork({
-
-        layout <- function(type) {
-            switch(type,
-                   "1" = "layout_nicely",
-                   "2" = "layout_in_circle",
-                   "3" = "layout_on_grid",
-                   "4" = "layout_on_sphere",
-                   "5" = "layout_randomly",
-                   "6" = "layout_with_dh")
-        }
-        
-        
-        #visNetwork(nodes, edges, layout = layout(input$network_layout_options))
 
         proteins <- contrast[adj.P.Val < input$pvaluecutoff & logFC >= input$fccutoff]$rn
         
         if(!exists("uniprot_to_string")){
-          if(!file.exists(file.path(system.file(package = 'knee'), "data", "human.uniprot_2_string.2018.tsv"))){
-            uniprot_to_string <- knee::collect('https://string-db.org/mapping_files/uniprot/human.uniprot_2_string.2018.tsv.gz')
-          } else {
-            uniprot_to_string <- knee::collect('https://string-db.org/mapping_files/uniprot/human.uniprot_2_string.2018.tsv.gz')
-            uniprot_to_string <- data.table::fread(uniprot_to_string)
-          }
+          # if(!file.exists(file.path(system.file(package = 'knee'), "data", "human.uniprot_2_string.2018.tsv"))){
+          #   uniprot_to_string <- knee::collect('https://string-db.org/mapping_files/uniprot/human.uniprot_2_string.2018.tsv.gz')
+          # } else {
+          #   uniprot_to_string <- knee::collect('https://string-db.org/mapping_files/uniprot/human.uniprot_2_string.2018.tsv.gz')
+          #   uniprot_to_string <- data.table::fread(uniprot_to_string)
+          # }
+            
+         uniprot_to_string <- knee::collect('https://string-db.org/mapping_files/uniprot/human.uniprot_2_string.2018.tsv.gz')
+         uniprot_to_string <- data.table::fread(uniprot_to_string)
           
           uniprot_to_string$up <- gsub("\\|.*", "", uniprot_to_string$V2)
           uniprot_to_string <- uniprot_to_string[up %in% proteins, c(3, 4, 6)]
@@ -846,8 +838,16 @@ server <- function(session, input, output) {
             #V(g)$group <- sapply(V(g)$name, FUN = function(x) v$res[Gene == x, "TopReactomeName"], USE.NAMES = T)
         }
         
+        mynodes <- unlist(event_data("plotly_selected")$key)
         
         ints2 <- ints[combined_score > input$interactioncutoff]
+        
+        if(length(mynodes) > 1) {
+            ints2 <- ints2[protein1 %in% mynodes & protein2 %in% mynodes]
+        }
+        
+
+        
         g <- igraph::graph_from_data_frame(ints2, directed = F)
         g <- igraph::simplify(g, remove.multiple = F, remove.loops = T)
         # wt <- igraph::cluster_walktrap(g)
@@ -866,8 +866,19 @@ server <- function(session, input, output) {
         #v$x$nodes$group <- sapply(v$x$nodes$id, FUN = function(x) results[results$Gene == x, "Rep.Path.Name"])
         
 
-
-        visNetwork::visIgraph(g) %>% visOptions(selectedBy = list(variable = "group"))
+        layout <- function(type) {
+            switch(type,
+                   "1" = "layout_nicely",
+                   "2" = "layout_in_circle",
+                   "3" = "layout_on_grid",
+                   "4" = "layout_on_sphere",
+                   "5" = "layout_randomly",
+                   "6" = "layout_with_dh")
+        }
+        
+        visNetwork::visIgraph(g) %>%
+            visOptions(selectedBy = list(variable = "group"))
+})
         
 #          visOptions(selectedBy = list(variable = "group"))  %>%
 #          visLegend() %>%
@@ -883,8 +894,7 @@ server <- function(session, input, output) {
         #     visIgraphLayout(layout = layout(input$network_layout_options))
         
 
-        
-    })
+
     
 
     
