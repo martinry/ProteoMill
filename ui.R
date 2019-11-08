@@ -360,7 +360,7 @@ body <- dashboardBody(
                            tabPanel("Enrichment of up-regulated genes", DT::dataTableOutput("upregulated_pathways_table", width = 900)),
                            tabPanel("Enrichment of down-regulated genes", DT::dataTableOutput("downregulated_pathways_table", width = 900))),
                        tabPanel("Similarity matrix", plotOutput("similarity_plot", height = 850)),
-                       tabPanel("Volcano plot", plotOutput("volcano_plot", height = 750)),
+                       tabPanel("Volcano plot", plotly::plotlyOutput("volcano_plot", height = 750)),
                        tabPanel("Sankey diagram", networkD3::sankeyNetworkOutput("sankey", height = 750)))
         ),
         
@@ -420,7 +420,31 @@ body <- dashboardBody(
                                                 "Sphere" = 4,
                                                 "Randomly" = 5,
                                                 "DH" = 6
-                                            ), inline = T)
+                                            ), inline = T),
+                               numericInput(
+                                   "pvaluecutoff",
+                                   label = "Maximum adj. Pvalue",
+                                   min = 0,
+                                   max = 1,
+                                   value = 0.0001,
+                                   step = 0.0001
+                               ), 
+                               numericInput(
+                                   "fccutoff",
+                                   label = "Minimum log2FC",
+                                   min = 0,
+                                   max = 100,
+                                   value = 1,
+                                   step = 0.1
+                               ),
+                               numericInput(
+                                   "interactioncutoff",
+                                   label = "Interaction cutoff",
+                                   min = 0,
+                                   max = 10,
+                                   value = 1,
+                                   step = .1
+                               )
                            ),
                            box(
                                width = NULL, background = "black",

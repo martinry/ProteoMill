@@ -43,7 +43,7 @@ read_file <- function(infile, separator, type) {
 
 # Build sample info ----
 
-groups <- list()
+group <- list()
 sample_data <- function(data) {
     samples <- data.frame(colnames(data_wide))
     colnames(samples) = "SampleNames"
@@ -54,12 +54,12 @@ sample_data <- function(data) {
     condition <- factor( samples$condition )
     replicate <- factor( samples$replicate )
     
-    groups <- sapply(levels(condition), function(x) paste("condition", x, sep = ''))
+    group <- sapply(levels(condition), function(x) paste("condition", x, sep = ''))
     
     assign("samples", samples, envir = .GlobalEnv)
     assign("condition", condition, envir = .GlobalEnv)
     assign("replicate", replicate, envir = .GlobalEnv)
-    assign("groups", groups, envir = .GlobalEnv)
+    assign("group", group, envir = .GlobalEnv)
     
     return (FALSE)
 }
@@ -91,7 +91,7 @@ filter_na <- function(threshold) {
     }
     
     # Apply function to all regions
-    condition_sub <- lapply(names(groups), subset_NA)
+    condition_sub <- lapply(names(group), subset_NA)
     
     # Reduce to shared proteins
     condition_sub <- Reduce(intersect, condition_sub)
@@ -176,7 +176,7 @@ diff_exp <- function(coeff, pairing) {
     fit <- lmFit(exampleSet, design)
     
     # Decide possible contrasts
-    c <- expand.grid(groups, groups)
+    c <- expand.grid(group, group)
     cc <- factor(ifelse(c$Var1 != c$Var2, paste(c$Var1, c$Var2, sep = '-'), NA ))
     cc <- cc[!is.na(cc)]
     names(cc) <- gsub('-','', gsub('condition','',cc))
