@@ -292,6 +292,7 @@ server <- function(session, input, output) {
     renderNAfreq <- function(){
         output$nafreq <- renderPlot({
             
+            
             # Which elements are NA?
             allNA <- is.na(data_wide)
             
@@ -749,7 +750,7 @@ server <- function(session, input, output) {
     
     output$xxxx <- renderVisNetwork({
 
-        proteins <- contrast[adj.P.Val < input$pvaluecutoff & logFC >= input$fccutoff]$rn
+        proteins <- contrast[adj.P.Val < input$pvaluecutoff & abs(logFC) >= input$fccutoff]$rn
         
         if(!exists("uniprot_to_string")){
             
@@ -793,22 +794,29 @@ server <- function(session, input, output) {
         
         ints2 <- ints[combined_score > input$interactioncutoff]
         
+        # TBA: all interactions option
+        
         interacts <- function(i){
-            return(nrow(ints2[(protein1 == i & protein2 %in% mynodes) | (protein2 == i & protein1 %in% mynodes)]))
+            return(ints2[(protein1 == i & protein2 %in% mynodes) | (protein2 == i & protein1 %in% mynodes), .N])
         }
         
-        if(!is.null(mynodes)) {
-            if(any(mynodes %in% ints2$protein1 & mynodes %in% ints2$protein2) & sum(unlist(lapply(mynodes, interacts))) > 0){
-                
-                print(mynodes)
-                print(mynodes[mynodes %in% ints2$protein1])
-                print(mynodes[mynodes %in% ints2$protein2])
-                print(" ")
-
-                ints2 <- ints2[protein1 %in% mynodes & protein2 %in% mynodes]
+        if(input$interaction_behaviour == 1){
+            
+            if(!is.null(mynodes)) {
+                if(sum(unlist(lapply(mynodes, interacts))) > 0){
+                    ints2 <- ints2[protein1 %in% mynodes & protein2 %in% mynodes]
+                }
             }
+            
+        } else if(input$interaction_behaviour == 2){
+            
+            if(any(mynodes %in% ints2$protein1 & mynodes %in% ints2$protein2)){
+                ints2 <- ints2[protein1 %in% mynodes | protein2 %in% mynodes]
+            }
+            
         }
         
+
         g <- igraph::graph_from_data_frame(ints2, directed = F)
         g <- igraph::simplify(g, remove.multiple = F, remove.loops = T)
         
@@ -824,7 +832,7 @@ server <- function(session, input, output) {
                    "3" = "layout_on_grid",
                    "4" = "layout_on_sphere",
                    "5" = "layout_randomly",
-                   "6" = "layout_with_dh")
+                   "6" = "layout_DH")
         }
         
         visNetwork::visIgraph(g) %>%

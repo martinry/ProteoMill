@@ -41,16 +41,18 @@ sidebar <- dashboardSidebar(
              background-color: #425664;
              color: #fff;"),
     sidebarMenu(
-        menuItem("Overview", tabName = "overview", icon = icon("align-left"), selected = T),
+#        menuItem("Overview", tabName = "overview", icon = icon("align-left"), selected = T),
         menuItem("Dataset options", icon = icon("table"),
                  menuSubItem("File input", tabName = "file-input", href = NULL, newtab = TRUE,
-                             icon = shiny::icon("angle-double-right"), selected = F),
+                             icon = shiny::icon("angle-double-right"), selected = T),
                  menuSubItem("ID Mapping", tabName = "id-mapping", href = NULL, newtab = TRUE,
                              icon = shiny::icon("angle-double-right"), selected = F),
                  menuSubItem("Filters", tabName = "filters", href = NULL, newtab = TRUE,
                              icon = shiny::icon("angle-double-right"), selected = F),
-                 menuSubItem("Data type", tabName = "datatype", href = NULL, newtab = TRUE,
-                             icon = shiny::icon("angle-double-right"), selected = F)
+                 startExpanded = T
+                 
+                 # menuSubItem("Data type", tabName = "datatype", href = NULL, newtab = TRUE,
+                 #             icon = shiny::icon("angle-double-right"), selected = F)
         ),
         menuItemOutput("qualityrm"),
         menuItemOutput("quality"),
@@ -99,20 +101,13 @@ sidebar <- dashboardSidebar(
 
 body <- dashboardBody(
     
-    # Import custom stylesheet and javascript
-    
-    #<link rel="stylesheet" href="~/martiniry/LiteMol/css/LiteMol-plugin.css" type="text/css" />
-    #<script src="~/martiniry/LiteMol/js/LiteMol-plugin.js"></script>
-    
+    # Import css and js
     tags$head(
         tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"),
         tags$link(rel="stylesheet", href="https://fonts.googleapis.com/css?family=Quicksand"),
         tags$link(rel="stylesheet", href="https://fonts.googleapis.com/css?family=Poiret+One"),
         tags$link(rel="stylesheet", href="https://fonts.googleapis.com/css?family=Open+Sans"),
-        tags$link(rel="stylesheet", href="css/LiteMol-plugin-light.css"),
-        tags$script(src = "js/LiteMol-plugin.js?lmversion=10"),
         tags$script(src = "https://cdnjs.cloudflare.com/ajax/libs/animejs/2.0.2/anime.min.js") # To do: keep local copy
-        
     ),
     
     # Clickable notifications
@@ -134,33 +129,33 @@ body <- dashboardBody(
     
     # Intro animation
     
-   #tags$div(class = "overlay",
-   #         tags$h1(class = "ml9",
-   #                 tags$span(class = "text-wrapper",
-   #                           tags$span(class = "letters", "Quantitative Omics Discovery Base"))),
-   #         tags$div(class = 'begindiv',
-   #                  actionLink('removeBanner', label = 'LAUNCH')
-   #         )
-   #),
+    #tags$div(class = "overlay",
+    #         tags$h1(class = "ml9",
+    #                 tags$span(class = "text-wrapper",
+    #                           tags$span(class = "letters", "Quantitative Omics Discovery Base"))),
+    #         tags$div(class = 'begindiv',
+    #                  actionLink('removeBanner', label = 'LAUNCH')
+    #         )
+    #),
     tags$script(src = "custom.js"),
     tags$script(src = "animate-notifs.js"),
 
     # Overview: settings: colors, font
     
     tabItems(
-        tabItem(tabName = "overview",
-                box(title = 'General settings', status = 'primary', solidHeader = F,
-                    hr(),
-                    radioButtons(inputId = 'colorScheme', label = 'Color palette',
-                                 choices = list("Normal", "Colorblind friendly"), inline = T),
-                    radioButtons(inputId = 'textSize', label = 'Text size',
-                                 choices = list("Small", "Medium", "Large"), selected = "Medium", inline = T),
-                    hr(),
-                    selectInput("species", "Select species",
-                                list("Species" = list("Human (Homo sapiens)")))
-                    
-                )
-        ),
+        # tabItem(tabName = "overview",
+        #         box(title = 'General settings', status = 'primary', solidHeader = F,
+        #             hr(),
+        #             radioButtons(inputId = 'colorScheme', label = 'Color palette',
+        #                          choices = list("Normal", "Colorblind friendly"), inline = T),
+        #             radioButtons(inputId = 'textSize', label = 'Text size',
+        #                          choices = list("Small", "Medium", "Large"), selected = "Medium", inline = T),
+        #             hr(),
+        #             selectInput("species", "Select species",
+        #                         list("Species" = list("Human (Homo sapiens)")))
+        #             
+        #         )
+        # ),
         
         # File input
         tabItem(tabName = "file-input",
@@ -411,15 +406,14 @@ body <- dashboardBody(
                 fluidRow(
                     column(width = 4,
                            box(
-                               title = "Title 1", width = NULL, solidHeader = TRUE, status = "primary",
+                               title = "Title 1", width = NULL, solidHeader = TRUE, status = "danger",
                                radioButtons("network_layout_options", label = "Layout options",
                                             choices = list(
                                                 "Nicely" = 1,
                                                 "Circle" = 2,
                                                 "Grid" = 3,
                                                 "Sphere" = 4,
-                                                "Randomly" = 5,
-                                                "DH" = 6
+                                                "Randomly" = 5
                                             ), inline = T),
                                numericInput(
                                    "pvaluecutoff",
@@ -431,7 +425,7 @@ body <- dashboardBody(
                                ), 
                                numericInput(
                                    "fccutoff",
-                                   label = "Minimum log2FC",
+                                   label = "Minimum abs. log2FC",
                                    min = 0,
                                    max = 100,
                                    value = 1,
@@ -454,8 +448,13 @@ body <- dashboardBody(
                     
                     column(width = 4,
                            box(
-                               title = "Title 3", width = NULL, solidHeader = TRUE, status = "warning",
-                               "Test3"
+                               title = "Title 3", width = NULL, solidHeader = F, status = "danger",
+                               
+                               radioButtons("interaction_behaviour", label = "Selection subset",
+                                            choices = list("Strict" = 1,
+                                                           "Extended" = 2,
+                                                           "Full range" = 3),
+                                            selected = 1)
                            ),
                            box(
                                title = "Title 5", width = NULL, background = "light-blue",
@@ -465,7 +464,7 @@ body <- dashboardBody(
                     
                     column(width = 4,
                            box(
-                               title = "Title 2", width = NULL, solidHeader = TRUE,
+                               title = "Title 2", width = NULL,
                                "Hello"
                            ),
                            box(
