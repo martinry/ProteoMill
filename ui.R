@@ -439,10 +439,6 @@ body <- dashboardBody(
                                    value = 1,
                                    step = .1
                                )
-                           ),
-                           box(
-                               width = NULL, background = "black",
-                               "A box with a solid black background"
                            )
                     ),
                     
@@ -455,10 +451,6 @@ body <- dashboardBody(
                                                            "Extended" = 2,
                                                            "Full range" = 3),
                                             selected = 1)
-                           ),
-                           box(
-                               title = "Title 5", width = NULL, background = "light-blue",
-                               "A box with a solid light-blue background"
                            )
                     ),
                     
@@ -466,10 +458,6 @@ body <- dashboardBody(
                            box(
                                title = "Title 2", width = NULL,
                                "Hello"
-                           ),
-                           box(
-                               title = "Title 6", width = NULL, background = "maroon",
-                               "A box with a solid maroon background"
                            )
                     )
                 )
