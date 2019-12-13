@@ -810,7 +810,7 @@ server <- function(session, input, output) {
         nodes <- data.table(id = unique(c(ints2$protein1, ints2$protein2)))
         nodes$label <- nodes$id
         
-        
+
         
         edges <-
             data.table(
@@ -819,6 +819,19 @@ server <- function(session, input, output) {
                 label = ints2$mode
                 
             )
+        
+        #edges$color <- palette(rainbow(7))[edges$value]
+        
+        g <- igraph::graph_from_data_frame(edges, directed = T, vertices = nodes)
+        
+        
+        
+        #g <- igraph::graph_from_data_frame(ints2, directed = T)
+        r <- v$res[V(g)$name, on = "Gene", ]
+        
+        g <- set.vertex.attribute(g, name = "color",value = r$col)
+        g <- set.vertex.attribute(g, name = "group",value = r$TopReactomeName)
+        
 
         # g <- igraph::graph_from_data_frame(ints2, directed = F)
         # g <- igraph::simplify(g, remove.multiple = F, remove.loops = T)
@@ -838,8 +851,16 @@ server <- function(session, input, output) {
                    "6" = "layout_DH")
         }
         
-        visNetwork(nodes, edges) %>% 
-            visEdges(arrows = list(to = list(enabled = TRUE)))
+        visNetwork::visIgraph(g) %>%
+            visIgraphLayout(layout = layout(input$network_layout_options), randomSeed = 1) %>%
+            visEdges(arrows = list(to = list(enabled = TRUE))) %>%
+            visOptions(selectedBy = list(variable = "group")) %>%
+            visPhysics(stabilization = T)
+        
+        # visNetwork(nodes, edges) %>% 
+        #     visEdges(arrows = list(to = list(enabled = TRUE))) %>%
+        #     #visIgraphLayout(layout = layout("layout_nicely")) %>%
+        #     visPhysics(enabled = FALSE)
         
         # visNetwork::visIgraph(g) %>%
         #     visIgraphLayout(layout = layout(input$network_layout_options), randomSeed = 1) %>%
