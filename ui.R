@@ -358,38 +358,6 @@ body <- dashboardBody(
                        tabPanel("Volcano plot", plotly::plotlyOutput("volcano_plot", height = 750)),
                        tabPanel("Sankey diagram", networkD3::sankeyNetworkOutput("sankey", height = 750)))
         ),
-        
-        # tabItem(tabName = "network",
-        #         box(title = "Network settings", width = 3,
-        #             radioButtons("pathwaylevel", label = "Pathway annotation level",
-        #                          choices = list("Highest" = 1, "Lowest" = 2), inline = T),
-        #             helpText("Differential expression"),
-        #             hr(),
-        #             radioButtons("direction", label = "Regulation", choices = list("Up-regulation" = 1, "Down-regulation" = 2), inline = T),
-        #             numericInput(
-        #                 "pvaluecutoff",
-        #                 label = "Maximum adj. Pvalue",
-        #                 min = 0,
-        #                 max = 1,
-        #                 value = 0.0001,
-        #                 step = 0.0001
-        #             ), 
-        #             numericInput(
-        #                 "fccutoff",
-        #                 label = "Minimum log2FC",
-        #                 min = 0,
-        #                 max = 100,
-        #                 value = 1,
-        #                 step = 0.1
-        #             ), 
-        #             helpText("Interactions"),
-        #             hr(),
-        #             sliderInput("interactioncutoff", label = "Minimum interaction score", min = 0, max = 9.9, value = 3, step = .1),
-        #             actionButton("generatenetwork", label = "Generate network")),
-        #         # box(title = "Structure",
-        #         #     tags$div(id = "litemol", style = 'width: 640px; height: 480px; margin-top: 200px; position: relative')),
-        #         box(title = "Interactions", width = 9,
-        #             networkD3::forceNetworkOutput("net", width = "100%", height = "750px"))),
         tabItem(tabName = "interactions",
                 fluidRow(
                     box(
@@ -420,7 +388,7 @@ body <- dashboardBody(
                                    label = "Maximum adj. Pvalue",
                                    min = 0,
                                    max = 1,
-                                   value = 0.0001,
+                                   value = 0.01,
                                    step = 0.0001
                                ), 
                                numericInput(
@@ -433,10 +401,10 @@ body <- dashboardBody(
                                ),
                                numericInput(
                                    "interactioncutoff",
-                                   label = "Interaction cutoff",
+                                   label = "Interaction confidence",
                                    min = 0,
                                    max = 10,
-                                   value = 1,
+                                   value = 7,
                                    step = .1
                                )
                            )

@@ -7,6 +7,79 @@ library(visNetwork)
 # tissue_names <- colnames(tissues)
 
 
+# Interaction data ----
+
+if(!exists("interactions")){
+    
+    interactions <- data.table::fread("C://Users/martinry/interactions6.txt")
+    assign("interactions", interactions, envir = .GlobalEnv)
+}
+
+# if(!exists("uniprot_to_string_src")){
+#     
+#     uniprot_to_string_src <- knee::collect('https://string-db.org/mapping_files/uniprot/human.uniprot_2_string.2018.tsv.gz')
+#     uniprot_to_string_src <- data.table::fread(uniprot_to_string_src)
+#     
+#     uniprot_to_string_src$up <- gsub("\\|.*", "", uniprot_to_string_src$V2)
+#     
+#     uniprot_to_string_src <- uniprot_to_string_src[, c(3,6)]
+#     
+#     assign("uniprot_to_string_src", uniprot_to_string_src, envir = .GlobalEnv)
+# }
+# 
+# if(!exists("interactions")){
+#     if(!file.exists(file.path(system.file(package = 'knee'), "data", "9606.protein.links.v11.0.txt"))){
+#         interactions <- knee:::get_interactions()
+#     } else {
+#         
+#         interactions <- data.table::fread(file.path(system.file(package = 'knee'), "data", "9606.protein.links.v11.0.txt"),
+#                                           sep = ' ',
+#                                           header = T)
+#     }
+#     assign("interactions", interactions, envir = .GlobalEnv)
+    
+    # 
+    # setkey(interactions, protein1)
+    # setkey(uniprot_to_string_src, V3)
+    # 
+    # interactions2 <- interactions[uniprot_to_string_src, nomatch = 0]
+    # 
+    # setkey(interactions2, protein2)
+    # 
+    # interactions3 <- interactions2[uniprot_to_string_src, nomatch = 0]
+    # 
+    # keycols = c("protein1","protein2")
+    # setkeyv(interactions3, keycols)
+    # 
+    # 
+    # keycols = c("item_id_a","item_id_b")
+    # setkeyv(actions, keycols)
+    # 
+    # interactions4 <- interactions3[actions, nomatch = 0]
+    # 
+    # fwrite(interactions4)
+    
+    # interactions5 <- interactions4[, c(4:10)]
+    # 
+    # colnames(interactions5) <- c("protein1", "protein2", "mode", "action", "is_directional", "a_is_acting", "score")
+    # 
+    # interactions5$score <- interactions5$score / 100
+    # 
+    # fwrite(interactions5, "interactions5.txt")
+    
+#}
+
+# if(!exists("actions")){
+#     if(!file.exists(file.path(system.file(package = 'knee'), "data", "9606.protein.actions.v11.0.txt"))){
+#         actions <- knee::collect('https://stringdb-static.org/download/protein.actions.v11.0/9606.protein.actions.v11.0.txt.gz')
+#     } else {
+#         
+#         actions <- data.table::fread(file.path(system.file(package = 'knee'), "data", "9606.protein.actions.v11.0.txt"),
+#                                      header = T)
+#     }
+#     assign("actions", actions, envir = .GlobalEnv)
+# }
+
 
 # Read input file ----
 

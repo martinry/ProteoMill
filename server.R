@@ -5,7 +5,7 @@ require(ggplot2)
 require(ggrepel)
 require(RColorBrewer)
 require(dplyr)
-require(fitdistrplus)
+#require(fitdistrplus)
 library(plotly)
 library(data.table)
 require(AnnotationDbi)
@@ -751,48 +751,39 @@ server <- function(session, input, output) {
     output$xxxx <- renderVisNetwork({
 
         proteins <- contrast[adj.P.Val < input$pvaluecutoff & abs(logFC) >= input$fccutoff]$rn
-        
-        if(!exists("uniprot_to_string")){
-            
-         uniprot_to_string <- knee::collect('https://string-db.org/mapping_files/uniprot/human.uniprot_2_string.2018.tsv.gz')
-         uniprot_to_string <- data.table::fread(uniprot_to_string)
-          
-          uniprot_to_string$up <- gsub("\\|.*", "", uniprot_to_string$V2)
-          uniprot_to_string <- uniprot_to_string[up %in% proteins, c(3, 4, 6)]
-          assign("uniprot_to_string", uniprot_to_string, envir = .GlobalEnv)
-          
-        }
 
-        if(!exists("interactions")){
-          if(!file.exists(file.path(system.file(package = 'knee'), "data", "9606.protein.links.v11.0.txt"))){
-            interactions <- knee:::get_interactions()
-          } else {
-            url <- "https://stringdb-static.org/download/protein.links.v11.0/9606.protein.links.v11.0.txt.gz"
-            
-            interactions <- data.table::fread(file.path(system.file(package = 'knee'), "data", "9606.protein.links.v11.0.txt"),
-                                              sep = ' ',
-                                              header = T)
-          }
-            assign("interactions", interactions, envir = .GlobalEnv)
-        }
+        # uniprot_to_string <- uniprot_to_string_src[up %in% proteins, c(3, 4, 6)]
+        # 
+        # 
+        # if(!exists("g")){
+        #     ints <- interactions[protein1 %in% uniprot_to_string$V3,]
+        #     
+        #     setkey(uniprot_to_string, V3)
+        #     setkey(ints, protein2)
+        #     ints <- ints[protein2 %in% uniprot_to_string$V3,]
+        #     ints$combined_score <- ints$combined_score / 100
+        #     
+        #     setkey(uniprot_to_string, V3)
+        #     setkey(ints, protein1)
+        #     ints <- ints[uniprot_to_string, nomatch = 0]
+        #     setkey(ints, protein2)
+        #     ints <- ints[uniprot_to_string, nomatch = 0]
+        #     ints <- ints[,c(5,7, 3)]
+        #     colnames(ints) <- c("protein1", "protein2", "combined_score")
+        # }
         
-        if(!exists("g")){
-            ints <- interactions[protein1 %in% uniprot_to_string$V3,]
-            ints <- ints[protein2 %in% uniprot_to_string$V3,]
-            ints$combined_score <- ints$combined_score / 100
-            
-            setkey(uniprot_to_string, V3)
-            setkey(ints, protein1)
-            ints <- ints[uniprot_to_string, nomatch = 0]
-            setkey(ints, protein2)
-            ints <- ints[uniprot_to_string, nomatch = 0]
-            ints <- ints[,c(5,7, 3)]
-            colnames(ints) <- c("protein1", "protein2", "combined_score")
-        }
+
         
         mynodes <- unlist(event_data("plotly_selected")$key)
         
-        ints2 <- ints[combined_score > input$interactioncutoff]
+       # ints2 <- ints[combined_score > input$interactioncutoff]
+        
+        if(!exists("g")){
+            ints2 <- interactions[(protein1 %in% proteins) & (protein2 %in% proteins)]
+            ints2 <- ints2[score > input$interactioncutoff]
+        }
+        
+        
         
         # TBA: all interactions option
         
@@ -816,14 +807,26 @@ server <- function(session, input, output) {
             
         }
         
+        nodes <- data.table(id = unique(c(ints2$protein1, ints2$protein2)))
+        nodes$label <- nodes$id
+        
+        
+        
+        edges <-
+            data.table(
+                from = ints2$protein1,
+                to = ints2$protein2,
+                label = ints2$mode
+                
+            )
 
-        g <- igraph::graph_from_data_frame(ints2, directed = F)
-        g <- igraph::simplify(g, remove.multiple = F, remove.loops = T)
-        
-        r <- v$res[V(g)$name, on = "Gene", ]
-        
-        g <- set.vertex.attribute(g, name = "color",value = r$col)
-        g <- set.vertex.attribute(g, name = "group",value = r$TopReactomeName)
+        # g <- igraph::graph_from_data_frame(ints2, directed = F)
+        # g <- igraph::simplify(g, remove.multiple = F, remove.loops = T)
+        # 
+        # r <- v$res[V(g)$name, on = "Gene", ]
+        # 
+        # g <- set.vertex.attribute(g, name = "color",value = r$col)
+        # g <- set.vertex.attribute(g, name = "group",value = r$TopReactomeName)
         
         layout <- function(type) {
             switch(type,
@@ -835,9 +838,12 @@ server <- function(session, input, output) {
                    "6" = "layout_DH")
         }
         
-        visNetwork::visIgraph(g) %>%
-            visIgraphLayout(layout = layout(input$network_layout_options), randomSeed = 1) %>%
-            visOptions(selectedBy = list(variable = "group"))
+        visNetwork(nodes, edges) %>% 
+            visEdges(arrows = list(to = list(enabled = TRUE)))
+        
+        # visNetwork::visIgraph(g) %>%
+        #     visIgraphLayout(layout = layout(input$network_layout_options), randomSeed = 1) %>%
+        #     visOptions(selectedBy = list(variable = "group"))
         
         })
         
