@@ -374,7 +374,7 @@ body <- dashboardBody(
                 fluidRow(
                     column(width = 4,
                            box(
-                               title = "Title 1", width = NULL, solidHeader = TRUE, status = "danger",
+                               title = "Network settings", width = NULL, solidHeader = TRUE, status = "danger",
                                radioButtons("network_layout_options", label = "Layout options",
                                             choices = list(
                                                 "Nicely" = 1,
@@ -412,20 +412,13 @@ body <- dashboardBody(
                     
                     column(width = 4,
                            box(
-                               title = "Title 3", width = NULL, solidHeader = F, status = "danger",
+                               title = "Selection criteria", width = NULL, solidHeader = TRUE, status = "danger",
                                
                                radioButtons("interaction_behaviour", label = "Selection subset",
                                             choices = list("Strict" = 1,
                                                            "Extended" = 2,
                                                            "Full range" = 3),
                                             selected = 1)
-                           )
-                    ),
-                    
-                    column(width = 4,
-                           box(
-                               title = "Title 2", width = NULL,
-                               "Hello"
                            )
                     )
                 )

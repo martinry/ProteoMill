@@ -414,9 +414,9 @@ server <- function(session, input, output) {
         })
         output$network <- renderMenu({
             menuItem("Network analysis", icon = icon("vector-square"),
-                     menuSubItem("Interactions", tabName = "network", href = NULL, newtab = TRUE,
-                                 icon = shiny::icon("angle-double-right"), selected = F),
-                     menuSubItem("Interactions2", tabName = "interactions", href = NULL, newtab = TRUE,
+                     # menuSubItem("Interactions", tabName = "network", href = NULL, newtab = TRUE,
+                     #             icon = shiny::icon("angle-double-right"), selected = F),
+                     menuSubItem("Interactions", tabName = "interactions", href = NULL, newtab = TRUE,
                                  icon = shiny::icon("angle-double-right"), selected = F))
         })
         
@@ -517,7 +517,22 @@ server <- function(session, input, output) {
     # Volcano plot
     output$volcano_plot <- renderPlotly(
       {
+        
+        
         res <- knee::enrichment_results(UPREGULATED_pathways, DOWNREGULATED_pathways)
+        
+        tba <- contrast[!(rn %in% res$Gene), c("rn", "logFC", "CI.L", "CI.R", "P.Value")]
+        colnames(tba) <- c("Gene", "logFC", "CI.L", "CI.R", "P.Value")
+        
+        tba <- tba[!is.na(logFC)]
+        
+        tba[, c("ReactomeID", "Pathway_name", "TopReactomeName", "P.Adj")] <- NA
+        
+#        tba[, "TopReactomeName"] <- "[No significant over-representation]"
+        
+        setcolorder(tba, colnames(res))
+        
+        res <- rbindlist(list(res, tba))
         
         v <- knee::volcano(res)
         
@@ -815,14 +830,14 @@ server <- function(session, input, output) {
         edges <-
             data.table(
                 from = ints2$protein1,
-                to = ints2$protein2,
-                label = ints2$mode
+                to = ints2$protein2
+                #label = ints2$mode
                 
             )
         
         #edges$color <- palette(rainbow(7))[edges$value]
         
-        g <- igraph::graph_from_data_frame(edges, directed = T, vertices = nodes)
+        g <- igraph::graph_from_data_frame(edges, directed = F, vertices = nodes)
         
         
         
@@ -851,20 +866,20 @@ server <- function(session, input, output) {
                    "6" = "layout_DH")
         }
         
-        visNetwork::visIgraph(g) %>%
-            visIgraphLayout(layout = layout(input$network_layout_options), randomSeed = 1) %>%
-            visEdges(arrows = list(to = list(enabled = TRUE))) %>%
-            visOptions(selectedBy = list(variable = "group")) %>%
-            visPhysics(stabilization = T)
-        
-        # visNetwork(nodes, edges) %>% 
-        #     visEdges(arrows = list(to = list(enabled = TRUE))) %>%
-        #     #visIgraphLayout(layout = layout("layout_nicely")) %>%
-        #     visPhysics(enabled = FALSE)
-        
         # visNetwork::visIgraph(g) %>%
         #     visIgraphLayout(layout = layout(input$network_layout_options), randomSeed = 1) %>%
-        #     visOptions(selectedBy = list(variable = "group"))
+        #     visEdges(arrows = list(to = list(enabled = TRUE))) %>%
+        #     visOptions(selectedBy = list(variable = "group")) %>%
+        #     visPhysics(stabilization = T)
+        
+        #  visNetwork(nodes, edges) %>% 
+        #     # visEdges(arrows = list(to = list(enabled = TRUE))) %>%
+        #      #visIgraphLayout(layout = layout("layout_nicely")) %>%
+        #      visPhysics(enabled = FALSE)
+        # # 
+        visNetwork::visIgraph(g) %>%
+            visIgraphLayout(layout = layout(input$network_layout_options), randomSeed = 1) %>%
+            visOptions(selectedBy = list(variable = "group"))
         
         })
         
