@@ -150,6 +150,8 @@ server <- function(session, input, output) {
             menuItem("Quality control", icon = icon("check-circle"), href = NULL,
                      menuSubItem("PCA", tabName = "PCA", href = NULL, newtab = TRUE,
                                  icon = shiny::icon("angle-double-right"), selected = F),
+                     menuSubItem("UMAP", tabName = "UMAP", href = NULL, newtab = TRUE,
+                                 icon = shiny::icon("angle-double-right"), selected = F),
                      menuSubItem("Heatmap", tabName = "samplecorr", href = NULL, newtab = TRUE,
                                  icon = shiny::icon("angle-double-right"), selected = F)
             )
@@ -218,6 +220,20 @@ server <- function(session, input, output) {
         
         
         updateNotifications("Annotations successfully uploaded.","check-circle", "success")
+        
+    })
+    
+    # Demo data file input
+    
+    observeEvent(input$useDemoData, {
+        
+        read_file("C://Users/martinry/qodb-shiny/data/donors.uniprot.csv", separator = ";", "main")
+        
+        read_file("C://Users/martinry/qodb-shiny/data/donors.uniprot.annotation.tsv", separator = "\t", "anno")
+        
+        sample_data(data_wide)
+
+        updateNotifications("Demo data uploaded.","check-circle", "success")
         
     })
     
@@ -373,21 +389,63 @@ server <- function(session, input, output) {
         plotPCA(0,0, '3d')
     })
     
+    # Render UMAP
+    
+    output$UMAPplot <- renderPlot({
+        plotPCA(0,0, 'UMAP')
+    })
+    
     # Render heatmap
     
-    output$samplecorrheatmap <- renderPlot({
+    observeEvent(input$generateheatmap, {
+        
+
+        
         cor_mat_raw_logged <- log2(data_origin)
         cor_mat_raw_logged[is.na(cor_mat_raw_logged)] <- 0
         cor_mat_raw_logged <- cor(cor_mat_raw_logged)
         
         #annotation_col = data.frame(tmp)
-        pheatmap::pheatmap(
-            #   annotation = annotation_col,
-            cor_mat_raw_logged,
-            legend_breaks = c(min(cor_mat_raw_logged), 1),
-            legend_labels = c(0, 1)
-        )
+        
+        if(exists("data_annotation")){
+            if(rownames(data_annotation == colnames(data_origin))){
+                hmap <- pheatmap::pheatmap(
+                    annotation_col = data_annotation,
+                    cor_mat_raw_logged,
+                    legend_breaks = c(min(cor_mat_raw_logged), 1),
+                    legend_labels = c(0, 1)
+                )
+            }
+        } else {
+            hmap <- pheatmap::pheatmap(
+                cor_mat_raw_logged,
+                legend_breaks = c(min(cor_mat_raw_logged), 1),
+                legend_labels = c(0, 1)
+            )
+        }
+        
+        
+        output$samplecorrheatmap = renderPlot({
+            hmap
+            
+        })
+        
     })
+
+    
+    # output$samplecorrheatmap <- renderPlot({
+    #     cor_mat_raw_logged <- log2(data_origin)
+    #     cor_mat_raw_logged[is.na(cor_mat_raw_logged)] <- 0
+    #     cor_mat_raw_logged <- cor(cor_mat_raw_logged)
+    #     
+    #     #annotation_col = data.frame(tmp)
+    #     pheatmap::pheatmap(
+    #         #   annotation = annotation_col,
+    #         cor_mat_raw_logged,
+    #         legend_breaks = c(min(cor_mat_raw_logged), 1),
+    #         legend_labels = c(0, 1)
+    #     )
+    # })
     
     # Differential expression: set contrasts ----
     observeEvent(input$contrast1, {
@@ -406,8 +464,8 @@ server <- function(session, input, output) {
     observeEvent(input$setContrast, {
         output$enrichment <- renderMenu({
             menuItem("Enrichment analysis", icon = icon("flask"), href = NULL,
-                     menuSubItem("Background data", tabName = "bgdata", href = NULL, newtab = TRUE,
-                                 icon = shiny::icon("angle-double-right"), selected = F),
+                     # menuSubItem("Background data", tabName = "bgdata", href = NULL, newtab = TRUE,
+                     #             icon = shiny::icon("angle-double-right"), selected = F),
                      menuSubItem("Pathway enrichment", tabName = "pathwayenrichment", href = NULL, newtab = TRUE,
                                  icon = shiny::icon("angle-double-right"), selected = F)
             )
@@ -417,6 +475,8 @@ server <- function(session, input, output) {
                      # menuSubItem("Interactions", tabName = "network", href = NULL, newtab = TRUE,
                      #             icon = shiny::icon("angle-double-right"), selected = F),
                      menuSubItem("Interactions", tabName = "interactions", href = NULL, newtab = TRUE,
+                                 icon = shiny::icon("angle-double-right"), selected = F),
+                     menuSubItem("Predictive analysis", tabName = "predictive", href = NULL, newtab = TRUE,
                                  icon = shiny::icon("angle-double-right"), selected = F))
         })
         
@@ -431,6 +491,7 @@ server <- function(session, input, output) {
         removeUI(selector = "#enrichrm")
         removeUI(selector = "#networkrm")
         removeUI(selector = "#interactionsrm")
+        removeUI(selector = "#predictiverm")
         updateNotifications("Model fitted successfully.","check-circle", "success")
     })
     
@@ -478,26 +539,35 @@ server <- function(session, input, output) {
     })
     
     observeEvent(input$generate_pathways, {
-      
-      UPREGULATED_genes <- contrast[logFC >= input$min_fc, rn]
-      DOWNREGULATED_genes <- contrast[logFC < (input$min_fc * -1), rn]
-      
-      UPREGULATED_pathways <- knee::ora(UPREGULATED_genes)@output
-      assign("UPREGULATED_pathways", UPREGULATED_pathways, envir = .GlobalEnv)
-      
-      DOWNREGULATED_pathways<- knee::ora(DOWNREGULATED_genes)@output
-      assign("DOWNREGULATED_pathways", DOWNREGULATED_pathways, envir = .GlobalEnv)
-
-      output$upregulated_pathways_table <- DT::renderDT(
         
-        DT::datatable(UPREGULATED_pathways[, -c("genes", "background")],
-                      options = list(autoWidth = TRUE,
-                                     scrollX=TRUE,
-                                     columnDefs = list(
-                                       list(width = '100px', targets = c(1, 3)),
-                                       list(width = '60px', targets = c(6, 7))
-                                     ))),
-        server = F
+        
+        if(input$abstractionlevel == 1) {
+            abstraction = "Global"
+        } else if(input$abstractionlevel == 2) {
+            abstraction = "Lowest"
+        }
+        
+        assign("abst", abstraction, envir = .GlobalEnv)
+        
+        UPREGULATED_genes <- contrast[logFC >= input$min_fc, rn]
+        DOWNREGULATED_genes <- contrast[logFC < (input$min_fc * -1), rn]
+        
+        UPREGULATED_pathways <- knee::ora(UPREGULATED_genes)@output
+        assign("UPREGULATED_pathways", UPREGULATED_pathways, envir = .GlobalEnv)
+        
+        DOWNREGULATED_pathways<- knee::ora(DOWNREGULATED_genes)@output
+        assign("DOWNREGULATED_pathways", DOWNREGULATED_pathways, envir = .GlobalEnv)
+    
+        output$upregulated_pathways_table <- DT::renderDT(
+          
+          DT::datatable(UPREGULATED_pathways[, -c("genes", "background")],
+                        options = list(autoWidth = TRUE,
+                                       scrollX=TRUE,
+                                       columnDefs = list(
+                                         list(width = '100px', targets = c(1, 3)),
+                                         list(width = '60px', targets = c(6, 7))
+                                       ))),
+          server = F
         
       )
 
@@ -526,15 +596,18 @@ server <- function(session, input, output) {
         
         tba <- tba[!is.na(logFC)]
         
-        tba[, c("ReactomeID", "Pathway_name", "TopReactomeName", "P.Adj")] <- NA
+        tba[, c("ReactomeID", "P.Adj")] <- NA
         
-#        tba[, "TopReactomeName"] <- "[No significant over-representation]"
+        tba[, "TopReactomeName"] <- "[No significant over-representation]"
+        tba[, "Pathway_name"] <- "[No significant over-representation]"
         
         setcolorder(tba, colnames(res))
         
         res <- rbindlist(list(res, tba))
         
-        v <- knee::volcano(res)
+        res$Pathway_name <- stringr::str_wrap(res$Pathway_name, 50)
+        
+        v <- knee::volcano(res, abstraction = abst)
         
         assign("v", v, envir = .GlobalEnv)
         
@@ -759,7 +832,7 @@ server <- function(session, input, output) {
     # Volcano plot
     output$volcano_plot2 <- renderPlotly(
       {
-        plotly::ggplotly(v$volcano_plot, width = 650, height = 400) %>% layout(dragmode = "select")
+        plotly::ggplotly(v$volcano_plot, width = 700, height = 400) %>% layout(dragmode = "select")
     
       })
     

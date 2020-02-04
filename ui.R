@@ -63,7 +63,9 @@ sidebar <- dashboardSidebar(
         menuItemOutput('networkrm'),
         menuItemOutput('network'),
         menuItemOutput('interactionsrm'),
-        menuItemOutput('interactions')
+        menuItemOutput('interactions'),
+        menuItemOutput('predictiverm'),
+        menuItemOutput('predictive')
         
         
     ),
@@ -92,7 +94,8 @@ sidebar <- dashboardSidebar(
     sidebarMenu(
         menuItem("News", tabName = "", icon = icon("book")),
         menuItem("Functions", tabName = "", icon = icon("book")),
-        menuItem("About", tabName = "", icon = icon("book"))
+        menuItem("About", tabName = "", icon = icon("book")),
+        menuItem("Settings", tabName = "settings", icon = icon("sliders-h"))
     )
 )
 
@@ -140,54 +143,59 @@ body <- dashboardBody(
     tags$script(src = "custom.js"),
     tags$script(src = "animate-notifs.js"),
 
-    # Overview: settings: colors, font
-    
     tabItems(
-        # tabItem(tabName = "overview",
-        #         box(title = 'General settings', status = 'primary', solidHeader = F,
-        #             hr(),
-        #             radioButtons(inputId = 'colorScheme', label = 'Color palette',
-        #                          choices = list("Normal", "Colorblind friendly"), inline = T),
-        #             radioButtons(inputId = 'textSize', label = 'Text size',
-        #                          choices = list("Small", "Medium", "Large"), selected = "Medium", inline = T),
-        #             hr(),
-        #             selectInput("species", "Select species",
-        #                         list("Species" = list("Human (Homo sapiens)")))
-        #             
-        #         )
-        # ),
-        
         # File input
         tabItem(tabName = "file-input",
-                tabBox(
-                    tabPanel(
-                        title = "Dataset",
-                        footer = helpText('Accepted filetypes are csv, tsv and txt.'),
-                        radioButtons("sep", label = 'Separator',
-                                     choices = list("Comma" = 1, "Semicolon" = 2, "Tab" =3),
-                                     selected = 1,
-                                     inline = T),
-                        fileInput("infile", "Select a file",
-                                  accept = c(
-                                      "text/csv",
-                                      "text/comma-separated-values,text/plain",
-                                      ".csv")),
-                        helpText('Accepted filetypes are csv, tsv and txt.')
+                fluidRow(
+                    tabBox(width = 4,
+                        tabPanel(
+                            title = "Dataset",
+                            footer = helpText('Accepted filetypes are csv, tsv and txt.'),
+                            radioButtons("sep", label = 'Separator',
+                                         choices = list("Comma" = 1, "Semicolon" = 2, "Tab" =3),
+                                         selected = 1,
+                                         inline = T),
+                            fileInput("infile", "Select a file",
+                                      accept = c(
+                                          "text/csv",
+                                          "text/comma-separated-values,text/plain",
+                                          ".csv")),
+                            helpText('Accepted filetypes are csv, tsv and txt.')
                         ),
-                    tabPanel(
-                        title = 'Annotation data',
-                        radioButtons("anno_sep", label = 'Separator',
-                                     choices = list("Comma" = 1, "Semicolon" = 2, "Tab" =3),
-                                     selected = 1,
-                                     inline = T),
-                        fileInput("anno_infile", "Select a file",
-                                  accept = c(
-                                      "text/csv",
-                                      "text/comma-separated-values,text/plain",
-                                      ".csv")),
-                        helpText('Accepted filetypes are csv, tsv and txt.')
+                        tabPanel(
+                            title = 'Annotation data',
+                            radioButtons("anno_sep", label = 'Separator',
+                                         choices = list("Comma" = 1, "Semicolon" = 2, "Tab" =3),
+                                         selected = 1,
+                                         inline = T),
+                            fileInput("anno_infile", "Select a file",
+                                      accept = c(
+                                          "text/csv",
+                                          "text/comma-separated-values,text/plain",
+                                          ".csv")),
+                            helpText('Accepted filetypes are csv, tsv and txt.')
+                        ),
+                        tabPanel(
+                            title = 'Demo data',
+                            selectInput("selectDemoData", label = "Select a dataset",
+                                        list(`Proteomics` = 
+                                                 list("Sample dataset 1" = 1,
+                                                      "Sample dataset 2" = 2,
+                                                      "Sample dataset 3" = 3,
+                                                      "Sample dataset 4" = 4),
+
+                                             `Transcriptomics` = 
+                                                 list("Sample dataset 5" = 5,
+                                                      "Sample dataset 6" = 6,
+                                                      "Sample dataset 7" = 7,
+                                                      "Sample dataset 8" = 8))),
+                            actionButton("useDemoData", label = "Use demo data")
+                            #DT::dataTableOutput("contrasttable")
                         )
-                    )),
+                        
+                    )
+                )
+),
         
         # Filters: NA cutoff
         
@@ -288,9 +296,23 @@ body <- dashboardBody(
                 tabBox(
                     tabPanel("PCA 2D", plotOutput("pca2dplot", width = "600px", height = "520px")),
                     tabPanel("PCA 3D", plotly::plotlyOutput("pca3dplot")))),
+        tabItem(tabName = "UMAP",
+                fluidRow(
+                    box(title = "UMAP",
+                        plotOutput("UMAPplot"))
+                )),
         tabItem(tabName = "samplecorr",
-                box(title = "Sample correlation",
-                    plotOutput("samplecorrheatmap", width = "700px", height = "600px"))
+                fluidRow(
+                        box(title = "Heatmap settings",
+                            width = 3,
+                            status = "warning",
+                            actionButton("generateheatmap","Generate Heatmap")
+                        ),
+                        
+                        box(title = "Sample correlation", width = 6,
+                            plotOutput("samplecorrheatmap", width = "700px", height = "600px"))
+                    )
+
         ),
         
         # Differential expression analysis : ANOVA, Contrasts
@@ -423,6 +445,13 @@ body <- dashboardBody(
                     )
                 )
         ),
+        tabItem(tabName = "predictive",
+                fluidRow(
+                    box(title = "Predictive network analysis",
+                        width = 6
+                    )
+                )
+            ),
         tabItem(tabName = "structures",
                 # box(title = "Search protein", width = 2,
                 #     textInput("proteinsearch", label = "Search"),
@@ -433,6 +462,38 @@ body <- dashboardBody(
                     actionButton("searchclick", "Find structure"),
                     tags$div(id = "litemol", style = 'width: 640px; margin-top: 10px; height: 480px; position: relative'),
                     tags$script(HTML("var plugin = LiteMol.Plugin.create({ target: '#litemol', layoutState: { hideControls: true } });")))
+                ),
+        tabItem(tabName = "settings",
+                fluidRow(
+                    box(title = "Settings", width = 3,
+                        h5("Display options"),
+                        hr(),
+                        radioButtons(inputId = 'colorScheme', label = 'Color palette',
+                                     choices = list("Normal", "Colorblind friendly"), inline = T),
+                        radioButtons(inputId = 'textSize', label = 'Text size',
+                                     choices = list("Small", "Medium", "Large"), selected = "Medium", inline = T),
+                        h5("Target organism"),
+                        hr(),
+                        selectInput("species", "Select species",
+                                    list("Species" = list("Human (Homo sapiens)"))),
+                        h5("Identifier type"),
+                        hr(),
+                        selectInput("displayIdentifier",
+                                    label = "Display ID labels as",
+                                    choices = list("UniProtKB" = 1,
+                                                   "Entrez" = 2,
+                                                   "Ensembl gene ID" = 3,
+                                                   "Gene symbol" = 4),
+                                    selected = 1),
+                        h5("Differential expression"),
+                        hr(),
+                        selectInput("setDEengine",
+                                    label = "Set engine",
+                                    choices = list("Limma version 3.39.1" = 1,
+                                                   "DESeq2 version 3.10" = 2),
+                                    selected = 1)
+                        )
+                    )
                 )
     )
     )

@@ -106,7 +106,7 @@ read_file <- function(infile, separator, type) {
         assign('data_wide', data_wide, envir = .GlobalEnv)
         assign('data_origin', data_wide, envir = .GlobalEnv)
     } else if(type == "anno") {
-        data_annotation <- read.csv(infile, sep = separator, dec = '.')
+        data_annotation <- read.csv(infile, sep = separator, dec = '.', row.names = 1)
         assign('data_annotation', data_annotation, envir = .GlobalEnv)
     }
     
@@ -215,9 +215,25 @@ plotPCA <- function(contribs, ellipse, type) {
                                         zaxis = list(title = 'PC3')))
         
         return (pcaplot)
+    } else if (type == 'UMAP') {
+        
+        um <- umap::umap(pca.data, n_neighbors = ncol(data_origin))
+        
+        df <- data.frame(x = um$layout[,1],
+                         y = um$layout[,2],
+                         Sample <- condition)
+        
+        ggplot(df, aes(x, y, colour = condition, shape = condition)) +
+            geom_point(size = 4)
+        
+
+        
     } else { return (FALSE) }
     
 }
+
+
+
 
 # Differential expression ----
 diff_exp <- function(coeff, pairing) {
