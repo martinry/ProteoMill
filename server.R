@@ -1,6 +1,5 @@
 library(limma)
 library(Biobase)
-library(qob)
 require(ggplot2)
 require(ggrepel)
 require(RColorBrewer)
@@ -9,11 +8,28 @@ require(dplyr)
 library(plotly)
 library(data.table)
 require(AnnotationDbi)
+library(EnsDb.Hsapiens.v86)
 
 # Passing arguments from R Shiny to external jQuery scripts unfortunately requires som workarounds
 # This function is actually necessary...
 fade <- function(fadein) {
     return(fadein)
+}
+
+separator <- function(s) {
+    switch(s,
+           "1" = "auto",
+           "2" = ",",
+           "3" = ";",
+           "4" = "\t")
+}
+
+identifier <- function(i) {
+    switch(i,
+           "1" = "auto",
+           "2" = "UNIPROTID",
+           "3" = "ENTREZID",
+           "4" = "SYMBOL")
 }
 
 
@@ -174,27 +190,89 @@ server <- function(session, input, output) {
         
     }
     
+    observeEvent(input$displayIdentifier, {
+        
+        i <- identifier(input$displayIdentifier)
+        
+        assign("sID", i, envir = .GlobalEnv)
+        
+    })
+    
     
     
     # File input ----
     
     # Main data file input
     observeEvent(input$infile, {
+        
         inFile <- input$infile
+        
+        assign("inFile", inFile, envir = .GlobalEnv)
         
         if (is.null(inFile))
             return(NULL)
+
+        data_wide <- data.table::fread(
+            inFile$datapath,
+            sep = separator(input$dataSep),
+            dec = ".",
+            header = T)
         
-        if(input$sep == 1) {
-            separator = ','
-        } else if(input$sep == 2) {
-            separator = ';'
-        } else if (input$sep == 3) {
-            separator = '\t'
+        assign('tmpData', data_wide, envir = .GlobalEnv)
+        
+        data_origin <- data_wide
+
+        convertColumns <- c("ENTREZID", "SYMBOL", "UNIPROTID")
+        
+        assign('convertColumns', convertColumns, envir = .GlobalEnv)
+        
+        keys <- data_wide[, as.character(.SD[[1L]])]
+        
+        i <- identifier(input$dataIdentiferType)
+        
+        if(i == "auto") {
+            
+            tr1 <- AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = keys, columns = convertColumns, keytype = "UNIPROTID")
+            tr2 <- AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = keys, columns = convertColumns, keytype = "ENTREZID")
+            tr3 <- AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = keys, columns = convertColumns, keytype = "SYMBOL")
+            
+            trs <- list(tr1, tr2, tr3)
+            
+            tr <- as.data.table(trs[which.max(lengths(trs))])
+            
+            
+        } else {
+            tr <- as.data.table(AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = keys, columns = convertColumns, keytype = i))
         }
         
-        read_file(inFile$datapath, separator, "main")
+        setkeyv(tr, "UNIPROTID")
+        setkeyv(data_wide, names(data_wide)[1])
+        data_wide <- data_wide[tr, nomatch = 0]
+        n <- names(data_wide[, ncol(data_wide)-1:0, with = F])
         
+        userIDColumn <- convertColumns[!convertColumns %in% n]
+        
+        colnames(data_wide) <- c(userIDColumn, colnames(data_wide[,2:ncol(data_wide)]))
+        
+        setcolorder(data_wide, c(convertColumns, names(data_origin[,2:ncol(data_origin)])))
+        
+        data_wide <- data_wide[!duplicated(data_wide[, 3:ncol(data_wide)])]
+        
+        found_ids <- data_wide[, as.character(.SD[[userIDColumn]])]
+        
+        not_found_ids <- tmpData[!(V1 %in% found_ids)]
+        not_found_ids[,convertColumns[convertColumns %in% n]] <- NA
+        colnames(not_found_ids)[1] <- userIDColumn
+        setcolorder(not_found_ids, c(convertColumns, names(data_origin[,2:ncol(data_origin)])))
+        
+        data_wide <- rbindlist(list(data_wide, not_found_ids))
+
+        empty_rows <- apply(data_wide, 1, function(x) all(is.na(x)))
+        data_wide <- data_wide[!empty_rows,]
+
+        assign('data_wide', data_wide, envir = .GlobalEnv)
+        assign('data_origin', data_wide, envir = .GlobalEnv)
+
         updateNotifications("Dataset successfully uploaded.","check-circle", "success")
         
         sample_data(data_wide)

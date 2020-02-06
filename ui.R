@@ -45,8 +45,8 @@ sidebar <- dashboardSidebar(
         menuItem("Dataset options", icon = icon("table"),
                  menuSubItem("File input", tabName = "file-input", href = NULL, newtab = TRUE,
                              icon = shiny::icon("angle-double-right"), selected = T),
-                 menuSubItem("ID Mapping", tabName = "id-mapping", href = NULL, newtab = TRUE,
-                             icon = shiny::icon("angle-double-right"), selected = F),
+                 # menuSubItem("ID Mapping", tabName = "id-mapping", href = NULL, newtab = TRUE,
+                 #             icon = shiny::icon("angle-double-right"), selected = F),
                  menuSubItem("Filters", tabName = "filters", href = NULL, newtab = TRUE,
                              icon = shiny::icon("angle-double-right"), selected = F),
                  startExpanded = T
@@ -151,10 +151,10 @@ body <- dashboardBody(
                         tabPanel(
                             title = "Dataset",
                             footer = helpText('Accepted filetypes are csv, tsv and txt.'),
-                            radioButtons("sep", label = 'Separator',
-                                         choices = list("Comma" = 1, "Semicolon" = 2, "Tab" =3),
-                                         selected = 1,
-                                         inline = T),
+                            selectInput("dataSep", label = 'Separator',
+                                         choices = list("Auto detect" = 1, "Comma" = 2, "Semicolon" = 3, "Tab" = 4),
+                                         selected = 1),
+                            selectInput("dataIdentiferType", "Identifier type", choices = list("Auto detect" = 1, "UniProtKB" = 2, "Entrez" = 3, "Gene Symbol" = 4)),
                             fileInput("infile", "Select a file",
                                       accept = c(
                                           "text/csv",
@@ -164,10 +164,9 @@ body <- dashboardBody(
                         ),
                         tabPanel(
                             title = 'Annotation data',
-                            radioButtons("anno_sep", label = 'Separator',
-                                         choices = list("Comma" = 1, "Semicolon" = 2, "Tab" =3),
-                                         selected = 1,
-                                         inline = T),
+                            selectInput("anno_sep", label = 'Separator',
+                                        choices = list("Auto detect" = 1, "Comma" = 2, "Semicolon" = 3, "Tab" = 4),
+                                        selected = 1),
                             fileInput("anno_infile", "Select a file",
                                       accept = c(
                                           "text/csv",
@@ -480,10 +479,12 @@ body <- dashboardBody(
                         hr(),
                         selectInput("displayIdentifier",
                                     label = "Display ID labels as",
-                                    choices = list("UniProtKB" = 1,
-                                                   "Entrez" = 2,
-                                                   "Ensembl gene ID" = 3,
-                                                   "Gene symbol" = 4),
+                                    choices = list(
+                                        "Auto detect" = 1,
+                                        "UniProtKB" = 2,
+                                        "Entrez" = 3,
+                                        "Gene Symbol" = 4
+                                    ),
                                     selected = 1),
                         h5("Differential expression"),
                         hr(),

@@ -1,6 +1,7 @@
 library(igraph)
 library(visNetwork)
 
+
 # Gene annotation data ----
 
 # tissues <- data.table::fread('~/Large_files/tissues.uniprot.csv', sep = '\t', header = T, data.table = F, strip.white=TRUE)
@@ -84,16 +85,13 @@ if(!exists("interactions")){
 # Read input file ----
 
 read_file <- function(infile, separator, type) {
-    #assign('infile', infile, envir = .GlobalEnv) # Make infile global var
-    #assign('separator', separator, envir = .GlobalEnv) # Make infile global var
-    
     if(type == "main") {
-        data_wide <- data.table::fread(infile, sep = separator, dec = '.', header = T, data.table=FALSE)
+        data_wide <- data.table::fread(infile, sep = separator, dec = '.', header = T)
         
-        rownames(data_wide) <- data_wide[,1]
-        data_wide <- data_wide[,2:ncol(data_wide)]
-        data_wide[data_wide=="Filtered"] <- NA
-        
+        #rownames(data_wide) <- data_wide[,1]
+        #data_wide <- data_wide[,2:ncol(data_wide)]
+        #data_wide[data_wide=="Filtered"] <- NA
+
         empty_rows <- apply(data_wide, 1, function(x) all(is.na(x)))
         
         data_wide <- data_wide[!empty_rows,]
@@ -105,6 +103,7 @@ read_file <- function(infile, separator, type) {
         
         assign('data_wide', data_wide, envir = .GlobalEnv)
         assign('data_origin', data_wide, envir = .GlobalEnv)
+        
     } else if(type == "anno") {
         data_annotation <- read.csv(infile, sep = separator, dec = '.', row.names = 1)
         assign('data_annotation', data_annotation, envir = .GlobalEnv)
@@ -118,15 +117,10 @@ read_file <- function(infile, separator, type) {
 
 group <- list()
 sample_data <- function(data) {
-    samples <- data.frame(colnames(data_wide))
-    colnames(samples) = "SampleNames"
-    rownames(samples) <- samples$SampleNames
-    samples$condition <- as.factor(gsub('_.*', '', samples$SampleNames))
-    samples$replicate <- as.factor(gsub('.*_', '', samples$SampleNames))
-    
-    condition <- factor( samples$condition )
-    replicate <- factor( samples$replicate )
-    
+    samples <- names(data_wide[, -..convertColumns])
+    condition <- as.factor(gsub('_.*', '', samples))
+    replicate <- as.factor(gsub('.*_', '', samples))
+
     group <- sapply(levels(condition), function(x) paste("condition", x, sep = ''))
     
     assign("samples", samples, envir = .GlobalEnv)
@@ -137,11 +131,12 @@ sample_data <- function(data) {
     return (FALSE)
 }
 
-# Filter NA ----
+
+
 filter_na <- function(threshold) {
     
     # Which elements are NA?
-    allNA <- is.na(data_wide)
+    allNA <- is.na(data_wide[, -..convertColumns])
     
     # Summary of how many TRUEs there are in each row
     NA_frequency <- table(rowSums(allNA))
@@ -151,13 +146,13 @@ filter_na <- function(threshold) {
     subset_NA <- function(condition)
     {
         # Subset columns by condition
-        condition_subset <- data_wide[,grep(condition,colnames(data_wide))]
+        condition_subset <- data_wide[,grep(condition,names(data_wide)), with = F]
         
         # Determine if rows pass NA threshold
         rows_to_keep <- rowSums(is.na(condition_subset)) <= threshold # !! set global
         
         # Subset rownames
-        keep <- rownames(condition_subset)[rows_to_keep]
+        keep <- data_wide[rows_to_keep, UNIPROTID]
         
         return(keep)
         
@@ -170,18 +165,41 @@ filter_na <- function(threshold) {
     condition_sub <- Reduce(intersect, condition_sub)
     
     # Subset dataframe
-    data_wide <- data_wide[condition_sub,]
+    data_wide <- data_wide[UNIPROTID %in% condition_sub,]
     
-    # Set factor -> numeric
-    data_wide[] <- lapply(data_wide, function(x) {
-        if(is.character(x) || is.factor(x)) as.numeric(as.character(x)) else x
-    })
+    # # Set factor -> numeric
+    # data_wide[] <- lapply(data_wide, function(x) {
+    #     if(is.character(x) || is.factor(x)) as.numeric(as.character(x)) else x
+    # })
     
-    data_wide <- log2(data_wide)
+    data_wide <- log2(data_wide[, -..convertColumns])
     
     return(data_wide)
     
 }
+
+# # Filter NA ----
+# filter_na <- function(threshold) {
+#     
+#     d <- data_wide
+#     
+#     for(i in seq_along(names(group))){
+#         
+#         g <- names(group[i])
+#         
+#         g <- samples[startsWith(samples, g)]
+#         
+#         dt2 <- d[, lapply(.SD, function(x) is.na(x)), .SDcols = g]
+#         dt2[, `:=`(SUM = rowSums(.SD)), .SDcols = g]
+#         
+#         d <- d[dt2[, SUM <= threshold]]
+#         
+#     }
+#     
+#     return(d)
+# 
+#     
+# }
 
 
 # PCA ----
