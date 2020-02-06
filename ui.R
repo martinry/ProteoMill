@@ -164,7 +164,7 @@ body <- dashboardBody(
                         ),
                         tabPanel(
                             title = 'Annotation data',
-                            selectInput("anno_sep", label = 'Separator',
+                            selectInput("annoSep", label = 'Separator',
                                         choices = list("Auto detect" = 1, "Comma" = 2, "Semicolon" = 3, "Tab" = 4),
                                         selected = 1),
                             fileInput("anno_infile", "Select a file",
@@ -480,7 +480,6 @@ body <- dashboardBody(
                         selectInput("displayIdentifier",
                                     label = "Display ID labels as",
                                     choices = list(
-                                        "Auto detect" = 1,
                                         "UniProtKB" = 2,
                                         "Entrez" = 3,
                                         "Gene Symbol" = 4

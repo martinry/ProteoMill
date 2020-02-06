@@ -16,6 +16,14 @@ fade <- function(fadein) {
     return(fadein)
 }
 
+dframe <- function(dt, r){
+    rn <- dt[, as.character(.SD[[r]])]
+    df <- as.data.frame(dt[,-..r])
+    rownames(df) <- rn
+    
+    return(df)
+}
+
 separator <- function(s) {
     switch(s,
            "1" = "auto",
@@ -267,7 +275,7 @@ server <- function(session, input, output) {
         
         data_wide <- rbindlist(list(data_wide, not_found_ids))
 
-        empty_rows <- apply(data_wide, 1, function(x) all(is.na(x)))
+        empty_rows <- apply(data_wide[, -..convertColumns], 1, function(x) all(is.na(x)))
         data_wide <- data_wide[!empty_rows,]
 
         assign('data_wide', data_wide, envir = .GlobalEnv)
@@ -286,15 +294,13 @@ server <- function(session, input, output) {
         if (is.null(inFile))
             return(NULL)
         
-        if(input$anno_sep == 1) {
-            separator = ','
-        } else if(input$anno_sep == 2) {
-            separator = ';'
-        } else if (input$anno_sep == 3) {
-            separator = '\t'
-        }
+        data_annotation <- data.table::fread(
+            inFile$datapath,
+            sep = separator(input$annoSep),
+            dec = ".",
+            header = T)
         
-        read_file(inFile$datapath, separator, "anno")
+        assign('data_annotation', data_annotation, envir = .GlobalEnv)
         
         
         updateNotifications("Annotations successfully uploaded.","check-circle", "success")
@@ -479,16 +485,16 @@ server <- function(session, input, output) {
         
 
         
-        cor_mat_raw_logged <- log2(data_origin)
+        cor_mat_raw_logged <- log2(data_origin[,-..convertColumns])
         cor_mat_raw_logged[is.na(cor_mat_raw_logged)] <- 0
         cor_mat_raw_logged <- cor(cor_mat_raw_logged)
         
         #annotation_col = data.frame(tmp)
         
         if(exists("data_annotation")){
-            if(rownames(data_annotation == colnames(data_origin))){
+            if(all(data_annotation[, as.character(.SD[[1L]])] %in% names(data_origin[,-..convertColumns]))){
                 hmap <- pheatmap::pheatmap(
-                    annotation_col = data_annotation,
+                    annotation_col = dframe(data_annotation, "V1"),
                     cor_mat_raw_logged,
                     legend_breaks = c(min(cor_mat_raw_logged), 1),
                     legend_labels = c(0, 1)

@@ -10,11 +10,11 @@ library(visNetwork)
 
 # Interaction data ----
 
-if(!exists("interactions")){
-    
-    interactions <- data.table::fread("C://Users/martinry/interactions6.txt")
-    assign("interactions", interactions, envir = .GlobalEnv)
-}
+# if(!exists("interactions")){
+#     
+#     interactions <- data.table::fread("C://Users/martinry/interactions6.txt")
+#     assign("interactions", interactions, envir = .GlobalEnv)
+# }
 
 # if(!exists("uniprot_to_string_src")){
 #     
@@ -81,38 +81,6 @@ if(!exists("interactions")){
 #     assign("actions", actions, envir = .GlobalEnv)
 # }
 
-
-# Read input file ----
-
-read_file <- function(infile, separator, type) {
-    if(type == "main") {
-        data_wide <- data.table::fread(infile, sep = separator, dec = '.', header = T)
-        
-        #rownames(data_wide) <- data_wide[,1]
-        #data_wide <- data_wide[,2:ncol(data_wide)]
-        #data_wide[data_wide=="Filtered"] <- NA
-
-        empty_rows <- apply(data_wide, 1, function(x) all(is.na(x)))
-        
-        data_wide <- data_wide[!empty_rows,]
-        
-        # Set factor -> numeric
-        data_wide[] <- lapply(data_wide, function(x) {
-            if(is.factor(x)) as.numeric(as.character(x)) else x
-        })
-        
-        assign('data_wide', data_wide, envir = .GlobalEnv)
-        assign('data_origin', data_wide, envir = .GlobalEnv)
-        
-    } else if(type == "anno") {
-        data_annotation <- read.csv(infile, sep = separator, dec = '.', row.names = 1)
-        assign('data_annotation', data_annotation, envir = .GlobalEnv)
-    }
-    
-    
-    
-}
-
 # Build sample info ----
 
 group <- list()
@@ -167,13 +135,6 @@ filter_na <- function(threshold) {
     # Subset dataframe
     data_wide <- data_wide[UNIPROTID %in% condition_sub,]
     
-    # # Set factor -> numeric
-    # data_wide[] <- lapply(data_wide, function(x) {
-    #     if(is.character(x) || is.factor(x)) as.numeric(as.character(x)) else x
-    # })
-    
-    data_wide <- log2(data_wide[, -..convertColumns])
-    
     return(data_wide)
     
 }
@@ -205,7 +166,9 @@ filter_na <- function(threshold) {
 # PCA ----
 plotPCA <- function(contribs, ellipse, type) {
     
-    pca.data <- log2(data_origin)  # Log2 transform data
+    dt <- dframe(data_origin[,3:ncol(data_origin)], sID)
+    
+    pca.data <- log2(dt)  # Log2 transform data
     pca.data[is.na(pca.data)] <- 0 # "Impute" missing values as 0
     pca.data <- t(pca.data)        # # Transpose dataset
     p.pca <- prcomp(pca.data, center = TRUE, scale. = TRUE) # Perform principal component analysis
@@ -235,7 +198,7 @@ plotPCA <- function(contribs, ellipse, type) {
         return (pcaplot)
     } else if (type == 'UMAP') {
         
-        um <- umap::umap(pca.data, n_neighbors = ncol(data_origin))
+        um <- umap::umap(pca.data, n_neighbors = ncol(dt))
         
         df <- data.frame(x = um$layout[,1],
                          y = um$layout[,2],
