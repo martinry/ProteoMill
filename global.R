@@ -2,19 +2,96 @@ library(igraph)
 library(visNetwork)
 
 
-# Gene annotation data ----
+setClass("Experiment", representation(
+    expData         = "data.table",
+    expDataSrc      = "data.table",
+    annotationData  = "data.table",
+    aliases         = "data.table",
+    sampleData      = "data.frame",
+    contrast        = "data.table",
+    pathwayData     = "data.table")
+)
 
-# tissues <- data.table::fread('~/Large_files/tissues.uniprot.csv', sep = '\t', header = T, data.table = F, strip.white=TRUE)
-# tissue_names <- colnames(tissues)
+# Upload dataset ----
+
+upload_data <- function(path, sep, i){
+    
+    data_wide <- data.table::fread(
+        path,
+        sep = sep,
+        dec = ".",
+        header = T)
+    
+    assign('tmpData', data_wide, envir = .GlobalEnv)
+    
+    data_origin <- data_wide
+    
+    convertColumns <- c("ENTREZID", "SYMBOL", "UNIPROTID")
+    
+    assign('convertColumns', convertColumns, envir = .GlobalEnv)
+    
+    keys <- data_wide[, as.character(.SD[[1L]])]
+    
+    if(i == "auto") {
+        
+        tr1 <- AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = keys, columns = convertColumns, keytype = "UNIPROTID")
+        tr2 <- AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = keys, columns = convertColumns, keytype = "ENTREZID")
+        tr3 <- AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = keys, columns = convertColumns, keytype = "SYMBOL")
+        
+        trs <- list(tr1, tr2, tr3)
+        
+        tr <- as.data.table(trs[which.max(lengths(trs))])
+        
+        
+    } else {
+        tr <- as.data.table(AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = keys, columns = convertColumns, keytype = i))
+    }
+    
+    setkeyv(tr, "UNIPROTID")
+    setkeyv(data_wide, names(data_wide)[1])
+    data_wide <- data_wide[tr, nomatch = 0]
+    n <- names(data_wide[, ncol(data_wide)-1:0, with = F])
+    
+    userIDColumn <- convertColumns[!convertColumns %in% n]
+    
+    colnames(data_wide) <- c(userIDColumn, colnames(data_wide[,2:ncol(data_wide)]))
+    
+    setcolorder(data_wide, c(convertColumns, names(data_origin[,2:ncol(data_origin)])))
+    
+    data_wide <- data_wide[!duplicated(data_wide[, 3:ncol(data_wide)])]
+    
+    found_ids <- data_wide[, as.character(.SD[[userIDColumn]])]
+    
+    not_found_ids <- tmpData[!(V1 %in% found_ids)]
+    not_found_ids[,convertColumns[convertColumns %in% n]] <- NA
+    colnames(not_found_ids)[1] <- userIDColumn
+    setcolorder(not_found_ids, c(convertColumns, names(data_origin[,2:ncol(data_origin)])))
+    
+    data_wide <- rbindlist(list(data_wide, not_found_ids))
+    
+    empty_rows <- apply(data_wide[, -..convertColumns], 1, function(x) all(is.na(x)))
+    data_wide <- data_wide[!empty_rows,]
+    
+    data_wide$ENTREZID <- as.character(data_wide$ENTREZID)
+    
+    data_wide[is.na(ENTREZID), ENTREZID := paste0("MISSING_", seq(1:length(is.na(ENTREZID))))]
+    data_wide[is.na(SYMBOL), SYMBOL := paste0("MISSING_", seq(1:length(is.na(SYMBOL))))]
+    data_wide[is.na(UNIPROTID), UNIPROTID := paste0("MISSING_", seq(1:length(is.na(UNIPROTID))))]
+    
+    assign('data_wide', data_wide, envir = .GlobalEnv)
+    assign('data_origin', data_wide, envir = .GlobalEnv)
+    
+    sample_data(data_wide)
+}
 
 
 # Interaction data ----
 
-# if(!exists("interactions")){
-#     
-#     interactions <- data.table::fread("C://Users/martinry/interactions6.txt")
-#     assign("interactions", interactions, envir = .GlobalEnv)
-# }
+if(!exists("interactions")){
+ 
+ interactions <- data.table::fread("C://Users/martinry/interactions6.txt")
+ assign("interactions", interactions, envir = .GlobalEnv)
+}
 
 # if(!exists("uniprot_to_string_src")){
 #     
@@ -81,13 +158,40 @@ library(visNetwork)
 #     assign("actions", actions, envir = .GlobalEnv)
 # }
 
+dframe <- function(dt, r){
+    dt <- dt[!is.na(get(r))]                    # Remove NA
+    rn <- dt[, as.character(.SD[[r]])]          # Rownames to vector
+    df <- as.data.frame(dt[,-..convertColumns]) # 
+    rownames(df) <- rn
+    
+    return(df)
+}
+
 # Build sample info ----
+
+generate_experiment <- function(){
+    
+    experiment <- new("Experiment",
+                      expData = data_wide,
+                      expDataSrc = data_origin,
+                      annotationData = data_annotation,
+                      aliases = data.table(),
+                      sampleData = samples,
+                      contrast = contrast,
+                      pathwayData = res
+    )
+    
+    assign("experiment", experiment, envir = .GlobalEnv)
+    
+}
 
 group <- list()
 sample_data <- function(data) {
     samples <- names(data_wide[, -..convertColumns])
     condition <- as.factor(gsub('_.*', '', samples))
     replicate <- as.factor(gsub('.*_', '', samples))
+    samples <- data.frame(samples, condition, replicate)
+    rownames(samples) <- samples$samples
 
     group <- sapply(levels(condition), function(x) paste("condition", x, sep = ''))
     
@@ -139,34 +243,12 @@ filter_na <- function(threshold) {
     
 }
 
-# # Filter NA ----
-# filter_na <- function(threshold) {
-#     
-#     d <- data_wide
-#     
-#     for(i in seq_along(names(group))){
-#         
-#         g <- names(group[i])
-#         
-#         g <- samples[startsWith(samples, g)]
-#         
-#         dt2 <- d[, lapply(.SD, function(x) is.na(x)), .SDcols = g]
-#         dt2[, `:=`(SUM = rowSums(.SD)), .SDcols = g]
-#         
-#         d <- d[dt2[, SUM <= threshold]]
-#         
-#     }
-#     
-#     return(d)
-# 
-#     
-# }
 
 
 # PCA ----
 plotPCA <- function(contribs, ellipse, type) {
     
-    dt <- dframe(data_origin[,3:ncol(data_origin)], sID)
+    dt <- dframe(data_origin, sID)
     
     pca.data <- log2(dt)  # Log2 transform data
     pca.data[is.na(pca.data)] <- 0 # "Impute" missing values as 0
@@ -219,7 +301,6 @@ plotPCA <- function(contribs, ellipse, type) {
 # Differential expression ----
 diff_exp <- function(coeff, pairing) {
     
-    # Which model should be used? Currently (May 2019) limma is used as default. Additional testing needed here.
     best_fit = 'normal'
     
     if(best_fit == 'nbinom') {
@@ -230,8 +311,8 @@ diff_exp <- function(coeff, pairing) {
     }
     
     # Create Annotation data and expression set (Biobase)
-    phenoData <- new("AnnotatedDataFrame", data=samples)
-    exampleSet <- ExpressionSet(assayData=as.matrix(data_wide), phenoData=phenoData)
+    phenoData <- new("AnnotatedDataFrame", data = samples)
+    exampleSet <- ExpressionSet(assayData = as.matrix(log2(dframe(data_wide, sID))), phenoData = phenoData)
     
     unpaired <- model.matrix( ~ 0 + condition )
     paired <- model.matrix( ~ 0 + condition + replicate )
@@ -270,8 +351,12 @@ diff_exp <- function(coeff, pairing) {
     contrast <- contrast[order(contrast$P.Value, decreasing = F),]
     contrast <- data.table::as.data.table(contrast, keep.rownames = T)
     
-    #contrast$FDR <- p.adjust(contrast$P.Value, n = 510)
-    
+    setkeyv(contrast, "rn")
+    setkeyv(data_wide, sID)
+    contrast <- contrast[data_wide[,..convertColumns], nomatch = 0]
+    names(contrast) <- c(sID, names(contrast[, 2:ncol(contrast)]))
+    setcolorder(contrast, c(convertColumns, "logFC", "CI.L", "CI.R", "t", "P.Value", "adj.P.Val", "B"))
+
     return( contrast )
     
 }

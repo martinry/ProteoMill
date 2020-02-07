@@ -79,6 +79,7 @@ sidebar <- dashboardSidebar(
              margin-top: 2px;
              color: #fff;"),
     sidebarMenu(
+        menuItem("Validate IDs", tabName = "validateIDs", icon = icon("check-square")),
         menuItem("Structures", tabName = "structures", icon = icon("fingerprint"))
     ),
     tags$br(),
@@ -362,8 +363,8 @@ body <- dashboardBody(
                                 choices = list("REACTOME" = 'REACTOME'),
                                 selected = 'REACTOME'),
                     radioButtons(inputId = "abstractionlevel", label = "Level of abstraction",
-                                 choices = list("Global" = 1, "Lowest" = 2),
-                                 selected = 2, inline = T),
+                                 choices = list("Global", "Lowest"),
+                                 selected = "Lowest", inline = T),
                     numericInput("min_fc", "Min. log2 fold change", value = 0, min = 0, max = 50, step = .5),
                     htmlOutput("number_of_genes"),
                     radioButtons(inputId = "usebackground", label = "Background genes",
@@ -372,13 +373,20 @@ body <- dashboardBody(
                     actionButton(inputId = "generate_pathways", label = "Generate pathway data")
                     ),
                 tabBox(width = 9,
-                       tabsetPanel(
-                           tabPanel("Enrichment of up-regulated genes", DT::dataTableOutput("upregulated_pathways_table", width = 900)),
-                           tabPanel("Enrichment of down-regulated genes", DT::dataTableOutput("downregulated_pathways_table", width = 900))),
-                       tabPanel("Similarity matrix", plotOutput("similarity_plot", height = 850)),
-                       tabPanel("Volcano plot", plotly::plotlyOutput("volcano_plot", height = 750)),
-                       tabPanel("Sankey diagram", networkD3::sankeyNetworkOutput("sankey", height = 750)))
+                       tabPanel("Enrichment of up-regulated genes", DT::dataTableOutput("upregulated_pathways_table", width = 900)),
+                       tabPanel("Enrichment of down-regulated genes", DT::dataTableOutput("downregulated_pathways_table", width = 900)))
         ),
+        tabItem(tabName = "pathwayvisualization",
+                fluidRow(
+                    box(
+                        helpText("Hello"),
+                        actionButton("loadPathwayPlots", "Load plots")
+                    ),
+                    tabBox(width = 9,
+                    tabPanel("Similarity matrix", plotOutput("similarity_plot", height = 850)),
+                    tabPanel("Volcano plot", plotly::plotlyOutput("volcano_plot", height = 750)),
+                    tabPanel("Sankey diagram", networkD3::sankeyNetworkOutput("sankey", height = 750)))
+                )),
         tabItem(tabName = "interactions",
                 fluidRow(
                     box(
@@ -409,7 +417,7 @@ body <- dashboardBody(
                                    label = "Maximum adj. Pvalue",
                                    min = 0,
                                    max = 1,
-                                   value = 0.01,
+                                   value = 0.05,
                                    step = 0.0001
                                ), 
                                numericInput(
@@ -417,7 +425,7 @@ body <- dashboardBody(
                                    label = "Minimum abs. log2FC",
                                    min = 0,
                                    max = 100,
-                                   value = 1,
+                                   value = 0,
                                    step = 0.1
                                ),
                                numericInput(
