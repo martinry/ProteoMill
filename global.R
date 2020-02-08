@@ -1,6 +1,7 @@
 library(igraph)
 library(visNetwork)
 
+setwd("~/qodb-shiny/")
 
 setClass("Experiment", representation(
     expData         = "data.table",
@@ -87,11 +88,11 @@ upload_data <- function(path, sep, i){
 
 # Interaction data ----
 
-if(!exists("interactions")){
- 
- interactions <- data.table::fread("C://Users/martinry/interactions6.txt")
- assign("interactions", interactions, envir = .GlobalEnv)
-}
+# if(!exists("interactions")){
+#  
+#  interactions <- data.table::fread("C://Users/martinry/interactions6.txt")
+#  assign("interactions", interactions, envir = .GlobalEnv)
+# }
 
 # if(!exists("uniprot_to_string_src")){
 #     

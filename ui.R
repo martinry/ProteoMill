@@ -92,10 +92,10 @@ sidebar <- dashboardSidebar(
              background-color: #425664;
              margin-top: 2px;
              color: #fff;"),
-    sidebarMenu(
-        menuItem("News", tabName = "", icon = icon("book")),
-        menuItem("Functions", tabName = "", icon = icon("book")),
-        menuItem("About", tabName = "", icon = icon("book")),
+    sidebarMenu(id = "sidebarmenu",
+        menuItem("News", tabName = "news", icon = icon("book")),
+        menuItem("Functions", tabName = "functions", icon = icon("book")),
+        menuItem("About", tabName = "about", icon = icon("book")),
         menuItem("Settings", tabName = "settings", icon = icon("sliders-h"))
     )
 )
@@ -205,6 +205,7 @@ body <- dashboardBody(
                     helpText("Set maximum number allowed NA per condition."),
                     numericInput("missingvalues", label = "NA cutoff",
                                  min = 0, max = 50, value = 1), # max = number of samples / conditions
+                    actionButton("loadfilterplot", "Load plot"),
                     actionButton("setcutoff", "Set cutoff")
                 ),
                 box(title = "NA frequencies", status = "warning", solidHeader = F,
@@ -378,12 +379,11 @@ body <- dashboardBody(
         ),
         tabItem(tabName = "pathwayvisualization",
                 fluidRow(
-                    box(
-                        helpText("Hello"),
+                    box(width = 3,
                         actionButton("loadPathwayPlots", "Load plots")
                     ),
                     tabBox(width = 9,
-                    tabPanel("Similarity matrix", plotOutput("similarity_plot", height = 850)),
+                    #tabPanel("Similarity matrix", plotOutput("similarity_plot", height = 850)),
                     tabPanel("Volcano plot", plotly::plotlyOutput("volcano_plot", height = 750)),
                     tabPanel("Sankey diagram", networkD3::sankeyNetworkOutput("sankey", height = 750)))
                 )),
@@ -459,17 +459,17 @@ body <- dashboardBody(
                     )
                 )
             ),
-        tabItem(tabName = "structures",
-                # box(title = "Search protein", width = 2,
-                #     textInput("proteinsearch", label = "Search"),
-                #     actionButton("searchclick", "Find structure")
-                #     ),
-                box(title = "Structure", width = 10,
-                    textInput("seachinput", "Search"),
-                    actionButton("searchclick", "Find structure"),
-                    tags$div(id = "litemol", style = 'width: 640px; margin-top: 10px; height: 480px; position: relative'),
-                    tags$script(HTML("var plugin = LiteMol.Plugin.create({ target: '#litemol', layoutState: { hideControls: true } });")))
-                ),
+        # tabItem(tabName = "structures",
+        #         # box(title = "Search protein", width = 2,
+        #         #     textInput("proteinsearch", label = "Search"),
+        #         #     actionButton("searchclick", "Find structure")
+        #         #     ),
+        #         box(title = "Structure", width = 10,
+        #             textInput("seachinput", "Search"),
+        #             actionButton("searchclick", "Find structure"),
+        #             tags$div(id = "litemol", style = 'width: 640px; margin-top: 10px; height: 480px; position: relative'),
+        #             tags$script(HTML("var plugin = LiteMol.Plugin.create({ target: '#litemol', layoutState: { hideControls: true } });")))
+        #         ),
         tabItem(tabName = "settings",
                 fluidRow(
                     box(title = "Settings", width = 3,

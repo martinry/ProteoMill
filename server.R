@@ -56,8 +56,7 @@ server <- function(session, input, output) {
     # Populate with updateNotifications() function
     notification_list <- list() 
     
-    task_list <- list(taskItem(text = "Upload a dataset", value = 0, color = "green")
-    )
+    #task_list <- list(taskItem(text = "Upload a dataset", value = 0, color = "green"))
     
     tasks <- data.table(
         text = c("Upload a dataset",
@@ -66,14 +65,16 @@ server <- function(session, input, output) {
                  "Quality check data",
                  "Set contrast",
                  "Run pathway enrichment"),
-        value = c(0, 0, 0, 0, 0, 0),
-        color = c("green", "green", "green", "green", "green", "green"),
-        id = c(1, 2, 3, 4, 5, 6)
+        value = rep(0, 6),
+        color = rep("green", 6),
+        id = sprintf("%04d", seq(1:6))
     )
+    
+    
     
     # Make notification_list global var
     assign("notification_list", notification_list, envir = .GlobalEnv)
-    assign("task_list", task_list, envir = .GlobalEnv)
+    #assign("task_list", task_list, envir = .GlobalEnv)
     assign("tasks", tasks, envir = .GlobalEnv)
     
     # Initialize notification menu
@@ -83,11 +84,14 @@ server <- function(session, input, output) {
     
     # Initialize message menu
     output$helpMenu <- renderMenu({
+        updateTasks("Run network analysis", value = 0, color = "green", i = 0007)
         dropdownMenu(type = "tasks", .list = task_list)
     })
     
     # A function to append task items to the menu
     updateTasks <- function(text, value, color, i) {
+        
+        i = sprintf("%04d", i)
         
         value <- ifelse(value > 99, 100, round(value, digits = 0))
         
@@ -114,6 +118,13 @@ server <- function(session, input, output) {
                              value = tasks[x, value],
                              color = tasks[x, color])
             
+            # A hack to make the notification item clickable
+            # Onclick opens a modal dialog
+            item$children[[1]] <- a(
+                "onclick" = paste0("clickFunction('", paste0(tasks[x, id]), "'); return false;"),
+                list(item$children[[1]]$children))
+            
+            
             item <- list(item)
             
             task_list <- append(item, base::get("task_list"))
@@ -129,6 +140,8 @@ server <- function(session, input, output) {
         })
         
     }
+    
+    
     
     # A function to append notification items to the menu
     updateNotifications <- function(notif, icon, status, clickable = F) {
@@ -198,16 +211,42 @@ server <- function(session, input, output) {
         
     })
     
+    observeEvent(input$sidebarmenu, {
+        if(input$sidebarmenu == "news"){
+            
+            showModal(
+                modalDialog(size = "l",
+                    renderUI({
+                        tags$iframe(
+                            src = paste0("doc/News.html"),
+                            width = "100%",
+                            height = "600px",
+                            frameborder = "0")
+                    })
+                )
+                
+            )
+        }
+    })
+    
     # Clicked notification item
     observeEvent(input$linkClicked, {
+        
+        linkCode <- as.character(input$linkClicked)
+        
+        i <- as.character(substr(linkCode, nchar(linkCode)-3, nchar(linkCode)))
+        
+        item <- tasks[id == i]
+        
         showModal(
-            modalDialog(title = "Obsolete IDs",
-                        
-                        DT::renderDataTable({
-                            id_check[["table"]]
+            modalDialog(title = paste0("Task: ", item$text),
+                        h6(paste0("Progress: ", item$value, "%")),
+                        renderUI({
+                            tags$iframe(src = paste0("doc/", gsub(" ", "-", item$text), ".html"), width="100%", height="600px", frameborder="0")  
                         }),
                         size = "l",
-                        footer = list(actionButton("updateAll", "Update all"), modalButton("Dismiss"))
+                        easyClose = T,
+                        footer = list(modalButton("Dismiss"))
             )
         )
     })
@@ -276,7 +315,7 @@ server <- function(session, input, output) {
         upload_data(inFile$datapath, separator(input$dataSep), identifier(input$dataIdentiferType))
 
         updateNotifications("Dataset successfully uploaded.","check-circle", "success")
-        updateTasks(text = "Upload a dataset", value = 100, color = "green", i = 1)
+        updateTasks(text = "Upload a dataset", value = 100, color = "green", i = 0001)
         
         
         
@@ -299,7 +338,7 @@ server <- function(session, input, output) {
         
         
         updateNotifications("Annotations successfully uploaded.","check-circle", "success")
-        updateTasks(text = "Upload annotation data", value = 100, color = "green", i = 2)
+        updateTasks(text = "Upload annotation data", value = 100, color = "green", i = 0002)
         
         
     })
@@ -310,8 +349,8 @@ server <- function(session, input, output) {
         
         # Sample 1
         
-        sample_1_exp <- "C://Users/martinry/qodb-shiny/data/donors.uniprot.csv"
-        sample_1_anno <- "C://Users/martinry/qodb-shiny/data/donors.uniprot.annotation.tsv"
+        sample_1_exp <- "data/donors.uniprot.csv"
+        sample_1_anno <- "data/donors.uniprot.annotation.tsv"
         
         upload_data(sample_1_exp, "auto", "UNIPROTID")
         
@@ -324,8 +363,8 @@ server <- function(session, input, output) {
         assign('data_annotation', data_annotation, envir = .GlobalEnv)
 
         updateNotifications("Demo data uploaded.","check-circle", "success")
-        updateTasks(text = "Upload a dataset", value = 100, color = "green", i = 1)
-        updateTasks(text = "Upload annotation data", value = 100, color = "green", i = 2)
+        updateTasks(text = "Upload a dataset", value = 100, color = "green", i = 0001)
+        updateTasks(text = "Upload annotation data", value = 100, color = "green", i = 0002)
         
     })
     
@@ -385,8 +424,13 @@ server <- function(session, input, output) {
         })
     }
     
-    renderNAfreq()
     
+    
+    observeEvent(input$loadfilterplot, {
+        
+        renderNAfreq()
+        
+    })
     
     observeEvent(input$setcutoff, {
         data_wide <- filter_na(input$missingvalues)
@@ -395,7 +439,8 @@ server <- function(session, input, output) {
         unlock_menus()
         renderNAfreq()
         
-        updateTasks(text = "Set a filter", value = 100, color = "green", i = 3)
+        updateTasks(text = "Set a filter", value = 100, color = "green", i = 0003)
+        updateNotifications(paste0("NA cutoff set to ", input$missingvalues, ".") ,"check-circle", "success")
         
     })
     
@@ -438,7 +483,7 @@ server <- function(session, input, output) {
     # Render PCA plots
     
     output$pca2dplot <- renderPlot({
-        updateTasks(text = "Quality check data", value = (tasks[id == 4, value] + 100/3), color = "green", i = 4)
+        updateTasks(text = "Quality check data", value = (tasks[id == "0004", value] + 100/3), color = "green", i = 0004)
         c <- input$contribs
         e <- input$ellipse
         plotPCA(c,e, '2d')
@@ -451,7 +496,7 @@ server <- function(session, input, output) {
     # Render UMAP
     
     output$UMAPplot <- renderPlot({
-        updateTasks(text = "Quality check data", value = (tasks[id == 4, value] + 100/3), color = "green", i = 4)
+        updateTasks(text = "Quality check data", value = (tasks[id == "0004", value] + 100/3), color = "green", i = 0004)
         plotPCA(0,0, 'UMAP')
     })
     
@@ -490,7 +535,7 @@ server <- function(session, input, output) {
             
         })
         
-        updateTasks(text = "Quality check data", value = (tasks[id == 4, value] + 100/3), color = "green", i = 4)
+        updateTasks(text = "Quality check data", value = (tasks[id == "0004", value] + 100/3), color = "green", i = 0004)
         
     })
 
@@ -557,7 +602,7 @@ server <- function(session, input, output) {
         removeUI(selector = "#interactionsrm")
         removeUI(selector = "#predictiverm")
         updateNotifications("Model fitted successfully.","check-circle", "success")
-        updateTasks(text = "Set contrast", value = 100, color = "green", i = 5)
+        updateTasks(text = "Set contrast", value = 100, color = "green", i = 0005)
     })
     
     # Differential expression: output table
@@ -637,7 +682,7 @@ server <- function(session, input, output) {
         server = F
       )
       
-      updateTasks(text = "Run pathway enrichment", value = 100, color = "green", i = 6)
+      updateTasks(text = "Run pathway enrichment", value = 100, color = "green", i = 0006)
       
     })
     

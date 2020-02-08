@@ -1,0 +1,15 @@
+---
+title: "Differential expression"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## BASICS OF DIFFERENTIAL EXPRESSION
+Following alignment and quantification, the next challenge often is assessing DE from the estimated feature abundances. We first present a general context and describe the statistical frameworks and overall workflow. The starting point is a count table with rows representing features (e.g., genes) and columns representing samples (i.e., experimental units). The goal of DE is to formulate and test a statistical hypothesis for each feature. Depending on the experimental design, the context, and the research question, more complex analyses are often required. We elaborate on further variations of the overall workflow in the section titled Variants of Differential Expression.
+
+The general workflow involves the following steps: filtering and normalization (preprocessing), specification of the statistical model and estimation of model parameters, statistical inference on the relevant parameters, and adjustment for multiple testing. We introduce this general workflow from the perspective of classical models for count regression. We then discuss various notable deviations, including alternative estimation and inference frameworks and additional strategies to ensure robustness.
+
+Typically, only a limited number of replicates are available (e.g., three to five replicates per condition). The achievable statistical power from such small sample sizes can be low, even for a single feature, with the real interest lying in inference on thousands of features simultaneously. This parallel inference challenge is common to various genome-scale experiments, and the statistical community has contributed strategies to improve the overall performance, from which a few themes have emerged. For example, in estimating parameters for a given feature, one should consider the information coming from the other features in the data set (114). In general, genomics data are ripe for using empirical Bayes methods to moderate estimates, where priors for a feature are derived from a suitable set of other features measured in the data set. In addition, moderating variance parameters is critical, and indeed, much of the success of earlier parallel inference frameworks (e.g., for microarrays) can be attributed to variance moderation, whether in an ad hoc strategy (115) or in hierarchical models (116). Other tricks such as regularization of regression parameters or considerations for robustness provide additional performance benefits. Taken together, the challenges associated with vast parallel inference can be greatly eased by adopting one or more of these strategies.
