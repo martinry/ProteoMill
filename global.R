@@ -1,19 +1,24 @@
 library(igraph)
 library(visNetwork)
 
-setwd("~/qodb-shiny/")
+setwd("C://Users/martinry/qodb-shiny/")
 
-setClass("Experiment", representation(
-    expData         = "data.table",
-    expDataSrc      = "data.table",
-    annotationData  = "data.table",
-    aliases         = "data.table",
-    sampleData      = "data.frame",
-    contrast        = "data.table",
-    pathwayData     = "data.table")
-)
+# 
+# setClass("Experiment", representation(
+#     expData         = "data.table",
+#     expDataSrc      = "data.table",
+#     annotationData  = "data.table",
+#     aliases         = "data.table",
+#     sampleData      = "data.frame",
+#     contrast        = "data.table",
+#     pathwayData     = "data.table")
+# )
 
 # Upload dataset ----
+
+undup <- function(genes){
+    genes[!is.na(genes)]
+}
 
 upload_data <- function(path, sep, i){
     
@@ -23,76 +28,200 @@ upload_data <- function(path, sep, i){
         dec = ".",
         header = T)
     
+    data_wide <- data_wide[!duplicated(names(data_wide)[1])]
+    #data_wide <- data_wide[apply(data_wide[, 2:ncol(data_wide)], 1, function(x) sum(x, na.rm = T) > 500)]
+    
+    for(j in seq_along(data_wide)){
+        set(data_wide, i = which(data_wide[[j]] == 0 & is.numeric(data_wide[[j]])), j = j, value = NA)
+    }
+    
+    empty_rows <- apply(data_wide[,2:ncol(data_wide)], 1, function(x) all(is.na(x)))
+    data_wide <- data_wide[!empty_rows,]
+    
     assign('tmpData', data_wide, envir = .GlobalEnv)
     
     data_origin <- data_wide
     
-    convertColumns <- c("ENTREZID", "SYMBOL", "UNIPROTID")
+    convertColumns <- c("UNIPROTID", "ENTREZID", "SYMBOL", "GENEID", "PROTEINID")
     
     assign('convertColumns', convertColumns, envir = .GlobalEnv)
     
-    keys <- data_wide[, as.character(.SD[[1L]])]
+    keys <- data_wide[, as.character(.SD[[1L]])][1:10]
     
     if(i == "auto") {
         
-        tr1 <- AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = keys, columns = convertColumns, keytype = "UNIPROTID")
-        tr2 <- AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = keys, columns = convertColumns, keytype = "ENTREZID")
-        tr3 <- AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = keys, columns = convertColumns, keytype = "SYMBOL")
+        tr1 <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = keys, column = "SYMBOL", keytype = "UNIPROTID", multiVals = "first")
+        tr2 <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = keys, column = "UNIPROTID", keytype = "ENTREZID", multiVals = "first")
+        tr3 <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = keys, column = "UNIPROTID", keytype = "SYMBOL", multiVals = "first")
+        tr4 <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = keys, column = "UNIPROTID", keytype = "GENEID", multiVals = "first")
+        tr5 <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = keys, column = "UNIPROTID", keytype = "PROTEINID", multiVals = "first")
         
-        trs <- list(tr1, tr2, tr3)
+        trs <- list(tr1[!is.na(tr1)],
+                    tr2[!is.na(tr2)],
+                    tr3[!is.na(tr3)],
+                    tr4[!is.na(tr4)],
+                    tr5[!is.na(tr5)])
         
-        tr <- as.data.table(trs[which.max(lengths(trs))])
+#        tr <- as.data.table(trs[which.max(lapply(lapply(trs, lengths), sum))])
         
+        i <- convertColumns[which.max(lapply(lapply(trs, lengths), sum))]
+        
+        if(i == "UNIPROTID"){
+            
+            tr_all <- data.table(AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = data_wide[, as.character(.SD[[1L]])], columns = convertColumns, keytype = i))
+            tr_all <- tr_all[!duplicated(UNIPROTID)]
+            
+        } else {
+            tr <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = data_wide[, as.character(.SD[[1L]])], column = "UNIPROTID", keytype = i, multiVals = "first")
+            tr <- tr[!is.na(tr)]
+            tr <- tr[!duplicated(tr)]
+            
+            tr <- data.table(i = names(tr), "UNIPROTID" = unname(tr))
+            
+            tr_all <- data.table(AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = data_wide[, as.character(.SD[[1L]])], columns = convertColumns, keytype = i))
+            tr_all <- tr_all[UNIPROTID %in% tr$UNIPROTID]
+            tr_all <- tr_all[!duplicated(UNIPROTID)]
+        }
+        
+        
+
         
     } else {
-        tr <- as.data.table(AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = keys, columns = convertColumns, keytype = i))
+        i <- convertColumns[which.max(lapply(lapply(trs, lengths), sum))]
+        
+        if(i == "UNIPROTID"){
+            
+            tr_all <- data.table(AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = data_wide[, as.character(.SD[[1L]])], columns = convertColumns, keytype = i))
+            tr_all <- tr_all[!duplicated(UNIPROTID)]
+            
+        } else {
+            tr <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = data_wide[, as.character(.SD[[1L]])], column = "UNIPROTID", keytype = i, multiVals = "first")
+            tr <- tr[!is.na(tr)]
+            tr <- tr[!duplicated(tr)]
+            
+            tr <- data.table(i = names(tr), "UNIPROTID" = unname(tr))
+            
+            tr_all <- data.table(AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = data_wide[, as.character(.SD[[1L]])], columns = convertColumns, keytype = i))
+            tr_all <- tr_all[UNIPROTID %in% tr$UNIPROTID]
+            tr_all <- tr_all[!duplicated(UNIPROTID)]
+        }
     }
     
-    setkeyv(tr, "UNIPROTID")
-    setkeyv(data_wide, names(data_wide)[1])
-    data_wide <- data_wide[tr, nomatch = 0]
-    n <- names(data_wide[, ncol(data_wide)-1:0, with = F])
+    names(data_wide)[1] <- i
     
-    userIDColumn <- convertColumns[!convertColumns %in% n]
+    setkeyv(tr_all, i)
     
-    colnames(data_wide) <- c(userIDColumn, colnames(data_wide[,2:ncol(data_wide)]))
+    setkeyv(data_wide, i)
     
-    setcolorder(data_wide, c(convertColumns, names(data_origin[,2:ncol(data_origin)])))
+    tr_all <- tr_all[data_wide[, ..i], on = i]
     
-    data_wide <- data_wide[!duplicated(data_wide[, 3:ncol(data_wide)])]
-    
-    found_ids <- data_wide[, as.character(.SD[[userIDColumn]])]
-    
-    not_found_ids <- tmpData[!(V1 %in% found_ids)]
-    not_found_ids[,convertColumns[convertColumns %in% n]] <- NA
-    colnames(not_found_ids)[1] <- userIDColumn
-    setcolorder(not_found_ids, c(convertColumns, names(data_origin[,2:ncol(data_origin)])))
-    
-    data_wide <- rbindlist(list(data_wide, not_found_ids))
-    
-    empty_rows <- apply(data_wide[, -..convertColumns], 1, function(x) all(is.na(x)))
-    data_wide <- data_wide[!empty_rows,]
+    data_wide <- data_wide[tr_all, nomatch = 0]
     
     data_wide$ENTREZID <- as.character(data_wide$ENTREZID)
+    
+    for(j in seq_along(data_wide)){
+        set(data_wide, i = which(duplicated(data_wide[[j]]) & is.character(data_wide[[j]])), j = j, value = NA)
+    }
     
     data_wide[is.na(ENTREZID), ENTREZID := paste0("MISSING_", seq(1:length(is.na(ENTREZID))))]
     data_wide[is.na(SYMBOL), SYMBOL := paste0("MISSING_", seq(1:length(is.na(SYMBOL))))]
     data_wide[is.na(UNIPROTID), UNIPROTID := paste0("MISSING_", seq(1:length(is.na(UNIPROTID))))]
+    data_wide[is.na(GENEID), GENEID := paste0("MISSING_", seq(1:length(is.na(GENEID))))]
+    data_wide[is.na(PROTEINID), PROTEINID := paste0("MISSING_", seq(1:length(is.na(PROTEINID))))]
+    
+    setcolorder(data_wide, c(convertColumns, names(data_origin[,2:ncol(data_origin)])))
     
     assign('data_wide', data_wide, envir = .GlobalEnv)
     assign('data_origin', data_wide, envir = .GlobalEnv)
     
     sample_data(data_wide)
+    
+    
+    # 
+    # 
+    # 
+    # 
+    # tr <- tr[!is.na(UNIPROTID)]
+    # tr <- tr[!duplicated(get(i))]
+    # 
+    # 
+    # setkeyv(tr, i)
+    # names(data_wide)[1] <- i
+    # setkeyv(data_wide, i)
+    # data_wide <- data_wide[tr, nomatch = 0]
+    # 
+    # 
+    # dt <- data_wide[, lapply(.SD, sum), by = "UNIPROTID", .SDcols = c(2:(ncol(data_wide)-4))]
+    # setkeyv(dt, "UNIPROTID")
+    # 
+    # setkeyv(tr, "UNIPROTID")
+    # data_wide <- dt[tr, nomatch = 0]
+    # data_wide <- data_wide[!duplicated(UNIPROTID)]
+    # 
+    
+    # for(j in seq_along(data_wide)){
+    #     set(data_wide, i = which(data_wide[[j]] == 0 & is.numeric(data_wide[[j]])), j = j, value = NA)
+    # }
+    # 
+    # empty_rows <- apply(data_wide[, -..convertColumns], 1, function(x) all(is.na(x)))
+    # data_wide <- data_wide[!empty_rows,]
+    
+    
+
+    
+    # setkeyv(tr, i)
+    # setkeyv(data_wide, names(data_wide)[1])
+    # data_wide <- data_wide[tr, nomatch = 0]
+    # dt <- data_wide[, lapply(.SD, sum), by="UNIPROTID", .SDcols = c(2:(ncol(data_wide)-5))]
+    # setkey(dt, "UNIPROTID")
+    # setkeyv(tr, "UNIPROTID")
+    # data_wide <- dt[tr]
+    # 
+    # #n <- names(data_wide[, ncol(data_wide)-4:0, with = F])
+    # 
+    # #userIDColumn <- convertColumns[!convertColumns %in% n]
+    # 
+    # colnames(data_wide) <- c(i, colnames(data_wide[,2:ncol(data_wide)]))
+    # 
+    # setcolorder(data_wide, c(convertColumns, names(data_origin[,2:ncol(data_origin)])))
+    # 
+    # data_wide <- data_wide[!duplicated(data_wide[, c(3, 7:ncol(data_wide)), with = F])]
+    # 
+    # found_ids <- data_wide[, as.character(.SD[[i]])]
+    # 
+    # not_found_ids <- tmpData[!(colnames(data_origin)[1] %in% found_ids)]
+    # not_found_ids[,i] <- NA
+    # colnames(not_found_ids)[1] <- i
+    # setcolorder(not_found_ids, c(convertColumns, names(data_origin[,2:ncol(data_origin)])))
+    # 
+    # data_wide <- rbindlist(list(data_wide, not_found_ids))
+    # 
+    # empty_rows <- apply(data_wide[, -..convertColumns], 1, function(x) all(is.na(x)))
+    # data_wide <- data_wide[!empty_rows,]
+    # 
+    # data_wide$ENTREZID <- as.character(data_wide$ENTREZID)
+    # 
+    # data_wide[is.na(ENTREZID), ENTREZID := paste0("MISSING_", seq(1:length(is.na(ENTREZID))))]
+    # data_wide[is.na(SYMBOL), SYMBOL := paste0("MISSING_", seq(1:length(is.na(SYMBOL))))]
+    # data_wide[is.na(UNIPROTID), UNIPROTID := paste0("MISSING_", seq(1:length(is.na(UNIPROTID))))]
+    # data_wide[is.na(GENEID), GENEID := paste0("MISSING_", seq(1:length(is.na(GENEID))))]
+    # data_wide[is.na(TXID), TXID := paste0("MISSING_", seq(1:length(is.na(TXID))))]
+    # data_wide[is.na(PROTEINID), PROTEINID := paste0("MISSING_", seq(1:length(is.na(PROTEINID))))]
+    # 
+    # assign('data_wide', data_wide, envir = .GlobalEnv)
+    # assign('data_origin', data_wide, envir = .GlobalEnv)
+    
+    #sample_data(data_wide)
 }
 
 
 # Interaction data ----
 
-# if(!exists("interactions")){
-#  
-#  interactions <- data.table::fread("C://Users/martinry/interactions6.txt")
-#  assign("interactions", interactions, envir = .GlobalEnv)
-# }
+if(!exists("interactions")){
+ 
+ interactions <- data.table::fread("C://Users/martinry/interactions6.txt")
+ assign("interactions", interactions, envir = .GlobalEnv)
+}
 
 # if(!exists("uniprot_to_string_src")){
 #     

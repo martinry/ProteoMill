@@ -12,7 +12,7 @@ notifications <- dropdownMenuOutput("notifMenu")
 
 header <- dashboardHeader(help,
                           notifications,
-                          title = "qodb",
+                          title = "[GeneMill]",
                           tags$li(class = "dropdown",
                                   id = "notifications-wrapper",
                                   tags$div(id = 'load-process', style = 'display: none; position: absolute; margin-left: 6px',
@@ -92,7 +92,6 @@ sidebar <- dashboardSidebar(
              color: #fff;"),
     sidebarMenu(id = "sidebarmenu",
         menuItem("News", tabName = "news", icon = icon("book")),
-        menuItem("Functions", tabName = "functions", icon = icon("book")),
         menuItem("About", tabName = "about", icon = icon("book")),
         menuItem("Settings", tabName = "settings", icon = icon("sliders-h"))
     )
@@ -107,6 +106,7 @@ body <- dashboardBody(
     tags$head(
         tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"),
         tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Quicksand"),
+        tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Inconsolata"),
         tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Poiret+One"),
         tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Open+Sans"),
         tags$script(src = "https://cdnjs.cloudflare.com/ajax/libs/animejs/2.0.2/anime.min.js") # To do: keep local copy
@@ -303,18 +303,12 @@ body <- dashboardBody(
         tabItem(tabName = "diffexpoutput",
                 plotOutput("contrasttable", width = "800px", height = "1600px")),
         tabItem(tabName = "differentialexpression",
-                tabPanel("Table", DT::dataTableOutput("diffexptable", width = 1000))),
-        
-        # Select background data for enrichment
+                fluidRow(
+                    box(actionButton("loadDiffExpTable","Load table"), width = 3),
+                    box(tabPanel("Table", DT::dataTableOutput("diffexptable")))
+                    )
+                ),
 
-        tabItem(tabName = "bgdata",
-                box(title = "Add custom background data",
-                    # selectInput("Tissue", "Select a tissue type:",
-                    #             list(`Dataset: Santos, A et al. (2015)` = tissue_names)),
-                    actionButton("addbg", "Add to background"),
-                    actionButton("resetbg", "Reset background"))
-        ),
-        
         # Pathway enrichment: Table, Similarity matrix, Volcano plot
         
         tabItem(tabName = "pathwayenrichment",
@@ -432,12 +426,12 @@ body <- dashboardBody(
         tabItem(tabName = "settings",
                 fluidRow(
                     box(title = "Settings", width = 3,
-                        h5("Display options"),
-                        hr(),
-                        radioButtons(inputId = 'colorScheme', label = 'Color palette',
-                                     choices = list("Normal", "Colorblind friendly"), inline = T),
-                        radioButtons(inputId = 'textSize', label = 'Text size',
-                                     choices = list("Small", "Medium", "Large"), selected = "Medium", inline = T),
+                        # h5("Display options"),
+                        # hr(),
+                        # radioButtons(inputId = 'colorScheme', label = 'Color palette',
+                        #              choices = list("Normal", "Colorblind friendly"), inline = T),
+                        # radioButtons(inputId = 'textSize', label = 'Text size',
+                        #              choices = list("Small", "Medium", "Large"), selected = "Medium", inline = T),
                         h5("Target organism"),
                         hr(),
                         selectInput("species", "Select species",
@@ -449,7 +443,9 @@ body <- dashboardBody(
                                     choices = list(
                                         "UniProtKB" = 2,
                                         "Entrez" = 3,
-                                        "Gene Symbol" = 4
+                                        "Gene Symbol" = 4,
+                                        "Ens. Gene ID" = 5,
+                                        "Ens. Protein ID" = 6
                                     ),
                                     selected = 1),
                         h5("Differential expression"),

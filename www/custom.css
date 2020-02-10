@@ -45,7 +45,8 @@ hr {
 }
 
 .content-wrapper {
-    background-color:#F0F4F5;
+/*    background-color:#F0F4F5; */
+    background: #e9ebec !important;
     font-size:14px !important;
 }
 
@@ -101,8 +102,8 @@ hr {
 }
 
 .logo {
-    font-family: 'Poiret One', cursive !important;
-    font-size: 28px !important;
+    font-family: 'Inconsolata', monospace !important;
+    font-size: 22px !important;
 }
 
 .skin-black .main-header>.logo

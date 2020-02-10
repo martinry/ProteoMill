@@ -4,7 +4,6 @@ require(ggplot2)
 require(ggrepel)
 require(RColorBrewer)
 require(dplyr)
-#require(fitdistrplus)
 library(plotly)
 library(data.table)
 require(AnnotationDbi)
@@ -31,7 +30,9 @@ identifier <- function(i) {
            "1" = "auto",
            "2" = "UNIPROTID",
            "3" = "ENTREZID",
-           "4" = "SYMBOL")
+           "4" = "SYMBOL",
+           "5" = "GENEID",
+           "6" = "PROTEINID")
 }
 
 
@@ -364,7 +365,7 @@ server <- function(session, input, output) {
         sample_1_exp <- "data/donors.uniprot.csv"
         sample_1_anno <- "data/donors.uniprot.annotation.tsv"
         
-        upload_data(sample_1_exp, "auto", "UNIPROTID")
+        upload_data(sample_1_exp, "auto", "auto")
         
         data_annotation <- data.table::fread(
             sample_1_anno,
@@ -588,15 +589,27 @@ server <- function(session, input, output) {
     
     # Differential expression: output table
     
-    output$diffexptable <- DT::renderDataTable({
+    observeEvent(input$loadDiffExpTable, {
         
-        df <- DT::datatable(dframe(contrast, sID),
-                            options = list(autoWidth = TRUE,
-                                           scrollX=TRUE))
-        df %>% DT::formatSignif('adj.P.Val', digits = 2)
+        if(exists("contrast")){
+            output$diffexptable <- DT::renderDataTable({
+                
+                df <- DT::datatable(dframe(contrast, sID),
+                                    options = list(autoWidth = TRUE,
+                                                   scrollX=TRUE))
+                df %>% DT::formatSignif('adj.P.Val', digits = 2)
+                
+                
+            })
+        } else {
+            updateNotifications("Set contrasts first.","exclamation-triangle", "danger")
+        }
+        
         
         
     })
+    
+    
     
     # Differential expression: confidence intervals
     
@@ -631,8 +644,8 @@ server <- function(session, input, output) {
     
     observeEvent(input$generate_pathways, {
         
-        UPREGULATED_genes <- contrast[logFC >= input$min_fc, UNIPROTID]
-        DOWNREGULATED_genes <- contrast[logFC < (input$min_fc * -1), UNIPROTID]
+        UPREGULATED_genes <- contrast[logFC >= input$min_fc & adj.P.Val < 0.05, UNIPROTID]
+        DOWNREGULATED_genes <- contrast[logFC < (input$min_fc * -1) & adj.P.Val < 0.05, UNIPROTID]
         
         UPREGULATED_pathways <- knee::ora(UPREGULATED_genes)@output
         assign("UPREGULATED_pathways", UPREGULATED_pathways, envir = .GlobalEnv)
@@ -701,7 +714,7 @@ server <- function(session, input, output) {
                 setkeyv(res, "Gene")
                 setkeyv(contrast, "UNIPROTID")
                 res <- res[contrast[,..convertColumns], nomatch = 0]
-                names(res) <- c("UNIPROTID", names(tba[,2:ncol(tba)]), "ENTREZID", "SYMBOL")
+                names(res) <- c("UNIPROTID", names(tba[,2:ncol(tba)]), convertColumns[-1])
                 
                 setcolorder(res, c(convertColumns, names(tba[,2:ncol(tba)])))
                 
