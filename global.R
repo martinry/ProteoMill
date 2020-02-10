@@ -209,7 +209,7 @@ sample_data <- function(data) {
 filter_na <- function(threshold) {
     
     # Which elements are NA?
-    allNA <- is.na(data_wide[, -..convertColumns])
+    allNA <- is.na(data_origin[, -..convertColumns])
     
     # Summary of how many TRUEs there are in each row
     NA_frequency <- table(rowSums(allNA))
@@ -219,13 +219,13 @@ filter_na <- function(threshold) {
     subset_NA <- function(condition)
     {
         # Subset columns by condition
-        condition_subset <- data_wide[,grep(condition,names(data_wide)), with = F]
+        condition_subset <- data_origin[,grep(condition,names(data_origin)), with = F]
         
         # Determine if rows pass NA threshold
         rows_to_keep <- rowSums(is.na(condition_subset)) <= threshold # !! set global
         
         # Subset rownames
-        keep <- data_wide[rows_to_keep, UNIPROTID]
+        keep <- data_origin[rows_to_keep, UNIPROTID]
         
         return(keep)
         
@@ -238,7 +238,7 @@ filter_na <- function(threshold) {
     condition_sub <- Reduce(intersect, condition_sub)
     
     # Subset dataframe
-    data_wide <- data_wide[UNIPROTID %in% condition_sub,]
+    data_wide <- data_origin[UNIPROTID %in% condition_sub,]
     
     return(data_wide)
     

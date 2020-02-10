@@ -62,12 +62,13 @@ server <- function(session, input, output) {
         text = c("Upload a dataset",
                  "Upload annotation data",
                  "Set a filter",
-                 "Quality check data",
+                 "Inspect data",
                  "Set contrast",
-                 "Run pathway enrichment"),
-        value = rep(0, 6),
-        color = rep("green", 6),
-        id = sprintf("%04d", seq(1:6))
+                 "Run pathway enrichment",
+                 "Run network analysis"),
+        value = rep(0, 7),
+        color = rep("green", 7),
+        id = sprintf("%04d", seq(1:7))
     )
     
     
@@ -84,7 +85,7 @@ server <- function(session, input, output) {
     
     # Initialize message menu
     output$helpMenu <- renderMenu({
-        updateTasks("Run network analysis", value = 0, color = "green", i = 0007)
+        updateTasks("Run predictive analysis", value = 0, color = "green", i = 0008)
         dropdownMenu(type = "tasks", .list = task_list)
     })
     
@@ -109,7 +110,8 @@ server <- function(session, input, output) {
         task_list <- list()
         
         tmp <- tasks[value == 0]
-        tmp <- tmp[which.min(id)]
+        tmp <- tmp[order(id)][1:2]
+        tmp <- tmp[!is.na(id)]
         tmp <- rbindlist(list(tasks[value > 0], tmp))
         
         
@@ -212,6 +214,15 @@ server <- function(session, input, output) {
     })
     
     observeEvent(input$sidebarmenu, {
+        
+        if(input$sidebarmenu %in% c("validateIDs", "structures")){
+            updateNotifications("This feature is not yet available.","exclamation-triangle", "danger")
+        }
+        
+        if(input$sidebarmenu == "about"){
+            updateNotifications("You must gather your party before venturing forth.","exclamation-triangle", "danger")
+        }
+        
         if(input$sidebarmenu == "news"){
             
             showModal(
@@ -221,11 +232,13 @@ server <- function(session, input, output) {
                             src = paste0("doc/News.html"),
                             width = "100%",
                             height = "600px",
-                            frameborder = "0")
-                    })
-                )
-                
-            )
+                            frameborder = "0")})))
+        }
+        
+        if(input$sidebarmenu == "interactions" & !exists("v")){
+            updateNotifications("Run pathway analysis first.","exclamation-triangle", "danger")
+        } else if(input$sidebarmenu == "interactions" & exists("v")){
+            updateTasks(text = "Run network analysis", value = 100, color = "green", i = 0007)
         }
     })
     
@@ -254,14 +267,14 @@ server <- function(session, input, output) {
     # Sidebar menu items ----
     
     # Render "locked" menu items
-    output$qualityrm <- renderMenu({ menuItem("Quality control", icon = icon("lock"), tabName = "") })
+    output$qualityrm <- renderMenu({ menuItem("Inspect data", icon = icon("lock"), tabName = "") })
     output$diffrm    <- renderMenu({ menuItem("Differential analysis", icon = icon("lock"), tabName = "") })
     output$enrichrm  <- renderMenu({ menuItem("Pathway analysis", icon = icon("lock"), tabName = "") })
     output$networkrm <- renderMenu({ menuItem("Network analysis", icon = icon("lock"), tabName = "") })
     
     unlock_menus <- function() {
         output$quality <- renderMenu({
-            menuItem("Quality control", icon = icon("check-circle"), href = NULL,
+            menuItem("Inspect data", icon = icon("check-circle"), href = NULL,
                      menuSubItem("PCA", tabName = "PCA", href = NULL, newtab = TRUE,
                                  icon = shiny::icon("angle-double-right"), selected = F),
                      menuSubItem("UMAP", tabName = "UMAP", href = NULL, newtab = TRUE,
@@ -314,7 +327,7 @@ server <- function(session, input, output) {
 
         upload_data(inFile$datapath, separator(input$dataSep), identifier(input$dataIdentiferType))
 
-        updateNotifications("Dataset successfully uploaded.","check-circle", "success")
+        updateNotifications("Dataset uploaded.","check-circle", "success")
         updateTasks(text = "Upload a dataset", value = 100, color = "green", i = 0001)
         
         
@@ -336,8 +349,7 @@ server <- function(session, input, output) {
         
         assign('data_annotation', data_annotation, envir = .GlobalEnv)
         
-        
-        updateNotifications("Annotations successfully uploaded.","check-circle", "success")
+        updateNotifications("Annotations uploaded.","check-circle", "success")
         updateTasks(text = "Upload annotation data", value = 100, color = "green", i = 0002)
         
         
@@ -368,36 +380,6 @@ server <- function(session, input, output) {
         
     })
     
-    # Identifiers ----
-    
-    
-    
-    # Verify IDs
-    observeEvent(input$verifyIDs, {
-        
-        if(input$sourceIDtype == 1) {
-          
-            
-            # session$sendCustomMessage("fadeProcess", fade(12))
-            # 
-            # id_check <- qob::update_obsolete(rownames(data_wide))
-            # 
-            # obsolete <- id_check[["table"]][["Entry"]]
-            # 
-            # session$sendCustomMessage("fadeProcess", fade(0))
-            # 
-            # assign("id_check", id_check, envir = .GlobalEnv)
-            # 
-            # input_names <- rownames(data_wide)
-            # assign("input_names", input_names, envir = .GlobalEnv)
-          
-        } else {
-            message <- paste("Currently only UniProtKB IDs can be verified.")
-            updateNotifications(message,"exclamation-triangle", "danger")
-        }
-        
-    })
-    
     # NA frequency plot ----
     
     renderNAfreq <- function(){
@@ -415,9 +397,10 @@ server <- function(session, input, output) {
             theme_set(theme_classic())
             
             # Draw plot
-            ggplot(naf, aes(x=Var1, y=Freq)) +
-                geom_bar(stat="identity", width=.9, fill="tomato3") + 
-                theme(axis.text.x = element_text(angle=65, vjust=0.6))
+            ggplot(naf, aes(x = Var1, y = Freq)) +
+                geom_bar(stat = "identity", width = .9, fill = "tomato3") +
+                labs(x = "Number of missing values in at least one sample", y = "Number of rows") +
+                theme(axis.text.x = element_text(angle = 65, vjust = 0.6))
             
             #graphics::barplot(NA_frequency, xlab = "Na frequency", ylab = "Number of genes")
             
@@ -428,19 +411,27 @@ server <- function(session, input, output) {
     
     observeEvent(input$loadfilterplot, {
         
-        renderNAfreq()
-        
+        if(exists("data_wide")){
+            renderNAfreq()
+        } else {
+            updateNotifications("Upload a dataset first.","exclamation-triangle", "danger")
+        }
     })
     
     observeEvent(input$setcutoff, {
-        data_wide <- filter_na(input$missingvalues)
-        assign("data_wide", data_wide, envir = .GlobalEnv)
         
-        unlock_menus()
-        renderNAfreq()
-        
-        updateTasks(text = "Set a filter", value = 100, color = "green", i = 0003)
-        updateNotifications(paste0("NA cutoff set to ", input$missingvalues, ".") ,"check-circle", "success")
+        if(exists("data_wide")){
+            data_wide <- filter_na(input$missingvalues)
+            assign("data_wide", data_wide, envir = .GlobalEnv)
+            
+            unlock_menus()
+            renderNAfreq()
+            
+            updateTasks(text = "Set a filter", value = 100, color = "green", i = 0003)
+            updateNotifications(paste0("NA cutoff set to ", input$missingvalues, ".") ,"check-circle", "success")
+        } else {
+            updateNotifications("Upload a dataset first.","exclamation-triangle", "danger")
+        }
         
     })
     
@@ -449,32 +440,41 @@ server <- function(session, input, output) {
     # Distributions ----
     observeEvent(input$generatedistributions, {
         
-        data_wide_NAex <- na.exclude(data_origin)
+        if(exists("data_wide")){
+            
+            data_wide_NAex <- na.exclude(dframe(data_origin, sID))
+            
+            fit.lnorm <- tryCatch( apply(data_wide_NAex, 1, function(x) fitdistrplus::fitdist(as.numeric(x), "lnorm")),
+                                   error = function(e) print(e))
+            
+            fit.norm <- tryCatch( apply(data_wide_NAex, 1,  function(x) fitdistrplus::fitdist(as.numeric(x), "norm")),
+                                  error = function(e) print(e))
+            
+            # Render "data type" distribution plots
+            output$distributions <- renderPlot({
+                
+                updateSliderInput(session, inputId = "setdist", max = nrow(na.omit(data_origin)))
+                
+                d1 <- fit.norm
+                d2 <- fit.lnorm
+                
+                val <- input$setdist
+                
+                par(mfrow = c(2, 2))
+                
+                fitdistrplus::denscomp(list(d1[[val]], d2[[val]]))
+                fitdistrplus::qqcomp(list(d1[[val]], d2[[val]]))
+                fitdistrplus::cdfcomp(list(d1[[val]], d2[[val]]))
+                fitdistrplus::ppcomp(list(d1[[val]], d2[[val]]))
+                
+            })
+            
+        } else {
+            
+            updateNotifications("Upload a dataset first.","exclamation-triangle", "danger")
+        }
         
-        fit.lnorm <- tryCatch( apply(data_wide_NAex, 1, function(x) fitdistrplus::fitdist(as.numeric(x), "lnorm")),
-                               error = function(e) print("Can't do that."))
         
-        fit.norm <- tryCatch( apply(data_wide_NAex, 1,  function(x) fitdistrplus::fitdist(as.numeric(x), "norm")),
-                              error = function(e) print("Can't do that."))
-        
-        # Render "data type" distribution plots
-        output$distributions <- renderPlot({
-            
-            updateSliderInput(session, inputId = "setdist", max = nrow(na.omit(data_wide)))
-            
-            d1 <- fit.norm
-            d2 <- fit.lnorm
-            
-            val <- input$setdist
-            
-            par(mfrow = c(2, 2))
-            
-            denscomp(list(d1[[val]], d2[[val]]))
-            qqcomp(list(d1[[val]], d2[[val]]))
-            cdfcomp(list(d1[[val]], d2[[val]]))
-            ppcomp(list(d1[[val]], d2[[val]]))
-            
-        })
         
     }, ignoreInit = TRUE)
     
@@ -482,30 +482,34 @@ server <- function(session, input, output) {
     
     # Render PCA plots
     
-    output$pca2dplot <- renderPlot({
-        updateTasks(text = "Quality check data", value = (tasks[id == "0004", value] + 100/3), color = "green", i = 0004)
-        c <- input$contribs
-        e <- input$ellipse
-        plotPCA(c,e, '2d')
+    observeEvent(input$loadPCAplots, {
+        output$pca2dplot <- renderPlot({
+            c <- input$contribs
+            e <- input$ellipse
+            plotPCA(c,e, '2d')
+        })
+        
+        output$pca3dplot <- plotly::renderPlotly({
+            plotPCA(0,0, '3d')
+        })
+        
+        updateTasks(text = "Inspect data", value = (tasks[id == "0004", value] + 100/3), color = "green", i = 0004)
     })
     
-    output$pca3dplot <- plotly::renderPlotly({
-        plotPCA(0,0, '3d')
-    })
+
     
     # Render UMAP
-    
-    output$UMAPplot <- renderPlot({
-        updateTasks(text = "Quality check data", value = (tasks[id == "0004", value] + 100/3), color = "green", i = 0004)
-        plotPCA(0,0, 'UMAP')
+    observeEvent(input$loadUMAP, {
+        output$UMAPplot <- renderPlot({
+            plotPCA(0,0, 'UMAP')
+        })
+        updateTasks(text = "Inspect data", value = (tasks[id == "0004", value] + 100/3), color = "green", i = 0004)
     })
     
+
     # Render heatmap
     
     observeEvent(input$generateheatmap, {
-        
-
-        
         cor_mat_raw_logged <- log2(data_origin[,-..convertColumns])
         cor_mat_raw_logged[is.na(cor_mat_raw_logged)] <- 0
         cor_mat_raw_logged <- cor(cor_mat_raw_logged)
@@ -529,31 +533,12 @@ server <- function(session, input, output) {
             )
         }
         
+        output$samplecorrheatmap = renderPlot({hmap})
         
-        output$samplecorrheatmap = renderPlot({
-            hmap
-            
-        })
-        
-        updateTasks(text = "Quality check data", value = (tasks[id == "0004", value] + 100/3), color = "green", i = 0004)
+        updateTasks(text = "Inspect data", value = (tasks[id == "0004", value] + 100/3), color = "green", i = 0004)
         
     })
 
-    
-    # output$samplecorrheatmap <- renderPlot({
-    #     cor_mat_raw_logged <- log2(data_origin)
-    #     cor_mat_raw_logged[is.na(cor_mat_raw_logged)] <- 0
-    #     cor_mat_raw_logged <- cor(cor_mat_raw_logged)
-    #     
-    #     #annotation_col = data.frame(tmp)
-    #     pheatmap::pheatmap(
-    #         #   annotation = annotation_col,
-    #         cor_mat_raw_logged,
-    #         legend_breaks = c(min(cor_mat_raw_logged), 1),
-    #         legend_labels = c(0, 1)
-    #     )
-    # })
-    
     # Differential expression: set contrasts ----
     observeEvent(input$contrast1, {
         
@@ -571,8 +556,6 @@ server <- function(session, input, output) {
     observeEvent(input$setContrast, {
         output$enrichment <- renderMenu({
             menuItem("Enrichment analysis", icon = icon("flask"), href = NULL,
-                     # menuSubItem("Background data", tabName = "bgdata", href = NULL, newtab = TRUE,
-                     #             icon = shiny::icon("angle-double-right"), selected = F),
                      menuSubItem("Pathway enrichment", tabName = "pathwayenrichment", href = NULL, newtab = TRUE,
                                  icon = shiny::icon("angle-double-right"), selected = F),
                      menuSubItem("Pathway visualization", tabName = "pathwayvisualization", href = NULL, newtab = TRUE,
@@ -581,8 +564,6 @@ server <- function(session, input, output) {
         })
         output$network <- renderMenu({
             menuItem("Network analysis", icon = icon("vector-square"),
-                     # menuSubItem("Interactions", tabName = "network", href = NULL, newtab = TRUE,
-                     #             icon = shiny::icon("angle-double-right"), selected = F),
                      menuSubItem("Interactions", tabName = "interactions", href = NULL, newtab = TRUE,
                                  icon = shiny::icon("angle-double-right"), selected = F),
                      menuSubItem("Predictive analysis", tabName = "predictive", href = NULL, newtab = TRUE,
@@ -601,7 +582,7 @@ server <- function(session, input, output) {
         removeUI(selector = "#networkrm")
         removeUI(selector = "#interactionsrm")
         removeUI(selector = "#predictiverm")
-        updateNotifications("Model fitted successfully.","check-circle", "success")
+        updateNotifications("A DE contrast has been set.","check-circle", "success")
         updateTasks(text = "Set contrast", value = 100, color = "green", i = 0005)
     })
     
@@ -683,6 +664,7 @@ server <- function(session, input, output) {
       )
       
       updateTasks(text = "Run pathway enrichment", value = 100, color = "green", i = 0006)
+      updateNotifications("Pathway analysis complete.","check-circle", "success")
       
     })
     
@@ -691,7 +673,7 @@ server <- function(session, input, output) {
     observeEvent(input$loadPathwayPlots, {
         
         if(!exists("UPREGULATED_pathways")){
-            print("Run pathway enrichment first!")
+            updateNotifications("Run pathway analysis first.","exclamation-triangle", "danger")
         }
 
         output$volcano_plot <- renderPlotly(

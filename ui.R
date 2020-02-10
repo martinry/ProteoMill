@@ -40,13 +40,10 @@ sidebar <- dashboardSidebar(
              text-align: center;
              background-color: #425664;
              color: #fff;"),
-    sidebarMenu(
-#        menuItem("Overview", tabName = "overview", icon = icon("align-left"), selected = T),
+    sidebarMenu(id = "sidebarmenu",
         menuItem("Dataset options", icon = icon("table"),
                  menuSubItem("File input", tabName = "file-input", href = NULL, newtab = TRUE,
                              icon = shiny::icon("angle-double-right"), selected = T),
-                 # menuSubItem("ID Mapping", tabName = "id-mapping", href = NULL, newtab = TRUE,
-                 #             icon = shiny::icon("angle-double-right"), selected = F),
                  menuSubItem("Filters", tabName = "filters", href = NULL, newtab = TRUE,
                              icon = shiny::icon("angle-double-right"), selected = F),
                  startExpanded = T
@@ -78,9 +75,10 @@ sidebar <- dashboardSidebar(
              background-color: #425664;
              margin-top: 2px;
              color: #fff;"),
-    sidebarMenu(
+    sidebarMenu(id = "sidebarmenu",
         menuItem("Validate IDs", tabName = "validateIDs", icon = icon("check-square")),
-        menuItem("Structures", tabName = "structures", icon = icon("fingerprint"))
+        menuItem("Goodness-of-fit", tabName = "goodnessOfFit", icon = icon("chart-bar")),
+        menuItem("Protein structures", tabName = "structures", icon = icon("fingerprint"))
     ),
     tags$br(),
     
@@ -108,9 +106,9 @@ body <- dashboardBody(
     # Import css and js
     tags$head(
         tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"),
-        tags$link(rel="stylesheet", href="https://fonts.googleapis.com/css?family=Quicksand"),
-        tags$link(rel="stylesheet", href="https://fonts.googleapis.com/css?family=Poiret+One"),
-        tags$link(rel="stylesheet", href="https://fonts.googleapis.com/css?family=Open+Sans"),
+        tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Quicksand"),
+        tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Poiret+One"),
+        tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Open+Sans"),
         tags$script(src = "https://cdnjs.cloudflare.com/ajax/libs/animejs/2.0.2/anime.min.js") # To do: keep local copy
     ),
     
@@ -202,7 +200,7 @@ body <- dashboardBody(
         tabItem(tabName = "filters",
                 box(
                     title = "Missing values cutoff", status = "primary", solidHeader = F, width = 3,
-                    helpText("Set maximum number allowed NA per condition."),
+                    helpText("Set maximum number allowed missing values per condition."),
                     numericInput("missingvalues", label = "NA cutoff",
                                  min = 0, max = 50, value = 1), # max = number of samples / conditions
                     actionButton("loadfilterplot", "Load plot"),
@@ -211,45 +209,15 @@ body <- dashboardBody(
                 box(title = "NA frequencies", status = "warning", solidHeader = F,
                     plotOutput("nafreq"))
         ),
-        
-        
-        # Convert IDs
-        
-        tabItem(tabName = "id-mapping",
-                box(title = "Identifiers", width = 3,
-                selectInput("sourceIDtype",
-                            label = "Source ID",
-                            choices = list("UniProtKB" = 1,
-                                           "Entrez" = 2,
-                                           "Ensembl gene ID" = 3,
-                                           "Gene symbol" = 4),
-                            selected = 1),
-                actionButton("verifyIDs", label = "Check IDs"), textOutput("runningprocesstext")
-                ),
-                box(
-                    title = "Convert to", status = "primary", solidHeader = F, width = 3,
-                    helpText("The gene identifier to be used."),
-                    selectInput("identifiers", label = "Identifier type",
-                                choices = list("Entrez" = 1,
-                                               "UniProtKB" = 2,
-                                               "Ensembl gene ID" = 3,
-                                               "Gene symbol" = 4), 
-                                selected = 1),
-                    actionButton("convertIDs", "Convert")
-                )
-                
-        ),
                 
         
         # Data type: distributions
         
-        tabItem(tabName = "datatype",
+        tabItem(tabName = "goodnessOfFit",
                 box(
-                    title = "Distributions", status = "primary", solidHeader = F,
+                    title = "Assess goodness-of-fit", status = "primary", solidHeader = F,
                     selectInput(inputId = "fit", label = "Fit to distribution",
-                                choices = list("Normal" = 1,
-                                               "Poisson" = 2,
-                                               "Negative binomial" = 3),
+                                choices = list("Normal/Log-Normal" = 1),
                                 selected = 1
                     ),
                     actionButton("generatedistributions", label = "Render distributions"),
@@ -264,24 +232,10 @@ body <- dashboardBody(
                         step = 1,
                         animate = animationOptions(interval = 600)
                     )
-                    
-                ),
-                box(
-                    title = "Data type and distribution assumptions", status = "primary", solidHeader = F,
-                    helpText("What type of experiment best describes your data?"),
-                    selectInput("groups", label = "Conditions",
-                                choices = list("RNA-seq" = 1,
-                                               "Single-cell RNA" = 2,
-                                               "Microarray" = 3,
-                                               "Mass spectrometry" = 4),
-                                selected = 1),
-                    actionButton("useIDs", "Select")
                 )
         ),
         
         # Quality control: PCA: 2D, 3D
-        
-        ## To do: Make tab box. Fix contribs.
         
         tabItem(tabName = "PCA",
                 box(title = "PCA settings",
@@ -292,13 +246,18 @@ body <- dashboardBody(
                                 min = 1,  max = 300, value = 10),
                     sliderInput("ellipse",
                                 "Ellipse level:",
-                                min = 0,  max = 1, value = .75)
+                                min = 0,  max = 1, value = .75),
+                    actionButton("loadPCAplots", "Load plots")
                 ),
                 tabBox(
                     tabPanel("PCA 2D", plotOutput("pca2dplot", width = "600px", height = "520px")),
                     tabPanel("PCA 3D", plotly::plotlyOutput("pca3dplot")))),
         tabItem(tabName = "UMAP",
                 fluidRow(
+                    box(width = 3,
+                        status = "warning",
+                        actionButton("loadUMAP","Load plot")
+                    ),
                     box(title = "UMAP",
                         plotOutput("UMAPplot"))
                 )),

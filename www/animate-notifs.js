@@ -1,39 +1,6 @@
-Shiny.addCustomMessageHandler('searchProtein', function(protein) {
-    var link = 'https://www.ebi.ac.uk/pdbe/entry-files/download/pdb' + protein + '.ent';
-
-    plugin.loadMolecule({
-    id: protein,
-    url: link,
-    format: 'pdb' });
-    
-    
-});
-
-Shiny.addCustomMessageHandler('fadeProcess', function(fadein) {
-    if (fadein > 0) {
-        $('#load-process').fadeIn();
-        var myInt = '';
-        for(var i=1;i<=100;i++){
-            setTimeout(function(i) {
-                myInt = i + '%';
-                $('#process-counter')[0].innerText = myInt;
-            }, i * fadein, i);
-        }
-        
-        
-    } else {
-        $('#load-process').fadeOut();
-    }
-    
-    
-});
 
 Shiny.addCustomMessageHandler('set-icon', function(icon) {
   
-//  fa fa-check-circle text-success
-//  fa fa-info-circle text-info
-//  fa fa-warning text-danger
-
   var class_name = "";
   
   if (icon == "success") {
@@ -52,12 +19,12 @@ Shiny.addCustomMessageHandler('set-icon', function(icon) {
       targets: '#notif-icon',
       opacity: 1,
       easing: "easeOutExpo",
-      duration: 1000
+      duration: 2000
     }).add({
       targets: '#notif-icon',
       opacity: 0,
       easing: "easeOutExpo",
-      duration: 1000,
+      duration: 2000,
       delay: 2000
     });
   
@@ -96,7 +63,7 @@ Shiny.addCustomMessageHandler('background-color', function(message) {
       duration: 600,
       offset: '-=775',
       delay: function(el, i) {
-        return 34 * (i+1)
+        return 34 * (i+1);
       }
     }).add({
       targets: '.ml11',

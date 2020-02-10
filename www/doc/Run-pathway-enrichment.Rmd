@@ -1,7 +1,5 @@
 ---
-title: "Upload-annotation-data"
-author: "Martin Rydén"
-date: "2/8/2020"
+title: "Run pathway enrichment"
 output: html_document
 ---
 
