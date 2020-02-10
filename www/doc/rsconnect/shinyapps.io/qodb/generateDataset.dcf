@@ -1,0 +1,13 @@
+name: generateDataset
+title: generateDataset
+username:
+account: qodb
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 1789502
+bundleId: 2790037
+url: https://qodb.shinyapps.io/generateDataset/
+when: 1581370041.49085
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: Inspect-data.html|Inspect-data.Rmd|News.html|News.Rmd|Run-network-analysis.html|Run-network-analysis.Rmd|Run-pathway-enrichment.html|Run-pathway-enrichment.Rmd|Set-a-filter.html|Set-a-filter.Rmd|Set-contrast.html|Set-contrast.Rmd|Upload-a-dataset.html|Upload-a-dataset.Rmd|Upload-annotation-data.html|Upload-annotation-data.Rmd

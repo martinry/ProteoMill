@@ -181,18 +181,55 @@ summary {
 </div>
 
 
-<div id="r-markdown" class="section level2">
-<h2>R Markdown</h2>
-<p>This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <a href="http://rmarkdown.rstudio.com" class="uri">http://rmarkdown.rstudio.com</a>.</p>
-<p>When you click the <strong>Knit</strong> button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:</p>
-<pre class="r"><code>summary(cars)</code></pre>
-<pre><code>##      speed           dist       
-##  Min.   : 4.0   Min.   :  2.00  
-##  1st Qu.:12.0   1st Qu.: 26.00  
-##  Median :15.0   Median : 36.00  
-##  Mean   :15.4   Mean   : 42.98  
-##  3rd Qu.:19.0   3rd Qu.: 56.00  
-##  Max.   :25.0   Max.   :120.00</code></pre>
+<div id="expected-format" class="section level2">
+<h2>Expected format</h2>
+<p>The first column in the data file should contain the <em>identifiers.</em> Currently, the following identifier types are accepted:</p>
+<table style="width:39%;">
+<colgroup>
+<col width="19%"></col>
+<col width="19%"></col>
+</colgroup>
+<thead>
+<tr class="header">
+<th>Identifier</th>
+<th>Examples</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>UniProtKB</td>
+<td>A1L4H1, A5A3E0, A6NMZ7, A8TX70, O00142</td>
+</tr>
+<tr class="even">
+<td>Entrez Gene ID</td>
+<td>284297 728378 131873 256076 7084</td>
+</tr>
+<tr class="odd">
+<td>Gene Symbol</td>
+<td>SSC5D POTEF COL6A6 COL6A5 TK2</td>
+</tr>
+<tr class="even">
+<td>Ensembl Gene ID</td>
+<td>ENSG00000179954 ENSG00000196604 ENSG00000206384 ENSG00000172752 ENSG00000166548</td>
+</tr>
+<tr class="odd">
+<td>Ensembl Protein ID</td>
+<td>ENSP00000467252 ENSP00000386786 ENSP00000351310 ENSP00000309762 ENSP00000440898</td>
+</tr>
+</tbody>
+</table>
+<p>A header row is expected, where each column corresponds to a sample name in the format <em>condition_replicate</em>.</p>
+<div id="example" class="section level3">
+<h3>Example</h3>
+<p>A dataset with two conditions and three replicates each would look like this:</p>
+<pre><code>##               A_1       A_2      A_3       B_1      B_2      B_3
+## ProteinA 199.2580 219.09703 259.4233 201.01540 172.5749 317.7700
+## ProteinB 306.3970 186.52634 198.3280  95.38171 263.2986 152.0751
+## ProteinC 180.2983 163.07688 166.1464 186.63312 206.3784 207.7750
+## ProteinD 184.8001 172.38613 226.1267 247.82100 241.6689 244.3503
+## ProteinE 220.1309 202.08118 208.7412 225.29767 136.5405 194.9671
+## ProteinF 208.4569  89.20582 228.3412 142.10377 253.7950 157.8576</code></pre>
+</div>
 </div>
 
 

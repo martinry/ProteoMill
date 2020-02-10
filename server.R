@@ -256,8 +256,14 @@ server <- function(session, input, output) {
             modalDialog(title = paste0("Task: ", item$text),
                         h6(paste0("Progress: ", item$value, "%")),
                         renderUI({
-                            tags$iframe(src = paste0("doc/", gsub(" ", "-", item$text), ".html"), width="100%", height="600px", frameborder="0")  
+                            tagList(tags$iframe(src = paste0("doc/", gsub(" ", "-", item$text), ".html"), width="100%", height="600px", frameborder="0"),
+                                    if(i == "0001"){tags$iframe(src = paste0("https://qodb.shinyapps.io/generateDataset/"), width="100%", height="600px", frameborder="0")})
+                            
                         }),
+                        # if(i == "0001"){
+                        #     renderUI({
+                        #     tags$iframe(src = paste0("https://qodb.shinyapps.io/generateDataset/"), width="100%", height="600px", frameborder="0")
+                        #     })},
                         size = "l",
                         easyClose = T,
                         footer = list(modalButton("Dismiss"))

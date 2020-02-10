@@ -1,18 +1,37 @@
 ---
 title: "Upload a dataset"
+#runtime: shiny_prerendered
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+#library(shiny)
 ```
 
-## R Markdown
+## Expected format
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+The first column in the data file should contain the *identifiers.* Currently, the following identifier types are accepted:
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+Identifier | Examples
+------------- | ------------- 
+UniProtKB | A1L4H1, A5A3E0, A6NMZ7, A8TX70, O00142
+Entrez Gene ID  | 284297 728378 131873 256076 7084
+Gene Symbol  | SSC5D  POTEF  COL6A6 COL6A5 TK2
+Ensembl Gene ID  | ENSG00000179954 ENSG00000196604 ENSG00000206384 ENSG00000172752 ENSG00000166548
+Ensembl Protein ID  | ENSP00000467252 ENSP00000386786 ENSP00000351310 ENSP00000309762 ENSP00000440898
 
-```{r cars}
-summary(cars)
+A header row is expected, where each column corresponds to a sample name in the format *condition_replicate*.
+
+### Example
+A dataset with two conditions and three replicates each would look like this:
+
+```{r tmp, echo = F}
+m <- matrix(rnorm(60, 200, 50), 6, 6)
+rownames(m) <- paste0("Protein", LETTERS[1:6])
+colnames(m) <- paste0(rep(LETTERS[1:2], each=3), "_", rep(1:3))
+m
 ```
+
+
+
