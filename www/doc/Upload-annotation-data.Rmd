@@ -7,22 +7,33 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+## Expected format
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+Uploading annotation data is optional and not necessary to run the analysis. In the annotation file, the first column should include the name of each sample, as they are represented in the data file. The remaining columns should describe a phenotype, or a property of the sample. For example, the columns could describe patient characteristics such as sex, age, and BMI.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+### Example
 
-```{r cars}
-summary(cars)
-```
+The annotation file for a dataset with 2 conditions and 10 replicates could look like the following:
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+Sample | Sex | Age | BMI
+---- | ---- | ----| ---- |---- 
+TREATMENT_001 | Female | 77 | 22.3
+TREATMENT_002 | Male | 58 | 33.2
+TREATMENT_003 | Female | 74 | 25.5
+TREATMENT_004 | Male | 43 | 42.4
+TREATMENT_005 | Male | 50 | 34.2
+TREATMENT_006 | Female | 18 | 16.4
+TREATMENT_007 | Male | 49 | 33.0
+TREATMENT_008 | Female | 32 | 22.8
+TREATMENT_009 | Female | 61 | 23.3
+TREATMENT_010 | Male | 52 | 26.8
+CONTROL_001 | Female | 77 | 22.3
+CONTROL_002 | Male | 58 | 33.2
+CONTROL_003 | Female | 74 | 25.5
+CONTROL_004 | Male | 43 | 42.4
+CONTROL_005 | Male | 50 | 34.2
+CONTROL_006 | Female | 18 | 16.4
+CONTROL_007 | Male | 49 | 33.0
+CONTROL_008 | Female | 32 | 22.8
+CONTROL_009 | Female | 61 | 23.3
+CONTROL_010 | Male | 52 | 26.8

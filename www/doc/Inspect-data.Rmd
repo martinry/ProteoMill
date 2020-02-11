@@ -20,3 +20,12 @@ First, consider a dataset in only two dimensions, like (height, weight). This da
 ### 3D example
 With three dimensions, PCA is more useful, because it's hard to see through a cloud of data. In the example below, the original data are plotted in 3D, but you can project the data into 2D through a transformation no different than finding a camera angle: rotate the axes to find the best angle. To see the "official" PCA transformation, click the "Show PCA" button. The PCA transformation ensures that the horizontal axis PC1 has the most variation, the vertical axis PC2 the second-most, and a third axis PC3 the least. Obviously, PC3 is the one we drop.
 
+### UMAP
+
+Uniform Manifold Approximation and Projection (UMAP) is a dimension reduction technique that can be used for visualisation similarly to t-SNE, but also for general non-linear dimension reduction.
+
+### Sample-sample correlation heatmap
+
+Another approach to assess whether samples tend to cluster together is to plot sample-sample correlations as a heatmap. This method can be used to detect outliers and abnormalities in a sample. If you have uploaded annotation data, this heatmap will be presented with annotations.
+
+![](../img/heatmap.png) 

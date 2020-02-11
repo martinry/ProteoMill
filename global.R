@@ -1,8 +1,8 @@
 library(igraph)
 library(visNetwork)
 
-#setwd("C://Users/martinry/qodb-shiny/")
-setwd("~/qodb-shiny/")
+setwd("C://Users/martinry/qodb-shiny/")
+#setwd("~/qodb-shiny/")
 # 
 # setClass("Experiment", representation(
 #     expData         = "data.table",
@@ -87,8 +87,7 @@ upload_data <- function(path, sep, i){
 
         
     } else {
-        i <- convertColumns[which.max(lapply(lapply(trs, lengths), sum))]
-        
+
         if(i == "UNIPROTID"){
             
             tr_all <- data.table(AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = data_wide[, as.character(.SD[[1L]])], columns = convertColumns, keytype = i))

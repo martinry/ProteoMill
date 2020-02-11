@@ -1,5 +1,12 @@
 
-/* Here we force rewrite the skin min css */
+/* force rewrite the skin min css */
+
+#mill {
+    width: 33px;
+    margin-top: -8px;
+    margin-right: -6px;
+    
+}
 
 body {
     font-family: 'Quicksand', sans-serif;
@@ -102,8 +109,10 @@ hr {
 }
 
 .logo {
-    font-family: 'Inconsolata', monospace !important;
-    font-size: 22px !important;
+/*     font-family: 'Spectral SC', serif !important; */
+    font-family: 'Modak', cursive !important;
+    font-size: 23px !important;
+    text-shadow: .7em -.7ex 2px #d4d4d4;
 }
 
 .skin-black .main-header>.logo

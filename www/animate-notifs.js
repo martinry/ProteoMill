@@ -1,6 +1,6 @@
 
 Shiny.addCustomMessageHandler('set-icon', function(icon) {
-  
+    
   var class_name = "";
   
   if (icon == "success") {
@@ -19,13 +19,13 @@ Shiny.addCustomMessageHandler('set-icon', function(icon) {
       targets: '#notif-icon',
       opacity: 1,
       easing: "easeOutExpo",
-      duration: 2000
+      duration: 1500
     }).add({
       targets: '#notif-icon',
       opacity: 0,
       easing: "easeOutExpo",
-      duration: 2000,
-      delay: 2000
+      duration: 1500,
+      delay: 1400,
     });
   
 });
@@ -34,15 +34,19 @@ Shiny.addCustomMessageHandler('set-icon', function(icon) {
 Shiny.addCustomMessageHandler('background-color', function(message) {
   document.querySelector('.letters2').innerText = message;
   document.querySelector('.ml11').style = 'opacity: 1;';
-  
-               
 
   // Wrap every letter in a span
   $('.ml11 .letters2').each(function(){
     $(this).html($(this).text().replace(/([^\x00-\x80]|\w)/g, "<span class='letter2'>$&</span>"));
   });
   
-  anime.timeline({loop: false})
+  var basicTimeline = anime.timeline({
+  loop: false
+  });
+  
+//  anime.timeline({loop: false})
+
+basicTimeline
     .add({
       targets: '.ml11 .line',
       scaleY: [0,1],
@@ -68,9 +72,9 @@ Shiny.addCustomMessageHandler('background-color', function(message) {
     }).add({
       targets: '.ml11',
       opacity: 0,
-      duration: 1000,
+      duration: 900,
       easing: "easeOutExpo",
-      delay: 1000
+      delay: 900
     });
     
     

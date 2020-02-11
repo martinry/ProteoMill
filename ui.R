@@ -3,7 +3,7 @@ library(shinydashboard)
 
 #setwd("~/qodb-shiny/")
 
-tissues <- list()
+#tissues <- list()
 
 # Notification menus ----
 
@@ -12,7 +12,7 @@ notifications <- dropdownMenuOutput("notifMenu")
 
 header <- dashboardHeader(help,
                           notifications,
-                          title = "GeneMill",
+                          title = list(tags$img(id = "mill", src = "mill.png"), "GENEMILL"),
                           tags$li(class = "dropdown",
                                   id = "notifications-wrapper",
                                   tags$div(id = 'load-process', style = 'display: none; position: absolute; margin-left: 6px',
@@ -31,6 +31,8 @@ header <- dashboardHeader(help,
                           )
 
 # Sidebar menu ----
+
+
 
 sidebar <- dashboardSidebar(
     tags$div(id = 'test', "Analysis", style = "
@@ -106,7 +108,8 @@ body <- dashboardBody(
     tags$head(
         tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"),
         tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Quicksand"),
-        tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Inconsolata"),
+        tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Modak"),
+        tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Spectral+SC"),
         tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Poiret+One"),
         tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Open+Sans"),
         tags$script(src = "https://cdnjs.cloudflare.com/ajax/libs/animejs/2.0.2/anime.min.js") # To do: keep local copy
@@ -463,4 +466,4 @@ body <- dashboardBody(
 
 # Load dashboard page ----
 
-dashboardPage(skin = 'black', header, sidebar, body)
+dashboardPage(title = "GENEMILL Differential expression pathway and network analysis tool", skin = 'black', header, sidebar, body)
