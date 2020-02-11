@@ -7,6 +7,7 @@ ui <- fluidPage(
     helpText("To learn how the input data file should be formatted, play around with the settings below and generate simulated datasets. When you have set the conditions and replicates according to your experiment, you can download the file and use the header in the original data file."),
     numericInput("conditions", "Number of conditions", min = 2, max = 6, value = 2),
     numericInput("replicates", "Number of replicates", min = 1, max = 20, value = 2),
+    numericInput("number_of_rows", "Number of rows", min = 2, max = 50, value = 6),
     selectInput("identifiers", "Identifier type", choices = list(
         "UniProtKB" = 2,
         "Entrez" = 3,
@@ -61,9 +62,10 @@ server <- function(input, output) {
         conditions <- input$conditions
         replicates <- input$replicates
         identifiers <- identifier(input$identifiers)
+        number_of_rows <- input$number_of_rows
         
-        n <- matrix(rnorm(50, 200, 50), 50, conditions * replicates)
-        rownames(n) <- get(identifiers)
+        n <- matrix(data = rnorm(number_of_rows * conditions * replicates, 200, 50), nrow = number_of_rows, ncol = conditions * replicates)
+        rownames(n) <- get(identifiers)[1:number_of_rows]
         colnames(n) <- paste0(rep(LETTERS[1:conditions], each=replicates), "_", rep(1:replicates))
         
         assign("n", n, envir = .GlobalEnv)

@@ -12,7 +12,7 @@ notifications <- dropdownMenuOutput("notifMenu")
 
 header <- dashboardHeader(help,
                           notifications,
-                          title = "[GeneMill]",
+                          title = "GeneMill",
                           tags$li(class = "dropdown",
                                   id = "notifications-wrapper",
                                   tags$div(id = 'load-process', style = 'display: none; position: absolute; margin-left: 6px',
