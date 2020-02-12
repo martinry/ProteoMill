@@ -4,7 +4,7 @@
 #mill {
     width: 33px;
     margin-top: -8px;
-    margin-right: -6px;
+    margin-right: -2px;
     
 }
 
@@ -110,9 +110,9 @@ hr {
 
 .logo {
 /*     font-family: 'Spectral SC', serif !important; */
-    font-family: 'Modak', cursive !important;
-    font-size: 23px !important;
-    text-shadow: .7em -.7ex 2px #d4d4d4;
+    font-family: 'Patrick Hand', cursive !important;
+    font-size: 26px !important;
+/*    text-shadow: 0.2em -0.3ex 3px #c7c7c7; */
 }
 
 .skin-black .main-header>.logo
