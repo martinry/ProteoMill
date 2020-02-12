@@ -12,7 +12,7 @@ notifications <- dropdownMenuOutput("notifMenu")
 
 header <- dashboardHeader(help,
                           notifications,
-                          title = list(tags$img(id = "mill", src = "mill.png"), "GENEMILL"),
+                          title = list(tags$img(id = "mill", class = "normal", src = "mill.png"), "GENEMILL"),
                           tags$li(class = "dropdown",
                                   id = "notifications-wrapper",
                                   tags$div(id = 'load-process', style = 'display: none; position: absolute; margin-left: 6px',
@@ -466,4 +466,4 @@ body <- dashboardBody(
 
 # Load dashboard page ----
 
-dashboardPage(title = "GENEMILL Differential expression pathway and network analysis tool", skin = 'black', header, sidebar, body)
+dashboardPage(title = "GeneMill | Differential expression pathway and network analysis tool", skin = 'black', header, sidebar, body)

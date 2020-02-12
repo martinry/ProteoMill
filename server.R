@@ -693,52 +693,56 @@ server <- function(session, input, output) {
         
         if(!exists("UPREGULATED_pathways")){
             updateNotifications("Run pathway analysis first.","exclamation-triangle", "danger")
+        }else{
+            
+            output$volcano_plot <- renderPlotly(
+                {
+                    
+                    
+                    res <- knee::enrichment_results(UPREGULATED_pathways, DOWNREGULATED_pathways)
+                    
+                    tba <- contrast[!(UNIPROTID %in% res$Gene), c("UNIPROTID", "logFC", "CI.L", "CI.R", "P.Value")]
+                    colnames(tba) <- c("Gene", "logFC", "CI.L", "CI.R", "P.Value")
+                    
+                    tba <- tba[!is.na(logFC)]
+                    
+                    tba[, c("ReactomeID", "P.Adj")] <- NA
+                    
+                    tba[, "TopReactomeName"] <- "[No significant over-representation]"
+                    tba[, "Pathway_name"] <- "[No significant over-representation]"
+                    
+                    setcolorder(tba, colnames(res))
+                    
+                    res <- rbindlist(list(res, tba))
+                    
+                    res$Pathway_name <- stringr::str_wrap(res$Pathway_name, 50)
+                    
+                    setkeyv(res, "Gene")
+                    setkeyv(contrast, "UNIPROTID")
+                    res <- res[contrast[,..convertColumns], nomatch = 0]
+                    names(res) <- c("UNIPROTID", names(tba[,2:ncol(tba)]), convertColumns[-1])
+                    
+                    setcolorder(res, c(convertColumns, names(tba[,2:ncol(tba)])))
+                    
+                    print(input$abstractionlevel)
+                    v <- knee::volcano(res, abstraction = input$abstractionlevel)
+                    
+                    assign("v", v, envir = .GlobalEnv)
+                    
+                    plotly::ggplotly(v$volcano_plot) %>% layout(dragmode = "select")
+                    
+                })
+            
+            
+            output$volcano_plot2 <- renderPlotly(
+                {
+                    plotly::ggplotly(v$volcano_plot, width = 700, height = 400) %>% layout(dragmode = "select")
+                    
+                })
+            
         }
 
-        output$volcano_plot <- renderPlotly(
-            {
-                
-                
-                res <- knee::enrichment_results(UPREGULATED_pathways, DOWNREGULATED_pathways)
-                
-                tba <- contrast[!(UNIPROTID %in% res$Gene), c("UNIPROTID", "logFC", "CI.L", "CI.R", "P.Value")]
-                colnames(tba) <- c("Gene", "logFC", "CI.L", "CI.R", "P.Value")
-                
-                tba <- tba[!is.na(logFC)]
-                
-                tba[, c("ReactomeID", "P.Adj")] <- NA
-                
-                tba[, "TopReactomeName"] <- "[No significant over-representation]"
-                tba[, "Pathway_name"] <- "[No significant over-representation]"
-                
-                setcolorder(tba, colnames(res))
-                
-                res <- rbindlist(list(res, tba))
-                
-                res$Pathway_name <- stringr::str_wrap(res$Pathway_name, 50)
-                
-                setkeyv(res, "Gene")
-                setkeyv(contrast, "UNIPROTID")
-                res <- res[contrast[,..convertColumns], nomatch = 0]
-                names(res) <- c("UNIPROTID", names(tba[,2:ncol(tba)]), convertColumns[-1])
-                
-                setcolorder(res, c(convertColumns, names(tba[,2:ncol(tba)])))
-                
-                print(input$abstractionlevel)
-                v <- knee::volcano(res, abstraction = input$abstractionlevel)
-                
-                assign("v", v, envir = .GlobalEnv)
-                
-                plotly::ggplotly(v$volcano_plot) %>% layout(dragmode = "select")
-                
-            })
         
-        
-        output$volcano_plot2 <- renderPlotly(
-            {
-                plotly::ggplotly(v$volcano_plot, width = 700, height = 400) %>% layout(dragmode = "select")
-                
-            })
         
         
         

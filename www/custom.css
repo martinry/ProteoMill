@@ -112,7 +112,7 @@ hr {
 /*     font-family: 'Spectral SC', serif !important; */
     font-family: 'Patrick Hand', cursive !important;
     font-size: 26px !important;
-/*    text-shadow: 0.2em -0.3ex 3px #c7c7c7; */
+/*    text-shadow: .7em -.7ex 2px #d4d4d4; */
 }
 
 .skin-black .main-header>.logo
@@ -128,6 +128,11 @@ hr {
 }
 @media (max-width:767px)
 {
+    #mill
+{
+    -webkit-filter:invert(100%);
+    filter:progid:DXImageTransform.Microsoft.BasicImage(invert='1');
+}
 	.skin-black .main-header>.logo
 {
 	background-color: #1E2835; /* #222; */

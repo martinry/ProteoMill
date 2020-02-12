@@ -1,8 +1,8 @@
 library(igraph)
 library(visNetwork)
 
-#setwd("C://Users/martinry/qodb-shiny/")
-setwd("~/qodb-shiny/")
+setwd("C://Users/martinry/qodb-shiny/")
+#setwd("~/qodb-shiny/")
 # 
 # setClass("Experiment", representation(
 #     expData         = "data.table",
