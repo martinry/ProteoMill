@@ -1,21 +1,18 @@
+# Load packages ----
+
 library(limma)
 library(Biobase)
-require(ggplot2)
-require(ggrepel)
-require(RColorBrewer)
-require(dplyr)
+library(ggplot2)
+library(ggrepel)
+library(RColorBrewer)
+library(dplyr)
 library(plotly)
 library(data.table)
-require(AnnotationDbi)
+library(DT)
+library(AnnotationDbi)
 library(EnsDb.Hsapiens.v86)
 
-# Passing arguments from R Shiny to external jQuery scripts unfortunately requires som workarounds
-# This function is actually necessary...
-fade <- function(fadein) {
-    return(fadein)
-}
-
-
+# Generic functions ----
 
 separator <- function(s) {
     switch(s,
@@ -199,24 +196,12 @@ server <- function(session, input, output) {
         
     }
     
-    observeEvent(input$updateAll, {
-        data_wide <- data_wide[!duplicated(id_check[["updated"]]),]
-        rownames(data_wide) <- id_check[["updated"]][!duplicated(id_check[["updated"]])]
-        assign("data_wide", data_wide, envir = .GlobalEnv)
-        
-        background_data <- rownames(data_wide)
-        input_names <- rownames(data_wide)
-        assign("background_data", background_data, envir = .GlobalEnv)
-        assign("input_names", input_names, envir = .GlobalEnv)
-        
-        message <- paste(nrow(id_check[["table"]]), " IDs updated successfully.")
-        updateNotifications(message,"check-circle", "success")
-        
-    })
+    #### ANALYSIS ####
+    # Sidebar menu: rules ----
     
     observeEvent(input$sidebarmenu, {
         
-        if(input$sidebarmenu %in% c("validateIDs", "structures")){
+        if(input$sidebarmenu %in% c("structures")){
             updateNotifications("This feature is not yet available.","exclamation-triangle", "danger")
         }
         
@@ -225,7 +210,6 @@ server <- function(session, input, output) {
         }
         
         if(input$sidebarmenu == "news"){
-            
             showModal(
                 modalDialog(size = "l",
                     renderUI({
@@ -271,7 +255,7 @@ server <- function(session, input, output) {
         )
     })
     
-    # Sidebar menu items ----
+    # Sidebar menu: items ----
     
     # Render "locked" menu items
     output$qualityrm <- renderMenu({ menuItem("Inspect data", icon = icon("lock"), tabName = "") })
@@ -320,9 +304,7 @@ server <- function(session, input, output) {
     
     
     
-    # File input ----
-    
-    # Main data file input
+    # File input: Main data ----
     observeEvent(input$infile, {
         
         inFile <- input$infile
@@ -341,7 +323,7 @@ server <- function(session, input, output) {
         
     })
     
-    # Annotation file input
+    # File input: Annotation ----
     observeEvent(input$anno_infile, {
         inFile <- input$anno_infile
         
@@ -362,8 +344,7 @@ server <- function(session, input, output) {
         
     })
     
-    # Demo data file input
-    
+    # File input: Demo data ----
     observeEvent(input$useDemoData, {
         
         # Sample 1
@@ -371,7 +352,7 @@ server <- function(session, input, output) {
         sample_1_exp <- "data/donors.uniprot.csv"
         sample_1_anno <- "data/donors.uniprot.annotation.tsv"
         
-        upload_data(sample_1_exp, "auto", "auto")
+        upload_data(path = sample_1_exp, sep = ";", i = "UNIPROTID")
         
         data_annotation <- data.table::fread(
             sample_1_anno,
@@ -387,7 +368,7 @@ server <- function(session, input, output) {
         
     })
     
-    # NA frequency plot ----
+    # Missing values: frequency plot ----
     
     renderNAfreq <- function(){
         output$nafreq <- renderPlot({
@@ -443,47 +424,6 @@ server <- function(session, input, output) {
     })
     
     
-    
-    # Distributions ----
-    observeEvent(input$generatedistributions, {
-        
-        if(exists("data_wide")){
-            
-            data_wide_NAex <- na.exclude(dframe(data_origin, sID))
-            
-            fit.lnorm <- tryCatch( apply(data_wide_NAex, 1, function(x) fitdistrplus::fitdist(as.numeric(x), "lnorm")),
-                                   error = function(e) print(e))
-            
-            fit.norm <- tryCatch( apply(data_wide_NAex, 1,  function(x) fitdistrplus::fitdist(as.numeric(x), "norm")),
-                                  error = function(e) print(e))
-            
-            # Render "data type" distribution plots
-            output$distributions <- renderPlot({
-                
-                updateSliderInput(session, inputId = "setdist", max = nrow(na.omit(data_origin)))
-                
-                d1 <- fit.norm
-                d2 <- fit.lnorm
-                
-                val <- input$setdist
-                
-                par(mfrow = c(2, 2))
-                
-                fitdistrplus::denscomp(list(d1[[val]], d2[[val]]))
-                fitdistrplus::qqcomp(list(d1[[val]], d2[[val]]))
-                fitdistrplus::cdfcomp(list(d1[[val]], d2[[val]]))
-                fitdistrplus::ppcomp(list(d1[[val]], d2[[val]]))
-                
-            })
-            
-        } else {
-            
-            updateNotifications("Upload a dataset first.","exclamation-triangle", "danger")
-        }
-        
-        
-        
-    }, ignoreInit = TRUE)
     
     # Quality control ----
     
@@ -887,4 +827,91 @@ server <- function(session, input, output) {
         })
         
 
+    #### ADDITIONAL TOOLS ####
+    # Goodness-of-fit ----
+    observeEvent(input$generatedistributions, {
+        
+        if(exists("data_wide")){
+            
+            data_wide_NAex <- na.exclude(dframe(data_origin, sID))
+            
+            fit.lnorm <- tryCatch( apply(data_wide_NAex, 1, function(x) fitdistrplus::fitdist(as.numeric(x), "lnorm")),
+                                   error = function(e) print(e))
+            
+            fit.norm <- tryCatch( apply(data_wide_NAex, 1,  function(x) fitdistrplus::fitdist(as.numeric(x), "norm")),
+                                  error = function(e) print(e))
+            
+            # Render "data type" distribution plots
+            output$distributions <- renderPlot({
+                
+                updateSliderInput(session, inputId = "setdist", max = nrow(na.omit(data_origin)))
+                
+                d1 <- fit.norm
+                d2 <- fit.lnorm
+                
+                val <- input$setdist
+                
+                par(mfrow = c(2, 2))
+                
+                fitdistrplus::denscomp(list(d1[[val]], d2[[val]]))
+                fitdistrplus::qqcomp(list(d1[[val]], d2[[val]]))
+                fitdistrplus::cdfcomp(list(d1[[val]], d2[[val]]))
+                fitdistrplus::ppcomp(list(d1[[val]], d2[[val]]))
+                
+            })
+            
+        } else {
+            
+            updateNotifications("Upload a dataset first.","exclamation-triangle", "danger")
+        }
+        
+        
+        
+    }, ignoreInit = TRUE)
+    
+    # 
+    # Validate identifiers ----
+    
+    observeEvent(input$listCandidates, {
+        
+        updateNotifications(paste0("Checking for outdated IDs. Please wait."), "info-circle", "info")
+
+        candidates <- data_wide[apply(
+            data_wide[, ..convertColumns],
+            1,
+            FUN = function(x)
+                all(startsWith(x[2:5], "MISSING"))
+        ), "UNIPROTID"]
+        
+        
+        
+        status <- knee::history(candidates$UNIPROTID)
+        status <- as.data.table(status)
+        
+        setkey(status, "Accession")
+        setkey(candidates, "UNIPROTID")
+        
+        candidates <- candidates[status]
+        
+        candidates$flag <- ifelse(grepl("merged", candidates$Event, ignore.case = T), 1, 2)
+        
+        candidates <- candidates[order(candidates$flag, decreasing = F),]
+        
+        n <- candidates[flag == 1, .N]
+        
+        updateNotifications(paste0(n, " IDs are outdated."), "info-circle", "info")
+
+        output$obsolete <- DT::renderDT({
+            formatStyle(
+                datatable(candidates),
+                'flag', target = 'row', 
+                backgroundColor = styleEqual(c(1), c('green'))
+            ) 
+            
+        })
+        
+    })
+    
+    
+    
 }

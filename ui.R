@@ -212,6 +212,20 @@ body <- dashboardBody(
                 box(title = "NA frequencies", status = "warning", solidHeader = F,
                     plotOutput("nafreq"))
         ),
+
+
+        # Data type: distributions
+        
+        tabItem(tabName = "validateIDs",
+                box(
+                    title = "Validate IDs", status = "primary", solidHeader = F,
+                    helpText("NB: Depending on the number of IDs, this process may take a long time to run."),
+                    actionButton("listCandidates", label = "List outdated IDs"),
+                    br(),
+                    hr(),
+                    DT::DTOutput("obsolete")
+                )
+        ),
                 
         
         # Data type: distributions
@@ -415,17 +429,6 @@ body <- dashboardBody(
                     )
                 )
             ),
-        # tabItem(tabName = "structures",
-        #         # box(title = "Search protein", width = 2,
-        #         #     textInput("proteinsearch", label = "Search"),
-        #         #     actionButton("searchclick", "Find structure")
-        #         #     ),
-        #         box(title = "Structure", width = 10,
-        #             textInput("seachinput", "Search"),
-        #             actionButton("searchclick", "Find structure"),
-        #             tags$div(id = "litemol", style = 'width: 640px; margin-top: 10px; height: 480px; position: relative'),
-        #             tags$script(HTML("var plugin = LiteMol.Plugin.create({ target: '#litemol', layoutState: { hideControls: true } });")))
-        #         ),
         tabItem(tabName = "settings",
                 fluidRow(
                     box(title = "Settings", width = 3,
