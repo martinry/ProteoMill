@@ -32,6 +32,18 @@ identifier <- function(i) {
            "6" = "PROTEINID")
 }
 
+get_delim <- function(c){
+    if(grepl("\n", c)){
+        return("\n")
+    } else if(grepl(",", c)){
+        return(",")
+    } else if(grepl(";", c)){
+        return(";")
+    } else {
+        return ("None")
+    }
+}
+
 
 get_interactions <- function(){
 
@@ -347,6 +359,8 @@ server <- function(session, input, output) {
     # File input: Demo data ----
     observeEvent(input$useDemoData, {
         
+        
+
         # Sample 1
         
         sample_1_exp <- "data/donors.uniprot.csv"
@@ -580,8 +594,8 @@ server <- function(session, input, output) {
       
       output$number_of_genes <- renderUI({
         
-        up <- paste("Up-regulated:", contrast[logFC >= input$min_fc, .N], "genes", sep = " ")
-        down <- paste("Down-regulated:", contrast[logFC < (input$min_fc * -1), .N], "genes", sep = " ")
+        up <- paste("Up-regulated:", contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval, .N], "genes", sep = " ")
+        down <- paste("Down-regulated:", contrast[logFC < (input$min_fc * -1) & adj.P.Val < input$min_pval, .N], "genes", sep = " ")
         
         HTML(paste(up, down, '<br/>', sep = '<br/>'))
         
@@ -590,8 +604,8 @@ server <- function(session, input, output) {
     
     observeEvent(input$generate_pathways, {
         
-        UPREGULATED_genes <- contrast[logFC >= input$min_fc & adj.P.Val < 0.05, UNIPROTID]
-        DOWNREGULATED_genes <- contrast[logFC < (input$min_fc * -1) & adj.P.Val < 0.05, UNIPROTID]
+        UPREGULATED_genes <- contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval, UNIPROTID]
+        DOWNREGULATED_genes <- contrast[logFC < (input$min_fc * -1) & adj.P.Val < input$min_pval, UNIPROTID]
         
         UPREGULATED_pathways <- knee::ora(UPREGULATED_genes)@output
         assign("UPREGULATED_pathways", UPREGULATED_pathways, envir = .GlobalEnv)
@@ -704,44 +718,66 @@ server <- function(session, input, output) {
     # Volcano plot
     
     
+    output$clicked_node <- renderUI({
+        if (is.null(input$clicked_node)) {
+            "No node has been clicked yet"
+        } else {
+            input$clicked_node
+        }
+        
+    })
     
+    output$hovered_node <- renderUI({
+        if (is.null(input$hovered_node)) {
+            "No node has been hovered yet"
+        } else {
+            
+            name <- input$hovered_node
+            
+            description <- pdesc[get(sID) == input$hovered_node, annotation]
+            
+            HTML(
+                paste(paste(tags$strong("Name:"), name, sep = " "),
+                      paste(tags$strong("Description:"), description, sep = " "),
+                      sep = "<br/>")
+                 )
+            
+        }
+    })
     
     output$xxxx <- renderVisNetwork({
+        
+        dir <- input$network_regulation
+        
+        print(dir)
+        
+        if(dir == 1){
+            proteins <- contrast[(adj.P.Val <= input$pvaluecutoff) &
+                                     (abs(logFC) >= input$fccutoff) &
+                                     (logFC > 0)]$UNIPROTID
+        } else if(dir == 2){
+            proteins <- contrast[(adj.P.Val <= input$pvaluecutoff) &
+                                     (abs(logFC) >= input$fccutoff) &
+                                     (logFC <= 0)]$UNIPROTID
+        } else {
+            proteins <- contrast[(adj.P.Val <= input$pvaluecutoff) &
+                                     (abs(logFC) >= input$fccutoff)]$UNIPROTID
+        }
 
-        proteins <- contrast[adj.P.Val < input$pvaluecutoff & abs(logFC) >= input$fccutoff]$UNIPROTID
-
-        # uniprot_to_string <- uniprot_to_string_src[up %in% proteins, c(3, 4, 6)]
-        # 
-        # 
         # if(!exists("g")){
-        #     ints <- interactions[protein1 %in% uniprot_to_string$V3,]
-        #     
-        #     setkey(uniprot_to_string, V3)
-        #     setkey(ints, protein2)
-        #     ints <- ints[protein2 %in% uniprot_to_string$V3,]
-        #     ints$combined_score <- ints$combined_score / 100
-        #     
-        #     setkey(uniprot_to_string, V3)
-        #     setkey(ints, protein1)
-        #     ints <- ints[uniprot_to_string, nomatch = 0]
-        #     setkey(ints, protein2)
-        #     ints <- ints[uniprot_to_string, nomatch = 0]
-        #     ints <- ints[,c(5,7, 3)]
-        #     colnames(ints) <- c("protein1", "protein2", "combined_score")
+        #     ints2 <- interactions[(protein1 %in% proteins) & (protein2 %in% proteins)]
+        #     ints2 <- ints2[score > input$interactioncutoff]
         # }
         
-
+        ints2 <- interactions[(protein1 %in% proteins) & (protein2 %in% proteins)]
+        ints2 <- ints2[score > input$interactioncutoff]
+        
+        print(ints2[, .N])
         
         mynodes <- unlist(event_data("plotly_selected")$key)
         
-       # ints2 <- ints[combined_score > input$interactioncutoff]
-        
-        if(!exists("g")){
-            ints2 <- interactions[(protein1 %in% proteins) & (protein2 %in% proteins)]
-            ints2 <- ints2[score > input$interactioncutoff]
-        }
-        
-        
+        mynodes <- contrast[get(sID) %in% mynodes, "UNIPROTID"][[1]]
+
         
         # TBA: all interactions option
         
@@ -777,28 +813,17 @@ server <- function(session, input, output) {
                 #label = ints2$mode
                 
             )
-        
-        #edges$color <- palette(rainbow(7))[edges$value]
-        
+
         g <- igraph::graph_from_data_frame(edges, directed = F, vertices = nodes)
         
+        r <- v$res[V(g)$label, on = "UNIPROTID", ]
         
         
-        #g <- igraph::graph_from_data_frame(ints2, directed = T)
-        r <- v$res[V(g)$name, on = "UNIPROTID", ]
-        
+        g <- set.vertex.attribute(g, name = "name",value = as.vector (r[, ..sID][[1]]))
         g <- set.vertex.attribute(g, name = "color",value = r$col)
         g <- set.vertex.attribute(g, name = "group",value = r$TopReactomeName)
         
 
-        # g <- igraph::graph_from_data_frame(ints2, directed = F)
-        # g <- igraph::simplify(g, remove.multiple = F, remove.loops = T)
-        # 
-        # r <- v$res[V(g)$name, on = "Gene", ]
-        # 
-        # g <- set.vertex.attribute(g, name = "color",value = r$col)
-        # g <- set.vertex.attribute(g, name = "group",value = r$TopReactomeName)
-        
         layout <- function(type) {
             switch(type,
                    "1" = "layout_nicely",
@@ -808,24 +833,71 @@ server <- function(session, input, output) {
                    "5" = "layout_randomly",
                    "6" = "layout_DH")
         }
+
+        if(exists("g")){
+            V(g)$name <- v$res[V(g)$name, on = sID, ..sID][[1]]
+        } else {
+            names(V(g)) <- v$res[V(g)$name, on = "UNIPROTID", "UNIPROTID"][[1]]
+        }
         
-        # visNetwork::visIgraph(g) %>%
-        #     visIgraphLayout(layout = layout(input$network_layout_options), randomSeed = 1) %>%
-        #     visEdges(arrows = list(to = list(enabled = TRUE))) %>%
-        #     visOptions(selectedBy = list(variable = "group")) %>%
-        #     visPhysics(stabilization = T)
-        
-        #  visNetwork(nodes, edges) %>% 
-        #     # visEdges(arrows = list(to = list(enabled = TRUE))) %>%
-        #      #visIgraphLayout(layout = layout("layout_nicely")) %>%
-        #      visPhysics(enabled = FALSE)
-        # # 
+
+            
         visNetwork::visIgraph(g) %>%
+            visInteraction(hover = TRUE) %>%
             visIgraphLayout(layout = layout(input$network_layout_options), randomSeed = 1) %>%
-            visOptions(selectedBy = list(variable = "group"))
+            visOptions(selectedBy = list(variable = "group")) %>%
+            visEvents(
+                click = "function(nodes) {
+        console.info('click')
+        console.info(nodes)
+        Shiny.onInputChange('clicked_node', {nodes : nodes.node});
+        ;}",
+                hoverNode = "function(nodes) {
+        console.info('hover')
+        console.info(nodes)
+        Shiny.onInputChange('hovered_node', {node : nodes.node});
+        ;}"
+            )
+        
         
         })
         
+    
+    observeEvent(input$highlight_nodes, {
+        
+        print(input$network_proteins)
+
+        if(nchar(input$network_proteins) > 0){
+            
+            if(get_delim(input$network_proteins) != "None") {
+                
+                # Multiple items
+                
+                selection <- unlist(strsplit(input$network_proteins, get_delim(input$network_proteins)))
+
+                visNetworkProxy("xxxx") %>%
+                    visUnselectAll() %>%
+                    visSelectNodes(id = selection)
+                
+            }
+            
+            else {
+                # Single item
+                selection <- as.character(input$network_proteins)
+
+                visNetworkProxy("xxxx") %>%
+                    visUnselectAll() %>%
+                    visFocus(id = selection)
+            }
+            
+        } else {
+            
+            updateNotifications("Please enter a valid identifier.","exclamation-triangle", "danger")
+            
+        }
+
+
+    })
 
     #### ADDITIONAL TOOLS ####
     # Goodness-of-fit ----
@@ -874,41 +946,51 @@ server <- function(session, input, output) {
     
     observeEvent(input$listCandidates, {
         
-        updateNotifications(paste0("Checking for outdated IDs. Please wait."), "info-circle", "info")
-
-        candidates <- data_wide[apply(
-            data_wide[, ..convertColumns],
-            1,
-            FUN = function(x)
-                all(startsWith(x[2:5], "MISSING"))
-        ), "UNIPROTID"]
-        
-        
-        
-        status <- knee::history(candidates$UNIPROTID)
-        status <- as.data.table(status)
-        
-        setkey(status, "Accession")
-        setkey(candidates, "UNIPROTID")
-        
-        candidates <- candidates[status]
-        
-        candidates$flag <- ifelse(grepl("merged", candidates$Event, ignore.case = T), 1, 2)
-        
-        candidates <- candidates[order(candidates$flag, decreasing = F),]
-        
-        n <- candidates[flag == 1, .N]
-        
-        updateNotifications(paste0(n, " IDs are outdated."), "info-circle", "info")
-
-        output$obsolete <- DT::renderDT({
-            formatStyle(
-                datatable(candidates),
-                'flag', target = 'row', 
-                backgroundColor = styleEqual(c(1), c('green'))
-            ) 
+        if(!exists("data_wide")){
             
-        })
+            updateNotifications(paste0("Upload a dataset first."), "exclamation-triangle", "danger")
+            
+        } else{
+            
+            updateNotifications(paste0("Checking for outdated IDs. Please wait."), "info-circle", "info")
+            
+            candidates <- data_wide[apply(
+                data_wide[, ..convertColumns],
+                1,
+                FUN = function(x)
+                    all(startsWith(x[2:5], "MISSING"))
+            ), "UNIPROTID"]
+            
+            
+            
+            status <- knee::history(candidates$UNIPROTID)
+            status <- as.data.table(status)
+            
+            setkey(status, "Accession")
+            setkey(candidates, "UNIPROTID")
+            
+            candidates <- candidates[status]
+            
+            candidates$flag <- ifelse(grepl("merged", candidates$Event, ignore.case = T), 1, 2)
+            
+            candidates <- candidates[order(candidates$flag, decreasing = F),]
+            
+            n <- candidates[flag == 1, .N]
+            
+            updateNotifications(paste0(n, " IDs are outdated."), "info-circle", "info")
+            
+            output$obsolete <- DT::renderDT({
+                formatStyle(
+                    datatable(candidates),
+                    'flag', target = 'row', 
+                    backgroundColor = styleEqual(c(1), c('green'))
+                ) 
+                
+            })
+            
+        }
+        
+        
         
     })
     

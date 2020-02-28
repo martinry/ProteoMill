@@ -12,7 +12,7 @@ notifications <- dropdownMenuOutput("notifMenu")
 
 header <- dashboardHeader(help,
                           notifications,
-                          title = list(tags$img(id = "mill", class = "normal", src = "mill.png"), "GENEMILL"),
+                          title = list(tags$img(id = "mill", class = "normal", src = "mill.png"), "PROTEOMILL"),
                           tags$li(class = "dropdown",
                                   id = "notifications-wrapper",
                                   tags$div(id = 'load-process', style = 'display: none; position: absolute; margin-left: 6px',
@@ -80,7 +80,8 @@ sidebar <- dashboardSidebar(
     sidebarMenu(id = "sidebarmenu",
         menuItem("Validate IDs", tabName = "validateIDs", icon = icon("check-square")),
         menuItem("Goodness-of-fit", tabName = "goodnessOfFit", icon = icon("chart-bar")),
-        menuItem("Protein structures", tabName = "structures", icon = icon("fingerprint"))
+        menuItem("Protein structures", tabName = "structures", icon = icon("fingerprint")),
+        menuItem("Generate report", tabName = "file-export", icon = icon("file-download"))
     ),
     tags$br(),
     
@@ -251,6 +252,20 @@ body <- dashboardBody(
                     )
                 )
         ),
+
+        # Data type: distributions
+        
+        tabItem(tabName = "file-export",
+                box(
+                    title = "Generate report", status = "primary", solidHeader = F,
+                    helpText("Exports generated content to an Rmarkdown document"),
+                    h6(actionLink("selectall","Select all"), strong(" | "), actionLink("deselectall","Deselect all")),
+                    checkboxGroupInput("export_filtering", "Filtering", inline = T, choices = c("Missing values")),
+                    checkboxGroupInput("export_data_inspection", "Data inspection", inline = T, choices = c("PCA 2D", "PCA 3D", "UMAP", "Heatmap")),
+                    checkboxGroupInput("export_de", "Differential analysis", inline = T, choices = c("Fold-change", "P-values")),
+                    actionButton("compile_data", "Generate")
+                )
+        ),
         
         # Quality control: PCA: 2D, 3D
         
@@ -337,6 +352,7 @@ body <- dashboardBody(
                                  choices = list("Global", "Lowest"),
                                  selected = "Lowest", inline = T),
                     numericInput("min_fc", "Min. log2 fold change", value = 0, min = 0, max = 50, step = .5),
+                    numericInput("min_pval", "Min. adj. P-value", value = 0.05, min = 0, max = 1, step = .01),
                     htmlOutput("number_of_genes"),
                     radioButtons(inputId = "usebackground", label = "Background genes",
                                  choices = list("My dataset" = 1, "Extended background" = 2, "No background (entire genome)" = 3),
@@ -361,19 +377,20 @@ body <- dashboardBody(
                 fluidRow(
                     box(
                         width = 6,
-                        height = 464,
+                        height = 550,#464,
                         visNetworkOutput("xxxx")
                     ),
                     tabBox(width = 6,
-                        tabPanel("volcano_network_tab", plotly::plotlyOutput("volcano_plot2")),
-                        tabPanel("pca_network_tab", "PCA goes here")
+                           height = 550,
+                           tabPanel("volcano_network_tab", plotly::plotlyOutput("volcano_plot2")),
+                           tabPanel("pca_network_tab", "PCA goes here")
                     )
                 ),
                 
                 fluidRow(
-                    column(width = 4,
+                    column(width = 3,
                            box(
-                               title = "Network settings", width = NULL, solidHeader = TRUE, status = "danger",
+                               title = "Network settings", width = NULL,
                                radioButtons("network_layout_options", label = "Layout options",
                                             choices = list(
                                                 "Nicely" = 1,
@@ -382,6 +399,12 @@ body <- dashboardBody(
                                                 "Sphere" = 4,
                                                 "Randomly" = 5
                                             ), inline = T),
+                               radioButtons(
+                                   "network_regulation",
+                                   label = "Subset by up- or down-regulation",
+                                   choices = list("Up-regulated" = 1, "Down-regulated" = 2, "Both" = 3),
+                                   selected = 3,
+                                   inline = T),
                                numericInput(
                                    "pvaluecutoff",
                                    label = "Maximum adj. Pvalue",
@@ -389,7 +412,7 @@ body <- dashboardBody(
                                    max = 1,
                                    value = 0.05,
                                    step = 0.0001
-                               ), 
+                               ),
                                numericInput(
                                    "fccutoff",
                                    label = "Minimum abs. log2FC",
@@ -409,17 +432,27 @@ body <- dashboardBody(
                            )
                     ),
                     
-                    column(width = 4,
+                    column(width = 3,
                            box(
-                               title = "Selection criteria", width = NULL, solidHeader = TRUE, status = "danger",
+                               title = "Selection criteria", width = NULL,
                                
                                radioButtons("interaction_behaviour", label = "Selection subset",
                                             choices = list("Strict" = 1,
                                                            "Extended" = 2,
                                                            "Full range" = 3),
-                                            selected = 1)
+                                            selected = 1),
+                               textAreaInput("network_proteins", label = "Select proteins"),
+                               actionButton("highlight_nodes", label = "Highlight")
                            )
-                    )
+                    ),
+                    
+                    column(width = 3,
+                           box(
+                               title = "Protein info", width = NULL,
+                               uiOutput("clicked_node"),
+                               uiOutput("hovered_node")
+                           )
+                           )
                 )
         ),
         tabItem(tabName = "predictive",
@@ -469,4 +502,4 @@ body <- dashboardBody(
 
 # Load dashboard page ----
 
-dashboardPage(title = "GeneMill | Differential expression pathway and network analysis tool", skin = 'black', header, sidebar, body)
+dashboardPage(title = "ProteoMill | Differential expression pathway and network analysis tool", skin = 'black', header, sidebar, body)

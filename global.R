@@ -133,6 +133,15 @@ upload_data <- function(path, sep, i){
     assign('data_wide', data_wide, envir = .GlobalEnv)
     assign('data_origin', data_wide, envir = .GlobalEnv)
     
+
+    
+    setkey(data_wide, "UNIPROTID")
+    setkey(pdesc, "UNIPROTID")
+    
+    pdesc <- pdesc[data_wide[,1:5]]
+    assign("pdesc", pdesc, envir = .GlobalEnv)
+    
+    
     sample_data(data_wide)
     
     
@@ -216,11 +225,15 @@ upload_data <- function(path, sep, i){
 
 # Interaction data ----
 
-#if(!exists("interactions")){
-# 
-# interactions <- data.table::fread("C://Users/martinry/interactions6.txt")
-# assign("interactions", interactions, envir = .GlobalEnv)
-#}
+if(!exists("interactions")){
+ 
+ interactions <- data.table::fread("C://Users/martinry/interactions5.txt")
+ assign("interactions", interactions, envir = .GlobalEnv)
+ 
+ pdesc <- data.table::fread("C://Users/martinry/protein_descriptions.txt")
+ assign("pdesc", pdesc, envir = .GlobalEnv)
+ 
+}
 
 # if(!exists("uniprot_to_string_src")){
 #     
@@ -333,7 +346,7 @@ sample_data <- function(data) {
 }
 
 
-
+# Filter NA ----
 filter_na <- function(threshold) {
     
     # Which elements are NA?
