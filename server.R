@@ -1,5 +1,6 @@
 # Load packages ----
-
+data(iris)
+library(knitr)
 library(limma)
 library(Biobase)
 library(ggplot2)
@@ -447,7 +448,10 @@ server <- function(session, input, output) {
         output$pca2dplot <- renderPlot({
             c <- input$contribs
             e <- input$ellipse
-            plotPCA(c,e, '2d')
+            pca2d <- plotPCA(c,e, '2d')
+            assign("pca2d", pca2d, envir = .GlobalEnv)
+            
+            pca2d
         })
         
         output$pca3dplot <- plotly::renderPlotly({
@@ -690,7 +694,7 @@ server <- function(session, input, output) {
             
             output$volcano_plot2 <- renderPlotly(
                 {
-                    plotly::ggplotly(v$volcano_plot, width = 700, height = 400) %>% layout(dragmode = "select")
+                    plotly::ggplotly(v$volcano_plot, width = 700, height = 450) %>% layout(dragmode = "select")
                     
                 })
             
@@ -718,14 +722,24 @@ server <- function(session, input, output) {
     # Volcano plot
     
     
-    output$clicked_node <- renderUI({
-        if (is.null(input$clicked_node)) {
-            "No node has been clicked yet"
-        } else {
-            input$clicked_node
-        }
-        
-    })
+    # output$clicked_node <- renderUI({
+    #     if (is.null(input$clicked_node)) {
+    #         "No node has been clicked yet"
+    #     } else {
+    #         name <- input$clicked_node
+    #         
+    #         print(name)
+    #         
+    #         description <- pdesc[get(sID) == input$clicked_node, annotation]
+    #         
+    #         HTML(
+    #             paste(paste(tags$strong("Name:"), name, sep = " "),
+    #                   paste(tags$strong("Description:"), description, sep = " "),
+    #                   sep = "<br/>")
+    #         )
+    #     }
+    #     
+    # })
     
     output$hovered_node <- renderUI({
         if (is.null(input$hovered_node)) {
@@ -749,8 +763,6 @@ server <- function(session, input, output) {
         
         dir <- input$network_regulation
         
-        print(dir)
-        
         if(dir == 1){
             proteins <- contrast[(adj.P.Val <= input$pvaluecutoff) &
                                      (abs(logFC) >= input$fccutoff) &
@@ -771,8 +783,6 @@ server <- function(session, input, output) {
         
         ints2 <- interactions[(protein1 %in% proteins) & (protein2 %in% proteins)]
         ints2 <- ints2[score > input$interactioncutoff]
-        
-        print(ints2[, .N])
         
         mynodes <- unlist(event_data("plotly_selected")$key)
         
@@ -845,12 +855,10 @@ server <- function(session, input, output) {
         visNetwork::visIgraph(g) %>%
             visInteraction(hover = TRUE) %>%
             visIgraphLayout(layout = layout(input$network_layout_options), randomSeed = 1) %>%
-            visOptions(selectedBy = list(variable = "group")) %>%
+            visOptions(selectedBy = list(variable = "group"), height = "475px") %>%
             visEvents(
                 click = "function(nodes) {
-        console.info('click')
-        console.info(nodes)
-        Shiny.onInputChange('clicked_node', {nodes : nodes.node});
+        Shiny.onInputChange('clicked_node', {node : nodes.node});
         ;}",
                 hoverNode = "function(nodes) {
         console.info('hover')
@@ -994,6 +1002,87 @@ server <- function(session, input, output) {
         
     })
     
+    # Generate report ----
+    
+    observeEvent(input$selectall, {
+
+        updateCheckboxGroupInput (session, "export_filtering", "Filtering", selected = c("Missing values"))
+        updateCheckboxGroupInput (session, "export_data_inspection", "Data inspection", selected = c("PCA 2D", "PCA 3D", "UMAP", "Heatmap"))
+        updateCheckboxGroupInput (session, "export_de", "Differential analysis", selected = c("Fold-change", "P-values"))
+        
+        
+        
+    })
+    
+    observeEvent(input$deselectall, {
+        
+        updateCheckboxGroupInput(session, "export_filtering", "Filtering", inline = T, choices = c("Missing values"))
+        updateCheckboxGroupInput(session, "export_data_inspection", "Data inspection", inline = T, choices = c("PCA 2D", "PCA 3D", "UMAP", "Heatmap"))
+        updateCheckboxGroupInput(session, "export_de", "Differential analysis", inline = T, choices = c("Fold-change", "P-values"))
+        
+        
+    })
+    
+    
+    getOverview <- reactive({
+        data.table(
+            "Variable" = c("Total proteins", "DE proteins (adj. P. < 0.05)"),
+            "Value" = c(data_origin[, .N], contrast[adj.P.Val < 0.05, .N])
+            
+        )
+        
+    })
+    
+    
+    getDT <- reactive({
+        data_wide
+        
+    })
+    
+    
+    getpca2d <- reactive({
+        pca2d
+    })
+    
+    
+    getVolcano <- reactive({
+        v$volcano_plot
+        
+    })
+    
+
+
+    
+
+    #reactiveFunction <- reactive({ ggplotly(v$volcano_plot) })
+    
+    # output$reactiveTable <- renderDataTable({ reactiveFunction() }, rownames = FALSE)
+    # 
+    # output$whatever <- renderUI({
+    #     dataTableOutput("reactiveTable")
+    # })
+    
+    
+    
+    output$downloadReport <- downloadHandler(
+        filename = function() {
+            paste("test",".html",sep="")
+        },
+        content = function(file) {
+            src <- normalizePath('report_file.Rmd')
+            
+            # temporarily switch to the temp dir, in case you do not have write
+            # permission to the current working directory
+            owd <- setwd(tempdir())
+            on.exit(setwd(owd))
+            file.copy(src, 'report_file.Rmd', overwrite = TRUE) 
+            
+            out <- rmarkdown::render('report_file.Rmd')
+            file.rename(out, file)
+        }
+    )
+    
+
     
     
 }

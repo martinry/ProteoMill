@@ -263,7 +263,11 @@ body <- dashboardBody(
                     checkboxGroupInput("export_filtering", "Filtering", inline = T, choices = c("Missing values")),
                     checkboxGroupInput("export_data_inspection", "Data inspection", inline = T, choices = c("PCA 2D", "PCA 3D", "UMAP", "Heatmap")),
                     checkboxGroupInput("export_de", "Differential analysis", inline = T, choices = c("Fold-change", "P-values")),
-                    actionButton("compile_data", "Generate")
+                    
+                    textAreaInput("additionalNotes", "Additional notes"),
+                    
+                    downloadButton("downloadReport", "Generate report")
+                    
                 )
         ),
         
@@ -377,11 +381,11 @@ body <- dashboardBody(
                 fluidRow(
                     box(
                         width = 6,
-                        height = 550,#464,
+                        height = 520,#464,
                         visNetworkOutput("xxxx")
                     ),
                     tabBox(width = 6,
-                           height = 550,
+                           height = 520,
                            tabPanel("volcano_network_tab", plotly::plotlyOutput("volcano_plot2")),
                            tabPanel("pca_network_tab", "PCA goes here")
                     )
@@ -438,8 +442,8 @@ body <- dashboardBody(
                                
                                radioButtons("interaction_behaviour", label = "Selection subset",
                                             choices = list("Strict" = 1,
-                                                           "Extended" = 2,
-                                                           "Full range" = 3),
+                                                           "Extended" = 2),
+                                            inline = T,
                                             selected = 1),
                                textAreaInput("network_proteins", label = "Select proteins"),
                                actionButton("highlight_nodes", label = "Highlight")

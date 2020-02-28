@@ -1,0 +1,52 @@
+
+### Summary
+
+```{r, fig.align='center', fig.pos='htb!', echo=FALSE, cache=FALSE, warning = FALSE, message = FALSE, tidy=TRUE}
+
+datatable(getOverview(), rownames = F, options = list(dom = 't',ordering = F),
+          width = 350)
+
+
+```
+
+### Missing values
+
+### Data inspection
+
+```{r, fig.align='center', fig.pos='htb!', echo=FALSE, cache=FALSE, warning = FALSE, message = FALSE, tidy=TRUE}
+
+getpca2d()
+
+
+```
+
+### Differential expression analysis
+
+
+
+### Functional analysis
+
+```{r, fig.align='center', fig.pos='htb!', echo=FALSE, cache=FALSE, warning = FALSE, message = FALSE, tidy=TRUE}
+
+getVolcano()
+
+
+```
+
+
+### Network analysis
+
+
+
+```{r, fig.align='center', fig.pos='htb!', echo=FALSE, cache=FALSE, warning = FALSE, message = FALSE, tidy=TRUE}
+library(ggplot2)
+library(plotly)
+library(data.table)
+library(DT)
+
+# datatable(getDT(), rownames = F, options = list(dom = 't',ordering = F))
+
+
+
+
+```
