@@ -21,7 +21,7 @@ undup <- function(genes){
 }
 
 upload_data <- function(path, sep, i){
-    
+
     data_wide <- data.table::fread(
         path,
         sep = sep,

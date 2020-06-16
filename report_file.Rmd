@@ -9,8 +9,6 @@ datatable(getOverview(), rownames = F, options = list(dom = 't',ordering = F),
 
 ```
 
-### Missing values
-
 ### Data inspection
 
 ```{r, fig.align='center', fig.pos='htb!', echo=FALSE, cache=FALSE, warning = FALSE, message = FALSE, tidy=TRUE}
@@ -23,30 +21,44 @@ getpca2d()
 ### Differential expression analysis
 
 
+```{r, fig.align='center', fig.pos='htb!', echo=FALSE, cache=FALSE, warning = FALSE, message = FALSE, tidy=TRUE}
+
+datatable(getReg(), rownames = F, options = list(dom = 't',ordering = F),
+          width = 200)
+```
 
 ### Functional analysis
 
+#### Upregulated pathways
 ```{r, fig.align='center', fig.pos='htb!', echo=FALSE, cache=FALSE, warning = FALSE, message = FALSE, tidy=TRUE}
 
-getVolcano()
+datatable(getUpPathways(), rownames = F, options = list(dom = 't',ordering = T),
+          width = 350)
 
 
 ```
 
+#### Downregulated pathways
+```{r, fig.align='center', fig.pos='htb!', echo=FALSE, cache=FALSE, warning = FALSE, message = FALSE, tidy=TRUE}
 
-### Network analysis
+datatable(getDownPathways(), rownames = F, options = list(dom = 't',ordering = T),
+          width = 350)
 
 
+```
+
+#### Volcano
 
 ```{r, fig.align='center', fig.pos='htb!', echo=FALSE, cache=FALSE, warning = FALSE, message = FALSE, tidy=TRUE}
-library(ggplot2)
 library(plotly)
-library(data.table)
-library(DT)
 
-# datatable(getDT(), rownames = F, options = list(dom = 't',ordering = F))
+vv <- getVolcano()
 
+plotly::ggplotly(vv$v) %>%
+            layout(dragmode = "select")
 
 
 
 ```
+
+

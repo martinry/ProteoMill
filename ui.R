@@ -340,7 +340,7 @@ body <- dashboardBody(
                 plotOutput("contrasttable", width = "800px", height = "1600px")),
         tabItem(tabName = "differentialexpression",
                 fluidRow(
-                    box(actionButton("loadDiffExpTable","Load table"), width = 3),
+                    box(actionButton("loadDiffExpTable","Load table"), width = 2),
                     box(tabPanel("Table", DT::dataTableOutput("diffexptable")))
                     )
                 ),

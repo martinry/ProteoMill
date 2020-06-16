@@ -1,5 +1,4 @@
 # Load packages ----
-data(iris)
 library(knitr)
 library(limma)
 library(Biobase)
@@ -538,6 +537,7 @@ server <- function(session, input, output) {
         pairing <- input$pairing
         
         contrasts <- paste(input$contrast1,input$contrast2, sep = '-')
+        assign("contrasts", contrasts, envir = .GlobalEnv)
         
         contrast <- diff_exp(contrasts, pairing)
         assign('contrast', contrast, envir = .GlobalEnv)
@@ -687,14 +687,17 @@ server <- function(session, input, output) {
                     
                     assign("v", v, envir = .GlobalEnv)
                     
-                    plotly::ggplotly(v$volcano_plot) %>% layout(dragmode = "select")
+                    plotly::ggplotly(v$volcano_plot) %>%
+                        layout(dragmode = "select")
                     
                 })
             
             
             output$volcano_plot2 <- renderPlotly(
                 {
-                    plotly::ggplotly(v$volcano_plot, width = 700, height = 450) %>% layout(dragmode = "select")
+                    plotly::ggplotly(v$volcano_plot, width = 700, height = 450) %>%
+                        layout(dragmode = "select") %>% 
+                        config(scrollZoom = T)
                     
                 })
             
@@ -1045,11 +1048,52 @@ server <- function(session, input, output) {
     })
     
     
+    getUpPathways <- reactive({
+        UPREGPATH <- UPREGULATED_pathways[, -c("ReactomeID", "background")]
+        data.table::setcolorder(UPREGPATH, c("Pathway_name", "TopReactomeName", "q", "m", "p", "p.adj", "genes"))
+        UPREGPATH
+    })
+    
+    getDownPathways <- reactive({
+        DOWNREGPATH <- DOWNREGULATED_pathways[, -c("ReactomeID", "background")]
+        data.table::setcolorder(DOWNREGPATH, c("Pathway_name", "TopReactomeName", "q", "m", "p", "p.adj", "genes"))
+        DOWNREGPATH
+    })
+    
     getVolcano <- reactive({
-        v$volcano_plot
+        res <- knee::enrichment_results(UPREGULATED_pathways, DOWNREGULATED_pathways)
+        
+        tba <- contrast[!(UNIPROTID %in% res$Gene), c("UNIPROTID", "logFC", "CI.L", "CI.R", "P.Value")]
+        colnames(tba) <- c("Gene", "logFC", "CI.L", "CI.R", "P.Value")
+        
+        tba <- tba[!is.na(logFC)]
+        
+        tba[, c("ReactomeID", "P.Adj")] <- NA
+        
+        tba[, "TopReactomeName"] <- "[No significant over-representation]"
+        tba[, "Pathway_name"] <- "[No significant over-representation]"
+        
+        setcolorder(tba, colnames(res))
+        
+        res <- rbindlist(list(res, tba))
+        
+        res$Pathway_name <- stringr::str_wrap(res$Pathway_name, 50)
+        
+        setkeyv(res, "Gene")
+        setkeyv(contrast, "UNIPROTID")
+        res <- res[contrast[,..convertColumns], nomatch = 0]
+        names(res) <- c("UNIPROTID", names(tba[,2:ncol(tba)]), convertColumns[-1])
+        
+        setcolorder(res, c(convertColumns, names(tba[,2:ncol(tba)])))
+
+        v <- knee::volcano(res, abstraction = input$abstractionlevel)
         
     })
     
+    getReg <- reactive({
+        data.table("Upregulated" = contrast[logFC <= 0 & adj.P.Val < 0.05, .N], "Downregulated" = contrast[logFC > 0 & adj.P.Val < 0.05, .N])
+        
+    })
 
 
     
@@ -1066,7 +1110,7 @@ server <- function(session, input, output) {
     
     output$downloadReport <- downloadHandler(
         filename = function() {
-            paste("test",".html",sep="")
+            paste(gsub("condition", "", contrasts), gsub(".csv", "", inFile$name), "html", sep = ".")
         },
         content = function(file) {
             src <- normalizePath('report_file.Rmd')
