@@ -1074,7 +1074,7 @@ server <- function(session, input, output) {
             
             output$volcano_plot2 <- renderPlotly(
                 {
-                    plotly::ggplotly(pathways$v$volcano_plot, width = 700, height = 450) %>%
+                    plotly::ggplotly(pathways$v$volcano_plot, width = 700, height = 500) %>%
                         layout(dragmode = "select") %>% 
                         config(scrollZoom = T)
                     
