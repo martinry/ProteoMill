@@ -14,6 +14,15 @@ library(EnsDb.Hsapiens.v86)
 
 # Generic functions ----
 
+dframe <- function(dt, r){
+    dt <- dt[!is.na(get(r))]                    # Remove NA
+    rn <- dt[, as.character(.SD[[r]])]          # Rownames to vector
+    df <- as.data.frame(dt[,-..convertColumns]) # 
+    rownames(df) <- rn
+    
+    return(df)
+}
+
 separator <- function(s) {
     switch(s,
            "1" = "auto",
@@ -60,15 +69,22 @@ get_interactions <- function(){
 # Server ----
 server <- function(session, input, output) {
     
+    # Define reactive variables ----
+    notifications <- reactiveValues()
+    tasks <- reactiveValues()
+    sampleinfo <- reactiveValues()
+    maindata <- reactiveValues()
+    rcont <- reactiveValues()
+    pathways <- reactiveValues()
+    
+    
     # Notifications ----
     
     # Initialize as empty list
     # Populate with updateNotifications() function
     notification_list <- list() 
-    
-    #task_list <- list(taskItem(text = "Upload a dataset", value = 0, color = "green"))
-    
-    tasks <- data.table(
+
+    tasksdf <- data.table(
         text = c("Upload a dataset",
                  "Upload annotation data",
                  "Set a filter",
@@ -81,22 +97,23 @@ server <- function(session, input, output) {
         id = sprintf("%04d", seq(1:7))
     )
     
+    tasks$tasks <- tasksdf
+    
     
     
     # Make notification_list global var
-    assign("notification_list", notification_list, envir = .GlobalEnv)
-    #assign("task_list", task_list, envir = .GlobalEnv)
-    assign("tasks", tasks, envir = .GlobalEnv)
+    notifications$notification_list <- notification_list
+
     
     # Initialize notification menu
     output$notifMenu <- renderMenu({
-        dropdownMenu(type = "notifications", .list = notification_list)
+        dropdownMenu(type = "notifications", .list = notifications$notification_list)
     })
     
     # Initialize message menu
     output$helpMenu <- renderMenu({
         updateTasks("Run predictive analysis", value = 0, color = "green", i = 0008)
-        dropdownMenu(type = "tasks", .list = task_list)
+        dropdownMenu(type = "tasks", .list = tasks$task_list)
     })
     
     # A function to append task items to the menu
@@ -108,47 +125,44 @@ server <- function(session, input, output) {
         
         l = list(text = text, value = value, color = color, id = i)
         
-        if(i %in% tasks$id){
-            tasks[id == i, names(tasks) := l][]
+        if(i %in% tasks$tasks$id){
+            tasks$tasks[id == i, names(tasks$tasks) := l][]
         } else {
             # Create a new item
             
-            tasks <- rbindlist(list(tasks, l))
+            tasks$tasks <- rbindlist(list(tasks$tasks, l))
             
         }
 
-        task_list <- list()
+        tasks$task_list <- list()
         
-        tmp <- tasks[value == 0]
+        tmp <- tasks$tasks[value == 0]
         tmp <- tmp[order(id)][1:2]
         tmp <- tmp[!is.na(id)]
-        tmp <- rbindlist(list(tasks[value > 0], tmp))
+        tmp <- rbindlist(list(tasks$tasks[value > 0], tmp))
         
         
         for(x in 1:nrow(tmp)){
-            item <- taskItem(text = tasks[x, text],
-                             value = tasks[x, value],
-                             color = tasks[x, color])
+            item <- taskItem(text = tasks$tasks[x, text],
+                             value = tasks$tasks[x, value],
+                             color = tasks$tasks[x, color])
             
             # A hack to make the notification item clickable
             # Onclick opens a modal dialog
             item$children[[1]] <- a(
-                "onclick" = paste0("clickFunction('", paste0(tasks[x, id]), "'); return false;"),
+                "onclick" = paste0("clickFunction('", paste0(tasks$tasks[x, id]), "'); return false;"),
                 list(item$children[[1]]$children))
             
             
             item <- list(item)
             
-            task_list <- append(item, base::get("task_list"))
+            tasks$task_list <- append(item, tasks$task_list)
         }
 
-        assign("task_list", task_list, envir = .GlobalEnv)
-        assign("tasks", tasks, envir = .GlobalEnv)
-        
         # Render the menu with appended notification list
         output$helpMenu <- renderMenu({
             
-            dropdownMenu(type = "tasks", .list = task_list)
+            dropdownMenu(type = "tasks", .list = tasks$task_list)
         })
         
     }
@@ -184,13 +198,12 @@ server <- function(session, input, output) {
         
         item <- list(item)
         
-        notification_list <- append(item, base::get("notification_list", envir = .GlobalEnv))
-        assign("notification_list", notification_list, envir = .GlobalEnv)
-        
+        notifications$notification_list <- append(item, notifications$notification_list)
+
         # Render the menu with appended notification list
         output$notifMenu <- renderMenu({
             
-            dropdownMenu(type = "notifications", .list = notification_list)
+            dropdownMenu(type = "notifications", .list = notifications$notification_list)
         })
         
         
@@ -232,11 +245,15 @@ server <- function(session, input, output) {
                             frameborder = "0")})))
         }
         
-        if(input$sidebarmenu == "interactions" & !exists("v")){
-            updateNotifications("Run pathway analysis first.","exclamation-triangle", "danger")
-        } else if(input$sidebarmenu == "interactions" & exists("v")){
-            updateTasks(text = "Run network analysis", value = 100, color = "green", i = 0007)
+        if(input$sidebarmenu == "interactions"){
+            v <- pathways$v
+            if(!exists("v")){
+                updateNotifications("Run pathway analysis first.","exclamation-triangle", "danger")
+            } else{
+                updateTasks(text = "Run network analysis", value = 100, color = "green", i = 0007)
+            }
         }
+
     })
     
     # Clicked notification item
@@ -246,7 +263,7 @@ server <- function(session, input, output) {
         
         i <- as.character(substr(linkCode, nchar(linkCode)-3, nchar(linkCode)))
         
-        item <- tasks[id == i]
+        item <- tasks$tasks[id == i]
         
         showModal(
             modalDialog(title = paste0("Task: ", item$text),
@@ -300,7 +317,7 @@ server <- function(session, input, output) {
         removeUI(selector = "#qualityrm")
         removeUI(selector = "#diffrm")
         
-        updateSelectInput(session, "contrast1", choices = group)
+        updateSelectInput(session, "contrast1", choices = maindata$group)
         
     }
     
@@ -308,25 +325,217 @@ server <- function(session, input, output) {
         
         i <- identifier(input$displayIdentifier)
         
-        assign("sID", i, envir = .GlobalEnv)
-        
+        sampleinfo$sID <- i
+
         updateNotifications(paste0("Default ID set to ", i),"info-circle", "info")
         
     }, ignoreInit = F)
     
     
     
+    
+    # Build sample info ----
+    
+    group <- list()
+    sample_data <- function(data) {
+        samples <- names(data[, -..convertColumns])
+        condition <- as.factor(gsub('_.*', '', samples))
+        replicate <- as.factor(gsub('.*_', '', samples))
+        samples <- data.frame(samples, condition, replicate)
+        rownames(samples) <- samples$samples
+        
+        group <- sapply(levels(condition), function(x) paste("condition", x, sep = ''))
+        
+        assign("samples", samples, envir = .GlobalEnv)
+        assign("condition", condition, envir = .GlobalEnv)
+        assign("replicate", replicate, envir = .GlobalEnv)
+        assign("group", group, envir = .GlobalEnv)
+        
+        maindata$group <- group
+        
+        return (FALSE)
+    }
+    
+    
+    # Filter NA ----
+    filter_na <- function(data_origin, threshold) {
+
+        # Which elements are NA?
+        allNA <- is.na(data_origin[, -..convertColumns])
+
+        # Summary of how many TRUEs there are in each row
+        NA_frequency <- table(rowSums(allNA))
+
+        # Subset to NA threshold ----
+        
+        subset_NA <- function(condition)
+        {
+            # Subset columns by condition
+            condition_subset <- data_origin[, grep(condition,names(data_origin)), with = F]
+            
+            # Determine if rows pass NA threshold
+            rows_to_keep <- rowSums(is.na(condition_subset)) <= threshold # !! set global
+            
+            # Subset rownames
+            keep <- data_origin[rows_to_keep, UNIPROTID]
+            
+            return(keep)
+            
+        }
+        
+        # Apply function to all regions
+        condition_sub <- lapply(names(maindata$group), subset_NA)
+        
+        # Reduce to shared proteins
+        condition_sub2 <- Reduce(intersect, condition_sub)
+        
+        d <- data_origin[UNIPROTID %in% condition_sub2,]
+        
+        return(d)
+        
+    }
+    
+    
+    # File input: upload data function ----
+    
+    undup <- function(genes){
+        genes[!is.na(genes)]
+    }
+    
+    upload_data <- function(path, sep, i){
+        
+        maindata$data_wide <- data.table::fread(
+            path,
+            sep = sep,
+            dec = ".",
+            header = T)
+        
+        maindata$data_wide <- maindata$data_wide[!duplicated(names(maindata$data_wide)[1])]
+        #maindata$data_wide <- maindata$data_wide[apply(maindata$data_wide[, 2:ncol(maindata$data_wide)], 1, function(x) sum(x, na.rm = T) > 500)]
+        
+        for(j in seq_along(maindata$data_wide)){
+            set(maindata$data_wide, i = which(maindata$data_wide[[j]] == 0 & is.numeric(maindata$data_wide[[j]])), j = j, value = NA)
+        }
+        
+        empty_rows <- apply(maindata$data_wide[,2:ncol(maindata$data_wide)], 1, function(x) all(is.na(x)))
+        maindata$data_wide <- maindata$data_wide[!empty_rows,]
+        
+        assign('tmpData', maindata$data_wide, envir = .GlobalEnv)
+        
+        maindata$data_origin <- maindata$data_wide
+        
+        convertColumns <- c("UNIPROTID", "ENTREZID", "SYMBOL", "GENEID", "PROTEINID")
+        
+        assign('convertColumns', convertColumns, envir = .GlobalEnv)
+        
+        keys <- maindata$data_wide[, as.character(.SD[[1L]])][1:10]
+        
+        if(i == "auto") {
+            
+            tr1 <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = keys, column = "SYMBOL", keytype = "UNIPROTID", multiVals = "first")
+            tr2 <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = keys, column = "UNIPROTID", keytype = "ENTREZID", multiVals = "first")
+            tr3 <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = keys, column = "UNIPROTID", keytype = "SYMBOL", multiVals = "first")
+            tr4 <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = keys, column = "UNIPROTID", keytype = "GENEID", multiVals = "first")
+            tr5 <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = keys, column = "UNIPROTID", keytype = "PROTEINID", multiVals = "first")
+            
+            trs <- list(tr1[!is.na(tr1)],
+                        tr2[!is.na(tr2)],
+                        tr3[!is.na(tr3)],
+                        tr4[!is.na(tr4)],
+                        tr5[!is.na(tr5)])
+            
+            #        tr <- as.data.table(trs[which.max(lapply(lapply(trs, lengths), sum))])
+            
+            i <- convertColumns[which.max(lapply(lapply(trs, lengths), sum))]
+            
+            if(i == "UNIPROTID"){
+                
+                tr_all <- data.table(AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = maindata$data_wide[, as.character(.SD[[1L]])], columns = convertColumns, keytype = i))
+                tr_all <- tr_all[!duplicated(UNIPROTID)]
+                
+            } else {
+                tr <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = maindata$data_wide[, as.character(.SD[[1L]])], column = "UNIPROTID", keytype = i, multiVals = "first")
+                tr <- tr[!is.na(tr)]
+                tr <- tr[!duplicated(tr)]
+                
+                tr <- data.table(i = names(tr), "UNIPROTID" = unname(tr))
+                
+                tr_all <- data.table(AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = maindata$data_wide[, as.character(.SD[[1L]])], columns = convertColumns, keytype = i))
+                tr_all <- tr_all[UNIPROTID %in% tr$UNIPROTID]
+                tr_all <- tr_all[!duplicated(UNIPROTID)]
+            }
+            
+            
+            
+            
+        } else {
+            
+            if(i == "UNIPROTID"){
+                
+                tr_all <- data.table(AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = maindata$data_wide[, as.character(.SD[[1L]])], columns = convertColumns, keytype = i))
+                tr_all <- tr_all[!duplicated(UNIPROTID)]
+                
+            } else {
+                tr <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = maindata$data_wide[, as.character(.SD[[1L]])], column = "UNIPROTID", keytype = i, multiVals = "first")
+                tr <- tr[!is.na(tr)]
+                tr <- tr[!duplicated(tr)]
+                
+                tr <- data.table(i = names(tr), "UNIPROTID" = unname(tr))
+                
+                tr_all <- data.table(AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = maindata$data_wide[, as.character(.SD[[1L]])], columns = convertColumns, keytype = i))
+                tr_all <- tr_all[UNIPROTID %in% tr$UNIPROTID]
+                tr_all <- tr_all[!duplicated(UNIPROTID)]
+            }
+        }
+        
+        names(maindata$data_wide)[1] <- i
+        
+        setkeyv(tr_all, i)
+        
+        setkeyv(maindata$data_wide, i)
+        
+        tr_all <- tr_all[maindata$data_wide[, ..i], on = i]
+        
+        maindata$data_wide <- maindata$data_wide[tr_all, nomatch = 0]
+        
+        maindata$data_wide$ENTREZID <- as.character(maindata$data_wide$ENTREZID)
+        
+        for(j in seq_along(maindata$data_wide)){
+            set(maindata$data_wide, i = which(duplicated(maindata$data_wide[[j]]) & is.character(maindata$data_wide[[j]])), j = j, value = NA)
+        }
+        
+        maindata$data_wide[is.na(ENTREZID), ENTREZID := paste0("MISSING_", seq(1:length(is.na(ENTREZID))))]
+        maindata$data_wide[is.na(SYMBOL), SYMBOL := paste0("MISSING_", seq(1:length(is.na(SYMBOL))))]
+        maindata$data_wide[is.na(UNIPROTID), UNIPROTID := paste0("MISSING_", seq(1:length(is.na(UNIPROTID))))]
+        maindata$data_wide[is.na(GENEID), GENEID := paste0("MISSING_", seq(1:length(is.na(GENEID))))]
+        maindata$data_wide[is.na(PROTEINID), PROTEINID := paste0("MISSING_", seq(1:length(is.na(PROTEINID))))]
+        
+        setcolorder(maindata$data_wide, c(convertColumns, names(maindata$data_origin[,2:ncol(maindata$data_origin)])))
+        
+        maindata$data_origin <- maindata$data_wide
+        
+
+        setkey(maindata$data_wide, "UNIPROTID")
+        setkey(pdesc, "UNIPROTID")
+        
+        pdesc <- pdesc[maindata$data_wide[,1:5]]
+        maindata$pdesc <- pdesc
+        
+        sample_data(maindata$data_wide)
+        
+        assign("thiss", maindata$data_wide, envir = .GlobalEnv)
+        
+    }
+    
     # File input: Main data ----
     observeEvent(input$infile, {
         
-        inFile <- input$infile
+        maindata$inFile <- input$infile
         
-        assign("inFile", inFile, envir = .GlobalEnv)
-        
-        if (is.null(inFile))
+        if (is.null(maindata$inFile))
             return(NULL)
 
-        upload_data(inFile$datapath, separator(input$dataSep), identifier(input$dataIdentiferType))
+        upload_data(maindata$inFile$datapath, separator(input$dataSep), identifier(input$dataIdentiferType))
 
         updateNotifications("Dataset uploaded.","check-circle", "success")
         updateTasks(text = "Upload a dataset", value = 100, color = "green", i = 0001)
@@ -337,19 +546,18 @@ server <- function(session, input, output) {
     
     # File input: Annotation ----
     observeEvent(input$anno_infile, {
-        inFile <- input$anno_infile
+        maindata$inFile <- input$anno_infile
         
-        if (is.null(inFile))
+        if (is.null(maindata$inFile))
             return(NULL)
         
-        data_annotation <- data.table::fread(
-            inFile$datapath,
+        maindata$data_annotation <- data.table::fread(
+            maindata$inFile$datapath,
             sep = separator(input$annoSep),
             dec = ".",
             header = T)
         
-        assign('data_annotation', data_annotation, envir = .GlobalEnv)
-        
+
         updateNotifications("Annotations uploaded.","check-circle", "success")
         updateTasks(text = "Upload annotation data", value = 100, color = "green", i = 0002)
         
@@ -368,14 +576,12 @@ server <- function(session, input, output) {
         
         upload_data(path = sample_1_exp, sep = ";", i = "UNIPROTID")
         
-        data_annotation <- data.table::fread(
+        maindata$data_annotation <- data.table::fread(
             sample_1_anno,
             sep = "auto",
             dec = ".",
             header = T)
         
-        assign('data_annotation', data_annotation, envir = .GlobalEnv)
-
         updateNotifications("Demo data uploaded.","check-circle", "success")
         updateTasks(text = "Upload a dataset", value = 100, color = "green", i = 0001)
         updateTasks(text = "Upload annotation data", value = 100, color = "green", i = 0002)
@@ -384,10 +590,9 @@ server <- function(session, input, output) {
     
     # Missing values: frequency plot ----
     
-    renderNAfreq <- function(){
+    renderNAfreq <- function(data_wide){
         output$nafreq <- renderPlot({
-            
-            
+
             # Which elements are NA?
             allNA <- is.na(data_wide)
             
@@ -397,6 +602,8 @@ server <- function(session, input, output) {
             naf <- as.data.frame(NA_frequency)
             
             theme_set(theme_classic())
+            
+            
             
             # Draw plot
             ggplot(naf, aes(x = Var1, y = Freq)) +
@@ -413,8 +620,11 @@ server <- function(session, input, output) {
     
     observeEvent(input$loadfilterplot, {
         
+        
+        data_wide <- maindata$data_wide
+        
         if(exists("data_wide")){
-            renderNAfreq()
+            renderNAfreq(data_wide)
         } else {
             updateNotifications("Upload a dataset first.","exclamation-triangle", "danger")
         }
@@ -422,24 +632,90 @@ server <- function(session, input, output) {
     
     observeEvent(input$setcutoff, {
         
+        data_wide <- maindata$data_wide
+        
         if(exists("data_wide")){
-            data_wide <- filter_na(input$missingvalues)
-            assign("data_wide", data_wide, envir = .GlobalEnv)
-            
+            data_origin <- maindata$data_origin
+            data_wide <- filter_na(data_origin, input$missingvalues)
             unlock_menus()
-            renderNAfreq()
+            renderNAfreq(data_wide)
             
+            maindata$data_wide <- data_wide
             updateTasks(text = "Set a filter", value = 100, color = "green", i = 0003)
             updateNotifications(paste0("NA cutoff set to ", input$missingvalues, ".") ,"check-circle", "success")
         } else {
             updateNotifications("Upload a dataset first.","exclamation-triangle", "danger")
         }
         
+        # if(exists("maindata$data_wide")){
+        #     maindata$data_wide <- filter_na(input$missingvalues)
+        #     assign("maindata$data_wide", maindata$data_wide, envir = .GlobalEnv)
+        #     
+        #     unlock_menus()
+        #     renderNAfreq()
+        #     
+        #     updateTasks(text = "Set a filter", value = 100, color = "green", i = 0003)
+        #     updateNotifications(paste0("NA cutoff set to ", input$missingvalues, ".") ,"check-circle", "success")
+        # } else {
+        #     updateNotifications("Upload a dataset first.","exclamation-triangle", "danger")
+        # }
+        
     })
     
     
     
     # Quality control ----
+    
+    # Plot PCA function ----
+    
+    plotPCA <- function(contribs, ellipse, type) {
+        
+        dt <- dframe(maindata$data_origin, sampleinfo$sID)
+        
+        pca.data <- log2(dt)  # Log2 transform data
+        pca.data[is.na(pca.data)] <- 0 # "Impute" missing values as 0
+        pca.data <- t(pca.data)        # # Transpose dataset
+        p.pca <- prcomp(pca.data, center = TRUE, scale. = TRUE) # Perform principal component analysis
+        
+        # Biplot extension displaying top contributing proteins currently only available for 2D plot.
+        
+        if(type == '2d') {
+            
+            pcaplot <- factoextra::fviz_pca_biplot(p.pca, title = '', label = "var", habillage = condition,
+                                                   addEllipses = TRUE, ellipse.level = ellipse,
+                                                   select.var = list(contrib = contribs), repel = TRUE)
+            
+            return (pcaplot)
+            
+        } else if (type == '3d') {
+            pcaplot <- plotly::plot_ly(x = p.pca$x[,1],
+                                       y = p.pca$x[,2],
+                                       z = p.pca$x[,3],
+                                       color = condition,
+                                       colors = c("red","green","blue"),
+                                       sizes = c(100, 150)) %>%
+                plotly::add_markers() %>%
+                plotly::layout(scene = list(xaxis = list(title = 'PC1'),
+                                            yaxis = list(title = 'PC2'),
+                                            zaxis = list(title = 'PC3')))
+            
+            return (pcaplot)
+        } else if (type == 'UMAP') {
+            
+            um <- umap::umap(pca.data, n_neighbors = ncol(dt))
+            
+            df <- data.frame(x = um$layout[,1],
+                             y = um$layout[,2],
+                             Sample <- condition)
+            
+            ggplot(df, aes(x, y, colour = condition, shape = condition)) +
+                geom_point(size = 4)
+            
+            
+            
+        } else { return (FALSE) }
+        
+    }
     
     # Render PCA plots
     
@@ -448,8 +724,7 @@ server <- function(session, input, output) {
             c <- input$contribs
             e <- input$ellipse
             pca2d <- plotPCA(c,e, '2d')
-            assign("pca2d", pca2d, envir = .GlobalEnv)
-            
+
             pca2d
         })
         
@@ -457,7 +732,7 @@ server <- function(session, input, output) {
             plotPCA(0,0, '3d')
         })
         
-        updateTasks(text = "Inspect data", value = (tasks[id == "0004", value] + 100/3), color = "green", i = 0004)
+        updateTasks(text = "Inspect data", value = (tasks$tasks[id == "0004", value] + 100/3), color = "green", i = 0004)
     })
     
 
@@ -467,23 +742,23 @@ server <- function(session, input, output) {
         output$UMAPplot <- renderPlot({
             plotPCA(0,0, 'UMAP')
         })
-        updateTasks(text = "Inspect data", value = (tasks[id == "0004", value] + 100/3), color = "green", i = 0004)
+        updateTasks(text = "Inspect data", value = (tasks$tasks[id == "0004", value] + 100/3), color = "green", i = 0004)
     })
     
 
     # Render heatmap
     
     observeEvent(input$generateheatmap, {
-        cor_mat_raw_logged <- log2(data_origin[,-..convertColumns])
+        cor_mat_raw_logged <- log2(maindata$data_origin[,-..convertColumns])
         cor_mat_raw_logged[is.na(cor_mat_raw_logged)] <- 0
         cor_mat_raw_logged <- cor(cor_mat_raw_logged)
         
         #annotation_col = data.frame(tmp)
         
-        if(exists("data_annotation")){
-            if(all(data_annotation[, as.character(.SD[[1L]])] %in% names(data_origin[,-..convertColumns]))){
+        if(exists("maindata$data_annotation")){
+            if(all(maindata$data_annotation[, as.character(.SD[[1L]])] %in% names(maindata$data_origin[,-..convertColumns]))){
                 hmap <- pheatmap::pheatmap(
-                    annotation_col = dframe(data_annotation, "V1")[2:4],
+                    annotation_col = dframe(maindata$data_annotation, "V1")[2:4],
                     cor_mat_raw_logged,
                     legend_breaks = c(min(cor_mat_raw_logged), 1),
                     legend_labels = c(0, 1)
@@ -499,24 +774,36 @@ server <- function(session, input, output) {
         
         output$samplecorrheatmap = renderPlot({hmap})
         
-        updateTasks(text = "Inspect data", value = (tasks[id == "0004", value] + 100/3), color = "green", i = 0004)
+        updateTasks(text = "Inspect data", value = (tasks$tasks[id == "0004", value] + 100/3), color = "green", i = 0004)
         
     })
 
     # Differential expression: set contrasts ----
     observeEvent(input$contrast1, {
         
-        if (!exists("group", envir = .GlobalEnv)){
+        group <- maindata$group
+        
+        if (!exists("group")){
             return(NULL)
-        } else if (exists("group", envir = .GlobalEnv)){
+        } else if (exists("group")){
             cont1 <- input$contrast1
             cont2 <- group[group != cont1]
             
             updateSelectInput(session, "contrast2", choices = cont2)
         }
         
+        
+        # if (!exists("group")){
+        #     return(NULL)
+        # } else if (exists("group")){
+        #     cont1 <- input$contrast1
+        #     cont2 <- group[group != cont1]
+        #     
+        #     updateSelectInput(session, "contrast2", choices = cont2)
+        # }
+        
     })
-    
+
     observeEvent(input$setContrast, {
         output$enrichment <- renderMenu({
             menuItem("Enrichment analysis", icon = icon("flask"), href = NULL,
@@ -537,10 +824,13 @@ server <- function(session, input, output) {
         pairing <- input$pairing
         
         contrasts <- paste(input$contrast1,input$contrast2, sep = '-')
-        assign("contrasts", contrasts, envir = .GlobalEnv)
+        #assign("contrasts", contrasts, envir = .GlobalEnv)
         
         contrast <- diff_exp(contrasts, pairing)
-        assign('contrast', contrast, envir = .GlobalEnv)
+        #assign('contrast', contrast, envir = .GlobalEnv)
+        
+        rcont$contrasts <- contrasts
+        rcont$contrast <- contrast
         
         
         removeUI(selector = "#enrichrm")
@@ -551,14 +841,82 @@ server <- function(session, input, output) {
         updateTasks(text = "Set contrast", value = 100, color = "green", i = 0005)
     })
     
+    # Differential expression: DEA function ----
+    
+    diff_exp <- function(coeff, pairing) {
+        
+        best_fit = 'normal'
+        
+        if(best_fit == 'nbinom') {
+            dds <- DESeqDataSetFromMatrix(countData  = maindata$data_wide,
+                                          colData    = samples,
+                                          design     = ~ condition + replicate)
+            dds <- DESeq(dds)
+        }
+        
+        # Create Annotation data and expression set (Biobase)
+        phenoData <- new("AnnotatedDataFrame", data = samples)
+        exampleSet <- ExpressionSet(assayData = as.matrix(log2(dframe(maindata$data_wide, sampleinfo$sID))), phenoData = phenoData)
+        
+        unpaired <- model.matrix( ~ 0 + condition )
+        paired <- model.matrix( ~ 0 + condition + replicate )
+        
+        if(pairing == 1) {
+            design <- paired
+        } else {
+            design <- unpaired
+        }
+        
+        # Fit the linear model
+        fit <- lmFit(exampleSet, design)
+        
+        # Decide possible contrasts
+        c <- expand.grid(maindata$group, maindata$group)
+        cc <- factor(ifelse(c$Var1 != c$Var2, paste(c$Var1, c$Var2, sep = '-'), NA ))
+        cc <- cc[!is.na(cc)]
+        names(cc) <- gsub('-','', gsub('condition','',cc))
+        
+        cont.matrix <- makeContrasts(contrasts = cc, levels = design) # All possible contrasts
+        
+        print(coeff)
+        
+        # Contrast groups, run empirical bayes statistics
+        fit.cont <- contrasts.fit(fit, cont.matrix)
+        fit.cont <- eBayes(fit.cont, robust = T)
+        
+        # Generate data frame with results from linear model fit, with confidence intervals.
+        contrast <- toptable(fit.cont, number = Inf, coef = coeff, confint = TRUE)
+        
+        # Confidence intervals used for plot, global var
+        cint <- contrast
+        cint$protein <- rownames(cint)
+        cint$protein <- factor(cint$protein, levels = cint$protein[order(cint$logFC)])
+        
+        rcont$cint <- cint
+
+        contrast <- contrast[order(contrast$P.Value, decreasing = F),]
+        contrast <- data.table::as.data.table(contrast, keep.rownames = T)
+        
+        setkeyv(contrast, "rn")
+        setkeyv(maindata$data_wide, sampleinfo$sID)
+        contrast <- contrast[maindata$data_wide[,..convertColumns], nomatch = 0]
+        names(contrast) <- c(sampleinfo$sID, names(contrast[, 2:ncol(contrast)]))
+        setcolorder(contrast, c(convertColumns, "logFC", "CI.L", "CI.R", "t", "P.Value", "adj.P.Val", "B"))
+        
+        return( contrast )
+        
+    }
+    
     # Differential expression: output table
     
     observeEvent(input$loadDiffExpTable, {
         
+        contrast <- rcont$contrast
+        
         if(exists("contrast")){
             output$diffexptable <- DT::renderDataTable({
                 
-                df <- DT::datatable(dframe(contrast, sID),
+                df <- DT::datatable(dframe(rcont$contrast, sampleinfo$sID),
                                     options = list(autoWidth = TRUE,
                                                    scrollX=TRUE))
                 df %>% DT::formatSignif('adj.P.Val', digits = 2)
@@ -578,7 +936,7 @@ server <- function(session, input, output) {
     # Differential expression: confidence intervals
     
     output$contrasttable <- renderPlot({
-        ggplot2::ggplot(cint, aes(x = protein, y = logFC, colour = logFC)) +
+        ggplot2::ggplot(rcont$cint, aes(x = protein, y = logFC, colour = logFC)) +
             coord_flip() +
             geom_errorbar(aes(ymin = as.numeric(CI.L), ymax = as.numeric(CI.R)), width = 2) +
             scale_color_viridis_c() +
@@ -594,10 +952,15 @@ server <- function(session, input, output) {
             )
     })
     
+    
+    # Pathways ----
+    
     observeEvent(input$min_fc, {
       
       output$number_of_genes <- renderUI({
         
+        contrast <- rcont$contrast
+          
         up <- paste("Up-regulated:", contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval, .N], "genes", sep = " ")
         down <- paste("Down-regulated:", contrast[logFC < (input$min_fc * -1) & adj.P.Val < input$min_pval, .N], "genes", sep = " ")
         
@@ -608,40 +971,52 @@ server <- function(session, input, output) {
     
     observeEvent(input$generate_pathways, {
         
-        UPREGULATED_genes <- contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval, UNIPROTID]
-        DOWNREGULATED_genes <- contrast[logFC < (input$min_fc * -1) & adj.P.Val < input$min_pval, UNIPROTID]
+        contrast <- rcont$contrast
         
-        UPREGULATED_pathways <- knee::ora(UPREGULATED_genes)@output
-        assign("UPREGULATED_pathways", UPREGULATED_pathways, envir = .GlobalEnv)
-        
-        DOWNREGULATED_pathways<- knee::ora(DOWNREGULATED_genes)@output
-        assign("DOWNREGULATED_pathways", DOWNREGULATED_pathways, envir = .GlobalEnv)
-    
-        output$upregulated_pathways_table <- DT::renderDT(
-          
-          DT::datatable(UPREGULATED_pathways[, -c("genes", "background")],
-                        options = list(autoWidth = TRUE,
-                                       scrollX=TRUE,
-                                       columnDefs = list(
-                                         list(width = '100px', targets = c(1, 3)),
-                                         list(width = '60px', targets = c(6, 7))
-                                       ))), server = F
-        
-      )
+        if(contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval, .N] < 3 | contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval, .N] < 3){
+            updateNotifications("Too few differential genes.","exclamation-triangle", "danger")
+        } else {
+            
+            updateNumericInput(session = session, inputId = "pvaluecutoff", label = "Maximum adj. Pvalue", value = input$min_pval)
+            updateNumericInput(session = session, inputId = "fccutoff", label = "Minimum abs. log2FC", value = input$min_fc)
+            
+            UPREGULATED_genes <- contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval, UNIPROTID]
+            DOWNREGULATED_genes <- contrast[logFC < (input$min_fc * -1) & adj.P.Val < input$min_pval, UNIPROTID]
+            
+            UPREGULATED_pathways <- knee::ora(UPREGULATED_genes)@output
+            pathways$UPREGULATED_pathways <- UPREGULATED_pathways
+            
+            DOWNREGULATED_pathways<- knee::ora(DOWNREGULATED_genes)@output
+            pathways$DOWNREGULATED_pathways <- DOWNREGULATED_pathways
+            
+            output$upregulated_pathways_table <- DT::renderDT(
+                
+                DT::datatable(UPREGULATED_pathways[, -c("genes", "background")],
+                              options = list(autoWidth = TRUE,
+                                             scrollX=TRUE,
+                                             columnDefs = list(
+                                                 list(width = '100px', targets = c(1, 3)),
+                                                 list(width = '60px', targets = c(6, 7))
+                                             ))), server = F
+                
+            )
+            
+            output$downregulated_pathways_table <- DT::renderDT(
+                DT::datatable(DOWNREGULATED_pathways[, -c("genes", "background")],
+                              options = list(autoWidth = TRUE,
+                                             scrollX=TRUE,
+                                             columnDefs = list(
+                                                 list(width = '100px', targets = c(1, 3)),
+                                                 list(width = '60px', targets = c(6, 7))
+                                             ))),
+                server = F
+            )
+            
+            updateTasks(text = "Run pathway enrichment", value = 100, color = "green", i = 0006)
+            updateNotifications("Pathway analysis complete.","check-circle", "success")
+        }
 
-      output$downregulated_pathways_table <- DT::renderDT(
-        DT::datatable(DOWNREGULATED_pathways[, -c("genes", "background")],
-                      options = list(autoWidth = TRUE,
-                                     scrollX=TRUE,
-                                     columnDefs = list(
-                                       list(width = '100px', targets = c(1, 3)),
-                                       list(width = '60px', targets = c(6, 7))
-                                     ))),
-        server = F
-      )
-      
-      updateTasks(text = "Run pathway enrichment", value = 100, color = "green", i = 0006)
-      updateNotifications("Pathway analysis complete.","check-circle", "success")
+        
       
     })
     
@@ -649,16 +1024,22 @@ server <- function(session, input, output) {
     
     observeEvent(input$loadPathwayPlots, {
         
+        UPREGULATED_pathways <- pathways$UPREGULATED_pathways
+        DOWNREGULATED_pathways <- pathways$DOWNREGULATED_pathways
+        
+        print("OK")
+ 
         if(!exists("UPREGULATED_pathways")){
             updateNotifications("Run pathway analysis first.","exclamation-triangle", "danger")
-        }else{
+        } else {
             
             output$volcano_plot <- renderPlotly(
                 {
+                    contrast <- rcont$contrast
+                    sID <- sampleinfo$sID
                     
-                    
-                    res <- knee::enrichment_results(UPREGULATED_pathways, DOWNREGULATED_pathways)
-                    
+                    res <- knee::enrichment_results(UPREGULATED_pathways, DOWNREGULATED_pathways, contrast)
+
                     tba <- contrast[!(UNIPROTID %in% res$Gene), c("UNIPROTID", "logFC", "CI.L", "CI.R", "P.Value")]
                     colnames(tba) <- c("Gene", "logFC", "CI.L", "CI.R", "P.Value")
                     
@@ -681,13 +1062,11 @@ server <- function(session, input, output) {
                     names(res) <- c("UNIPROTID", names(tba[,2:ncol(tba)]), convertColumns[-1])
                     
                     setcolorder(res, c(convertColumns, names(tba[,2:ncol(tba)])))
-                    
+
                     print(input$abstractionlevel)
-                    v <- knee::volcano(res, abstraction = input$abstractionlevel)
-                    
-                    assign("v", v, envir = .GlobalEnv)
-                    
-                    plotly::ggplotly(v$volcano_plot) %>%
+                    pathways$v <- knee::volcano(res, abstraction = input$abstractionlevel, sID)
+
+                    plotly::ggplotly(pathways$v$volcano_plot) %>%
                         layout(dragmode = "select")
                     
                 })
@@ -695,7 +1074,7 @@ server <- function(session, input, output) {
             
             output$volcano_plot2 <- renderPlotly(
                 {
-                    plotly::ggplotly(v$volcano_plot, width = 700, height = 450) %>%
+                    plotly::ggplotly(pathways$v$volcano_plot, width = 700, height = 450) %>%
                         layout(dragmode = "select") %>% 
                         config(scrollZoom = T)
                     
@@ -724,26 +1103,6 @@ server <- function(session, input, output) {
     
     # Volcano plot
     
-    
-    # output$clicked_node <- renderUI({
-    #     if (is.null(input$clicked_node)) {
-    #         "No node has been clicked yet"
-    #     } else {
-    #         name <- input$clicked_node
-    #         
-    #         print(name)
-    #         
-    #         description <- pdesc[get(sID) == input$clicked_node, annotation]
-    #         
-    #         HTML(
-    #             paste(paste(tags$strong("Name:"), name, sep = " "),
-    #                   paste(tags$strong("Description:"), description, sep = " "),
-    #                   sep = "<br/>")
-    #         )
-    #     }
-    #     
-    # })
-    
     output$hovered_node <- renderUI({
         if (is.null(input$hovered_node)) {
             "No node has been hovered yet"
@@ -751,7 +1110,7 @@ server <- function(session, input, output) {
             
             name <- input$hovered_node
             
-            description <- pdesc[get(sID) == input$hovered_node, annotation]
+            description <- maindata$pdesc[get(sampleinfo$sID) == input$hovered_node, annotation]
             
             HTML(
                 paste(paste(tags$strong("Name:"), name, sep = " "),
@@ -763,9 +1122,13 @@ server <- function(session, input, output) {
     })
     
     output$xxxx <- renderVisNetwork({
+
+        contrast <- rcont$contrast
+        res <- pathways$v$res
+        sID <- sampleinfo$sID
         
         dir <- input$network_regulation
-        
+
         if(dir == 1){
             proteins <- contrast[(adj.P.Val <= input$pvaluecutoff) &
                                      (abs(logFC) >= input$fccutoff) &
@@ -787,6 +1150,7 @@ server <- function(session, input, output) {
         ints2 <- interactions[(protein1 %in% proteins) & (protein2 %in% proteins)]
         ints2 <- ints2[score > input$interactioncutoff]
         
+
         mynodes <- unlist(event_data("plotly_selected")$key)
         
         mynodes <- contrast[get(sID) %in% mynodes, "UNIPROTID"][[1]]
@@ -816,7 +1180,6 @@ server <- function(session, input, output) {
         
         nodes <- data.table(id = unique(c(ints2$protein1, ints2$protein2)))
         nodes$label <- nodes$id
-        
 
         
         edges <-
@@ -829,15 +1192,15 @@ server <- function(session, input, output) {
 
         g <- igraph::graph_from_data_frame(edges, directed = F, vertices = nodes)
         
-        r <- v$res[V(g)$label, on = "UNIPROTID", ]
+        r <- res[V(g)$label, on = "UNIPROTID", ]
         
         
-        g <- set.vertex.attribute(g, name = "name",value = as.vector (r[, ..sID][[1]]))
-        g <- set.vertex.attribute(g, name = "color",value = r$col)
-        g <- set.vertex.attribute(g, name = "group",value = r$TopReactomeName)
+        g <- set.vertex.attribute(g, name = "name",  value = as.vector (r[, ..sID][[1]]))
+        g <- set.vertex.attribute(g, name = "color", value = r$col)
+        g <- set.vertex.attribute(g, name = "group", value = r$TopReactomeName)
         
 
-        layout <- function(type) {
+        layoutf <- function(type) {
             switch(type,
                    "1" = "layout_nicely",
                    "2" = "layout_in_circle",
@@ -848,16 +1211,15 @@ server <- function(session, input, output) {
         }
 
         if(exists("g")){
-            V(g)$name <- v$res[V(g)$name, on = sID, ..sID][[1]]
+            V(g)$name <- res[V(g)$name, on = sID, ..sID][[1]]
         } else {
-            names(V(g)) <- v$res[V(g)$name, on = "UNIPROTID", "UNIPROTID"][[1]]
+            names(V(g)) <- res[V(g)$name, on = "UNIPROTID", "UNIPROTID"][[1]]
         }
         
-
             
         visNetwork::visIgraph(g) %>%
             visInteraction(hover = TRUE) %>%
-            visIgraphLayout(layout = layout(input$network_layout_options), randomSeed = 1) %>%
+            visIgraphLayout(layout = layoutf(1), randomSeed = 1) %>%
             visOptions(selectedBy = list(variable = "group"), height = "475px") %>%
             visEvents(
                 click = "function(nodes) {
@@ -914,20 +1276,20 @@ server <- function(session, input, output) {
     # Goodness-of-fit ----
     observeEvent(input$generatedistributions, {
         
-        if(exists("data_wide")){
+        if(exists("maindata$data_wide")){
             
-            data_wide_NAex <- na.exclude(dframe(data_origin, sID))
+            maindata$data_wide_NAex <- na.exclude(dframe(maindata$data_origin, sampleinfo$sID))
             
-            fit.lnorm <- tryCatch( apply(data_wide_NAex, 1, function(x) fitdistrplus::fitdist(as.numeric(x), "lnorm")),
+            fit.lnorm <- tryCatch( apply(maindata$data_wide_NAex, 1, function(x) fitdistrplus::fitdist(as.numeric(x), "lnorm")),
                                    error = function(e) print(e))
             
-            fit.norm <- tryCatch( apply(data_wide_NAex, 1,  function(x) fitdistrplus::fitdist(as.numeric(x), "norm")),
+            fit.norm <- tryCatch( apply(maindata$data_wide_NAex, 1,  function(x) fitdistrplus::fitdist(as.numeric(x), "norm")),
                                   error = function(e) print(e))
             
             # Render "data type" distribution plots
             output$distributions <- renderPlot({
                 
-                updateSliderInput(session, inputId = "setdist", max = nrow(na.omit(data_origin)))
+                updateSliderInput(session, inputId = "setdist", max = nrow(na.omit(maindata$data_origin)))
                 
                 d1 <- fit.norm
                 d2 <- fit.lnorm
@@ -957,7 +1319,7 @@ server <- function(session, input, output) {
     
     observeEvent(input$listCandidates, {
         
-        if(!exists("data_wide")){
+        if(!exists("maindata$data_wide")){
             
             updateNotifications(paste0("Upload a dataset first."), "exclamation-triangle", "danger")
             
@@ -965,8 +1327,8 @@ server <- function(session, input, output) {
             
             updateNotifications(paste0("Checking for outdated IDs. Please wait."), "info-circle", "info")
             
-            candidates <- data_wide[apply(
-                data_wide[, ..convertColumns],
+            candidates <- maindata$data_wide[apply(
+                maindata$data_wide[, ..convertColumns],
                 1,
                 FUN = function(x)
                     all(startsWith(x[2:5], "MISSING"))
@@ -1030,7 +1392,7 @@ server <- function(session, input, output) {
     getOverview <- reactive({
         data.table(
             "Variable" = c("Total proteins", "DE proteins (adj. P. < 0.05)"),
-            "Value" = c(data_origin[, .N], contrast[adj.P.Val < 0.05, .N])
+            "Value" = c(maindata$data_origin[, .N], contrast[adj.P.Val < 0.05, .N])
             
         )
         
@@ -1038,7 +1400,7 @@ server <- function(session, input, output) {
     
     
     getDT <- reactive({
-        data_wide
+        maindata$data_wide
         
     })
     
@@ -1110,7 +1472,7 @@ server <- function(session, input, output) {
     
     output$downloadReport <- downloadHandler(
         filename = function() {
-            paste(gsub("condition", "", contrasts), gsub(".csv", "", inFile$name), "html", sep = ".")
+            paste(gsub("condition", "", contrasts), gsub(".csv", "", maindata$inFile$name), "html", sep = ".")
         },
         content = function(file) {
             src <- normalizePath('report_file.Rmd')
