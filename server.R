@@ -11,6 +11,8 @@ library(data.table)
 library(DT)
 library(AnnotationDbi)
 library(EnsDb.Hsapiens.v86)
+library(networkD3)
+library(XML) # Set in knee app
 
 # Generic functions ----
 
@@ -1026,9 +1028,7 @@ server <- function(session, input, output) {
         
         UPREGULATED_pathways <- pathways$UPREGULATED_pathways
         DOWNREGULATED_pathways <- pathways$DOWNREGULATED_pathways
-        
-        print("OK")
- 
+
         if(!exists("UPREGULATED_pathways")){
             updateNotifications("Run pathway analysis first.","exclamation-triangle", "danger")
         } else {
@@ -1068,9 +1068,9 @@ server <- function(session, input, output) {
 
                     plotly::ggplotly(pathways$v$volcano_plot) %>%
                         layout(dragmode = "select")
-                    
+
                 })
-            
+
             
             output$volcano_plot2 <- renderPlotly(
                 {
@@ -1119,6 +1119,59 @@ server <- function(session, input, output) {
                  )
             
         }
+    })
+    
+    output$sankey <- renderSankeyNetwork({
+        
+        assign("res", pathways$v$res, envir = .GlobalEnv)
+        # 
+        # URL <- "https://cdn.rawgit.com/christophergandrud/networkD3/master/JSONdata/energy.json"
+        # Energy <- jsonlite::fromJSON(URL)
+        # 
+        # 
+        # df <- res[, c("Pathway_name", "TopReactomeName")]
+        # df <- setDT(df)[, .N, by = c(names(df))]
+        # 
+        # # nodes <- data.table(name = c("Up-regulation", "Down-regulation", unique(res$TopReactomeName), unique(res$Pathway_name)))
+        # nodes <- data.table(name = c(unique(unique(res$Pathway_name), res$TopReactomeName)))
+        # 
+        # links <- data.table(from = seq(unique(res$Pathway_name)))
+        # 
+        # df$source <- seq(0, df[, .N]-1)
+        # df$target <- seq(df[, .N], df[, .N]*2 - 1)
+        # 
+        # nodes <- data.table(name = c(df$Pathway_name, df$TopReactomeName))
+        # 
+        # sankeyNetwork(Links = df, Nodes = nodes, Source = "source", Target = "target", Value = "N")
+        
+
+        
+        df <- pathways$v$res[Pathway_name != "[No significant over-representation]"]
+        
+        UPREGULATED_genes <- df[logFC >= 0 & P.Value <= 0.05]
+        DOWNREGULATED_genes <- df[logFC < 0 & P.Value <= 0.05]
+        
+        
+        df <- df[, c("Pathway_name", "TopReactomeName")]
+        df <- rbindlist(list(data.table(Pathway_name = UPREGULATED_genes[, TopReactomeName], TopReactomeName = "Up-regulated"),
+                             data.table(Pathway_name = DOWNREGULATED_genes[, TopReactomeName], TopReactomeName = "Down-regulated"),
+                             df))
+        
+        links <- setDT(df)[, .N, by = c(names(df))]
+        colnames(links) <- c("target", "source", "value")
+
+        nodes <- data.frame(name=unique(c(links$source, links$target)))
+
+        links$source <- match(links$source, nodes$name) - 1
+        links$target <- match(links$target, nodes$name) - 1
+
+        
+        sankeyNetwork(Links = links, Nodes = nodes, Source = "source",
+                      Target = "target", Value = "value", NodeID = "name",
+                      fontFamily = "sans-serif",
+                      fontSize = 10, nodeWidth = 60, sinksRight = F)
+
+        
     })
     
     output$xxxx <- renderVisNetwork({
@@ -1319,7 +1372,9 @@ server <- function(session, input, output) {
     
     observeEvent(input$listCandidates, {
         
-        if(!exists("maindata$data_wide")){
+        data_wide <- maindata$data_wide
+        
+        if(!exists("data_wide")){
             
             updateNotifications(paste0("Upload a dataset first."), "exclamation-triangle", "danger")
             
@@ -1327,8 +1382,8 @@ server <- function(session, input, output) {
             
             updateNotifications(paste0("Checking for outdated IDs. Please wait."), "info-circle", "info")
             
-            candidates <- maindata$data_wide[apply(
-                maindata$data_wide[, ..convertColumns],
+            candidates <- data_wide[apply(
+                data_wide[, ..convertColumns],
                 1,
                 FUN = function(x)
                     all(startsWith(x[2:5], "MISSING"))
@@ -1344,11 +1399,11 @@ server <- function(session, input, output) {
             
             candidates <- candidates[status]
             
-            candidates$flag <- ifelse(grepl("merged", candidates$Event, ignore.case = T), 1, 2)
+            candidates$flag <- ifelse(grepl("merged", candidates$Event, ignore.case = T), "Obsolete", "Up-to-date")
             
             candidates <- candidates[order(candidates$flag, decreasing = F),]
             
-            n <- candidates[flag == 1, .N]
+            n <- candidates[flag == "Obsolete", .N]
             
             updateNotifications(paste0(n, " IDs are outdated."), "info-circle", "info")
             
@@ -1356,7 +1411,7 @@ server <- function(session, input, output) {
                 formatStyle(
                     datatable(candidates),
                     'flag', target = 'row', 
-                    backgroundColor = styleEqual(c(1), c('green'))
+                    backgroundColor = styleEqual(c("Obsolete", "Up-to-date"), c('snow', 'snow2'))
                 ) 
                 
             })
