@@ -62,9 +62,7 @@ sidebar <- dashboardSidebar(
         menuItemOutput('networkrm'),
         menuItemOutput('network'),
         menuItemOutput('interactionsrm'),
-        menuItemOutput('interactions'),
-        menuItemOutput('predictiverm'),
-        menuItemOutput('predictive')
+        menuItemOutput('interactions')
         
         
     ),
@@ -358,9 +356,6 @@ body <- dashboardBody(
                     numericInput("min_fc", "Min. log2 fold change", value = 0, min = 0, max = 50, step = .5),
                     numericInput("min_pval", "Min. adj. P-value", value = 0.05, min = 0, max = 1, step = .01),
                     htmlOutput("number_of_genes"),
-                    radioButtons(inputId = "usebackground", label = "Background genes",
-                                 choices = list("My dataset" = 1, "Extended background" = 2, "No background (entire genome)" = 3),
-                                 selected = 2),
                     actionButton(inputId = "generate_pathways", label = "Generate pathway data")
                     ),
                 tabBox(width = 9,
@@ -459,13 +454,6 @@ body <- dashboardBody(
                            )
                 )
         ),
-        tabItem(tabName = "predictive",
-                fluidRow(
-                    box(title = "Predictive network analysis",
-                        width = 6
-                    )
-                )
-            ),
         tabItem(tabName = "settings",
                 fluidRow(
                     box(title = "Settings", width = 3,

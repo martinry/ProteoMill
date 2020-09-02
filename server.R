@@ -112,12 +112,6 @@ server <- function(session, input, output) {
         dropdownMenu(type = "notifications", .list = notifications$notification_list)
     })
     
-    # Initialize message menu
-    output$helpMenu <- renderMenu({
-        updateTasks("Run predictive analysis", value = 0, color = "green", i = 0008)
-        dropdownMenu(type = "tasks", .list = tasks$task_list)
-    })
-    
     # A function to append task items to the menu
     updateTasks <- function(text, value, color, i) {
         
@@ -676,7 +670,11 @@ server <- function(session, input, output) {
         
         pca.data <- log2(dt)  # Log2 transform data
         pca.data[is.na(pca.data)] <- 0 # "Impute" missing values as 0
+
         pca.data <- t(pca.data)        # # Transpose dataset
+        
+
+        
         p.pca <- prcomp(pca.data, center = TRUE, scale. = TRUE) # Perform principal component analysis
         
         # Biplot extension displaying top contributing proteins currently only available for 2D plot.
@@ -818,8 +816,6 @@ server <- function(session, input, output) {
         output$network <- renderMenu({
             menuItem("Network analysis", icon = icon("vector-square"),
                      menuSubItem("Interactions", tabName = "interactions", href = NULL, newtab = TRUE,
-                                 icon = shiny::icon("angle-double-right"), selected = F),
-                     menuSubItem("Predictive analysis", tabName = "predictive", href = NULL, newtab = TRUE,
                                  icon = shiny::icon("angle-double-right"), selected = F))
         })
         
@@ -838,7 +834,6 @@ server <- function(session, input, output) {
         removeUI(selector = "#enrichrm")
         removeUI(selector = "#networkrm")
         removeUI(selector = "#interactionsrm")
-        removeUI(selector = "#predictiverm")
         updateNotifications("A DE contrast has been set.","check-circle", "success")
         updateTasks(text = "Set contrast", value = 100, color = "green", i = 0005)
     })
@@ -1124,28 +1119,7 @@ server <- function(session, input, output) {
     output$sankey <- renderSankeyNetwork({
         
         assign("res", pathways$v$res, envir = .GlobalEnv)
-        # 
-        # URL <- "https://cdn.rawgit.com/christophergandrud/networkD3/master/JSONdata/energy.json"
-        # Energy <- jsonlite::fromJSON(URL)
-        # 
-        # 
-        # df <- res[, c("Pathway_name", "TopReactomeName")]
-        # df <- setDT(df)[, .N, by = c(names(df))]
-        # 
-        # # nodes <- data.table(name = c("Up-regulation", "Down-regulation", unique(res$TopReactomeName), unique(res$Pathway_name)))
-        # nodes <- data.table(name = c(unique(unique(res$Pathway_name), res$TopReactomeName)))
-        # 
-        # links <- data.table(from = seq(unique(res$Pathway_name)))
-        # 
-        # df$source <- seq(0, df[, .N]-1)
-        # df$target <- seq(df[, .N], df[, .N]*2 - 1)
-        # 
-        # nodes <- data.table(name = c(df$Pathway_name, df$TopReactomeName))
-        # 
-        # sankeyNetwork(Links = df, Nodes = nodes, Source = "source", Target = "target", Value = "N")
-        
 
-        
         df <- pathways$v$res[Pathway_name != "[No significant over-representation]"]
         
         UPREGULATED_genes <- df[logFC >= 0 & P.Value <= 0.05]
