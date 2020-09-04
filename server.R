@@ -615,43 +615,85 @@ server <- function(session, input, output) {
     # Data summary plot ----
     
     output$datainfoBox <- renderInfoBox({
-        infoBox(
-            "Genes", maindata$data_wide[, .N],
-            color = "green"
-        )
+        if(!is.null(sampleinfo$samples)) infoBox("Genes", maindata$data_wide[, .N])
+        else infoBox("Genes", 0)
     })
     
     output$sampleinfoBox <- renderInfoBox({
-        infoBox(
-            "Samples", nrow(sampleinfo$samples),
-            color = "green"
-        )
+        if(!is.null(sampleinfo$samples)) infoBox("Samples", nrow(sampleinfo$samples))
+        else infoBox("Samples", 0)
     })
     
     output$conditioninfoBox <- renderInfoBox({
-        infoBox(
-            "Treatments", length(unique(sampleinfo$samples$condition)),
-            color = "green"
-        )
+        if(!is.null(sampleinfo$samples)) infoBox("Treatments", length(unique(sampleinfo$samples$condition)))
+        else infoBox("Treatments", 0)
     })
-    
-    #sampleinfo$samples <- samples
-    #values <- reactiveValues(data = df)
     
     observe({
         if(!is.null(input$hot)){
             sampleinfo$samples <- as.data.frame(hot_to_r(input$hot))
-            #print(sampleinfo$samples)
             output$hot <- renderRHandsontable({
-                rhandsontable(sampleinfo$samples)
+                rhandsontable(sampleinfo$samples, width = 600, rowHeaders = NULL)
             })
         }
     })    
     
     output$hot <- renderRHandsontable({
-        rhandsontable(sampleinfo$samples)
+        if(!is.null(sampleinfo$samples)) rhandsontable(sampleinfo$samples, width = 600, rowHeaders = NULL)
     })
     
+    output$identifierinfo <- renderTable({
+        if(!is.null(maindata$data_wide)) {
+            missingids <- maindata$data_wide[, ..convertColumns]
+            missingidspc <- apply(missingids, 2, FUN = function(x) paste0(round(((sum(!startsWith(x, "MISSING")) / missingids[, .N]) * 100), 2), "% (", sum(!startsWith(x, "MISSING")), ")") )
+            as.data.frame(missingidspc)
+        }
+    }, rownames = T, colnames = F)
+    
+    
+    output$violinplot <- renderPlot({
+
+        if(!is.null(maindata$data_wide) & !is.null(sampleinfo$samples)){
+            dat <- stack(as.data.frame(maindata$data_wide[, 6:ncol(maindata$data_wide)]))
+            dat <- dat[!is.na(dat$values), ]
+            dat$sample <- sub("_.*", "", dat$ind)
+            dat$ind <- factor(dat$ind, levels = levels(dat$ind)[order(levels(dat$ind))])
+            dat$values <- log2(dat$values)
+            
+            if(nrow(sampleinfo$samples) > 30) {
+                
+                ggplot(dat, 
+                       aes(x = sample, y = values, fill = sample)) + 
+                    geom_violin(trim = FALSE, scale = "width") +
+                    geom_boxplot(width=0.1, fill="white") +
+                    # labs(title ="Distribution of M2 Macrophages", 
+                    #      x = "Tissue Samples", y = "Cibersort Count") +
+                    theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust = 1), legend.position = "none") +
+                    xlab("Samples") + ylab("Log2 Expression") +
+                    scale_fill_brewer(palette = "BuGn")
+                
+            } else {
+                
+                ggplot(dat, 
+                       aes(x = ind, y = values, fill = sample)) + 
+                    geom_violin(trim = FALSE, scale = "width") +
+                    geom_boxplot(width=0.1, fill="white") +
+                    # labs(title ="Distribution of M2 Macrophages", 
+                    #      x = "Tissue Samples", y = "Cibersort Count") +
+                    theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust = 1), legend.position = "none") +
+                    xlab("Samples") + ylab("Log2 Expression") +
+                    scale_fill_brewer(palette = "BuGn")
+                
+            }
+            
+
+
+        }
+
+            
+        
+        
+    })
     
     # Missing values: frequency plot ----
     
@@ -1070,28 +1112,18 @@ server <- function(session, input, output) {
         
     }
     
-    # Differential expression: output table
-    
-    observeEvent(input$loadDiffExpTable, {
+
+    output$diffexptable <- DT::renderDataTable({
         
         contrast <- rcont$contrast
         
-        if(exists("contrast")){
-            output$diffexptable <- DT::renderDataTable({
-                
-                df <- DT::datatable(dframe(rcont$contrast, sampleinfo$sID),
-                                    options = list(autoWidth = TRUE,
-                                                   scrollX=TRUE))
-                df %>% DT::formatSignif('adj.P.Val', digits = 2)
-                
-                
-            })
-        } else {
-            updateNotifications("Set contrasts first.","exclamation-triangle", "danger")
+        if(!is.null(contrast)){
+            df <- DT::datatable(dframe(rcont$contrast, sampleinfo$sID),
+                                options = list(autoWidth = TRUE,
+                                               scrollX=TRUE))
+            df %>% DT::formatSignif('adj.P.Val', digits = 2)
         }
-        
-        
-        
+
     })
     
     
@@ -1099,20 +1131,24 @@ server <- function(session, input, output) {
     # Differential expression: confidence intervals
     
     output$contrasttable <- renderPlot({
-        ggplot2::ggplot(rcont$cint, aes(x = protein, y = logFC, colour = logFC)) +
-            coord_flip() +
-            geom_errorbar(aes(ymin = as.numeric(CI.L), ymax = as.numeric(CI.R)), width = 2) +
-            scale_color_viridis_c() +
-            geom_line() +
-            geom_point() +
-            theme_bw() +
-            theme(
-                panel.border = element_blank(),
-                panel.grid.major = element_blank(),
-                panel.grid.minor = element_blank(),
-                axis.line = element_line(colour = "black"),
-                axis.text.y = element_text(size = 7, family = "Helvetica")
-            )
+        
+        if(!is.null(rcont$cint)){
+            ggplot2::ggplot(rcont$cint, aes(x = protein, y = logFC, colour = logFC)) +
+                coord_flip() +
+                geom_errorbar(aes(ymin = as.numeric(CI.L), ymax = as.numeric(CI.R)), width = 2) +
+                scale_color_viridis_c() +
+                geom_line() +
+                geom_point() +
+                theme_bw() +
+                theme(
+                    panel.border = element_blank(),
+                    panel.grid.major = element_blank(),
+                    panel.grid.minor = element_blank(),
+                    axis.line = element_line(colour = "black"),
+                    axis.text.y = element_text(size = 7, family = "Helvetica")
+                )
+        }
+
     })
     
     
@@ -1664,10 +1700,21 @@ server <- function(session, input, output) {
     # })
     
     
+    output$download <- downloadHandler(
+        filename = function(){
+            if(!is.null(maindata$inFile$name)) paste(gsub("condition", "", rcont$contrasts), gsub(".csv", "", maindata$inFile$name), "csv", sep = ".")
+            else paste0(gsub("condition", "", rcont$contrasts), ".csv")
+        }, 
+        content = function(fname){
+            fwrite(rcont$contrast, fname, sep = ";")
+        }
+    )
+    
+    
     
     output$downloadReport <- downloadHandler(
         filename = function() {
-            paste(gsub("condition", "", contrasts), gsub(".csv", "", maindata$inFile$name), "html", sep = ".")
+            paste(gsub("condition", "", rcont$contrasts), gsub(".csv", "", maindata$inFile$name), "html", sep = ".")
         },
         content = function(file) {
             src <- normalizePath('report_file.Rmd')

@@ -44,11 +44,11 @@ sidebar <- dashboardSidebar(
              color: #fff;"),
     sidebarMenu(id = "sidebarmenu",
         menuItem("Dataset options", icon = icon("table"),
-                 menuSubItem("File input", tabName = "file-input", href = NULL, newtab = TRUE,
+                 menuSubItem("Upload data", tabName = "file-input", href = NULL, newtab = TRUE,
                              icon = shiny::icon("angle-double-right"), selected = T),
                  menuSubItem("Data summary", tabName = "data-summary", href = NULL, newtab = TRUE,
                              icon = shiny::icon("angle-double-right"), selected = F),
-                 menuSubItem("Filters", tabName = "filters", href = NULL, newtab = TRUE,
+                 menuSubItem("Missing  values", tabName = "filters", href = NULL, newtab = TRUE,
                              icon = shiny::icon("angle-double-right"), selected = F),
                  startExpanded = T
                  
@@ -200,13 +200,27 @@ body <- dashboardBody(
         ),
         
         tabItem(tabName = "data-summary",
-                box(
-                    infoBoxOutput("datainfoBox"),
-                    infoBoxOutput("sampleinfoBox"),
-                    infoBoxOutput("conditioninfoBox"),
-                    rHandsontableOutput("hot")
-                    
-                )),
+                fluidRow(
+                    column(width = 6,
+                           box(width = NULL,
+                               infoBoxOutput("datainfoBox"),
+                               infoBoxOutput("sampleinfoBox"),
+                               infoBoxOutput("conditioninfoBox")
+                           ),
+                           box(title = "Expression levels",
+                               width = NULL,
+                               plotOutput("violinplot")
+                               
+                           )),
+                    column(width = 3,
+                           box(title = "Mapped IDs",
+                               width = NULL,
+                               tableOutput("identifierinfo")
+                               ),
+                           box(title = "Sample info",
+                               width = NULL,
+                               rHandsontableOutput("hot")))
+                    )),
 
 
 
@@ -360,9 +374,12 @@ body <- dashboardBody(
                 plotOutput("contrasttable", width = "800px", height = "1600px")),
         tabItem(tabName = "differentialexpression",
                 fluidRow(
-                    box(actionButton("loadDiffExpTable","Load table"), width = 2),
-                    box(tabPanel("Table", DT::dataTableOutput("diffexptable")))
-                    )
+                    column(width = 8,
+                    box(width = NULL,
+                        downloadButton('download',"Download"),
+                        tags$p(),
+                        tabPanel("Table", DT::dataTableOutput("diffexptable")))
+                    ))
                 ),
 
         # Pathway enrichment: Table, Similarity matrix, Volcano plot
@@ -479,12 +496,19 @@ body <- dashboardBody(
         tabItem(tabName = "settings",
                 fluidRow(
                     box(title = "Settings", width = 3,
-                        # h5("Display options"),
-                        # hr(),
-                        # radioButtons(inputId = 'colorScheme', label = 'Color palette',
-                        #              choices = list("Normal", "Colorblind friendly"), inline = T),
-                        # radioButtons(inputId = 'textSize', label = 'Text size',
-                        #              choices = list("Small", "Medium", "Large"), selected = "Medium", inline = T),
+                        h5("Display options"),
+                        hr(),
+                        radioButtons(
+                            inputId = 'colorScheme',
+                            label = 'Preferred color scheme',
+                            choices = list(
+                                "Normal" = 1,
+                                "Colorblind friendly" = 2
+                            ),
+                            inline = T
+                        ), 
+                        radioButtons(inputId = 'textSize', label = 'Text size',
+                                     choices = list("Small", "Medium", "Large"), selected = "Medium", inline = T),
                         h5("Target organism"),
                         hr(),
                         selectInput("species", "Select species",
