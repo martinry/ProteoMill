@@ -13,6 +13,8 @@ library(AnnotationDbi)
 library(EnsDb.Hsapiens.v86)
 library(networkD3)
 library(XML) # Set in knee app
+library(mixOmics)
+library(rhandsontable)
 
 # Generic functions ----
 
@@ -100,9 +102,7 @@ server <- function(session, input, output) {
     )
     
     tasks$tasks <- tasksdf
-    
-    
-    
+
     # Make notification_list global var
     notifications$notification_list <- notification_list
 
@@ -112,6 +112,12 @@ server <- function(session, input, output) {
         dropdownMenu(type = "notifications", .list = notifications$notification_list)
     })
     
+    # Initialize notification menu
+    output$helpMenu <- renderMenu({
+        dropdownMenu(type = "tasks", .list = list(taskItem(text = tasks$tasks[1, text],
+                                                           value = tasks$tasks[1, value],
+                                                           color = tasks$tasks[1, color])))
+    })
     # A function to append task items to the menu
     updateTasks <- function(text, value, color, i) {
         
@@ -313,7 +319,7 @@ server <- function(session, input, output) {
         removeUI(selector = "#qualityrm")
         removeUI(selector = "#diffrm")
         
-        updateSelectInput(session, "contrast1", choices = maindata$group)
+        updateSelectInput(session, "contrast1", choices = sampleinfo$group)
         
     }
     
@@ -332,7 +338,7 @@ server <- function(session, input, output) {
     
     # Build sample info ----
     
-    group <- list()
+    #group <- list()
     sample_data <- function(data) {
         samples <- names(data[, -..convertColumns])
         condition <- as.factor(gsub('_.*', '', samples))
@@ -340,16 +346,36 @@ server <- function(session, input, output) {
         samples <- data.frame(samples, condition, replicate)
         rownames(samples) <- samples$samples
         
-        group <- sapply(levels(condition), function(x) paste("condition", x, sep = ''))
+        group <- sapply(as.character(unique(condition)), function(x) paste("condition", x, sep = ''))
         
-        assign("samples", samples, envir = .GlobalEnv)
-        assign("condition", condition, envir = .GlobalEnv)
-        assign("replicate", replicate, envir = .GlobalEnv)
-        assign("group", group, envir = .GlobalEnv)
+        sampleinfo$samples <- samples
+        sampleinfo$condition <- condition
+        sampleinfo$replicate <- replicate
         
-        maindata$group <- group
+         assign("samples", samples, envir = .GlobalEnv)
+         assign("condition", condition, envir = .GlobalEnv)
+        # assign("replicate", replicate, envir = .GlobalEnv)
+         assign("group", group, envir = .GlobalEnv)
+        
+        sampleinfo$group <- group
+        
+        updateContrasts()
         
         return (FALSE)
+    }
+    
+    subsample_data <- function(){
+        samples <- sampleinfo$samples
+        condition <- samples$condition
+        
+        assign("saa", samples, envir = .GlobalEnv)
+        assign("coo", condition, envir = .GlobalEnv)
+        
+        group <- sapply(as.character(unique(condition)), function(x) paste("condition", x, sep = ''))
+        sampleinfo$group <- group
+        
+        print(samples)
+        print(group)
     }
     
     
@@ -380,7 +406,7 @@ server <- function(session, input, output) {
         }
         
         # Apply function to all regions
-        condition_sub <- lapply(names(maindata$group), subset_NA)
+        condition_sub <- lapply(names(sampleinfo$group), subset_NA)
         
         # Reduce to shared proteins
         condition_sub2 <- Reduce(intersect, condition_sub)
@@ -584,6 +610,49 @@ server <- function(session, input, output) {
         
     })
     
+    
+    
+    # Data summary plot ----
+    
+    output$datainfoBox <- renderInfoBox({
+        infoBox(
+            "Genes", maindata$data_wide[, .N],
+            color = "green"
+        )
+    })
+    
+    output$sampleinfoBox <- renderInfoBox({
+        infoBox(
+            "Samples", nrow(sampleinfo$samples),
+            color = "green"
+        )
+    })
+    
+    output$conditioninfoBox <- renderInfoBox({
+        infoBox(
+            "Treatments", length(unique(sampleinfo$samples$condition)),
+            color = "green"
+        )
+    })
+    
+    #sampleinfo$samples <- samples
+    #values <- reactiveValues(data = df)
+    
+    observe({
+        if(!is.null(input$hot)){
+            sampleinfo$samples <- as.data.frame(hot_to_r(input$hot))
+            #print(sampleinfo$samples)
+            output$hot <- renderRHandsontable({
+                rhandsontable(sampleinfo$samples)
+            })
+        }
+    })    
+    
+    output$hot <- renderRHandsontable({
+        rhandsontable(sampleinfo$samples)
+    })
+    
+    
     # Missing values: frequency plot ----
     
     renderNAfreq <- function(data_wide){
@@ -619,7 +688,7 @@ server <- function(session, input, output) {
         
         data_wide <- maindata$data_wide
         
-        if(exists("data_wide")){
+        if(!is.null(data_wide)){
             renderNAfreq(data_wide)
         } else {
             updateNotifications("Upload a dataset first.","exclamation-triangle", "danger")
@@ -630,7 +699,12 @@ server <- function(session, input, output) {
         
         data_wide <- maindata$data_wide
         
-        if(exists("data_wide")){
+        subsample_data()
+        
+        #print(sampleinfo$samples)
+        #print(sampleinfo$group)
+        
+        if(!is.null(data_wide)){
             data_origin <- maindata$data_origin
             data_wide <- filter_na(data_origin, input$missingvalues)
             unlock_menus()
@@ -668,18 +742,18 @@ server <- function(session, input, output) {
         
         dt <- dframe(maindata$data_origin, sampleinfo$sID)
         
-        pca.data <- log2(dt)  # Log2 transform data
-        pca.data[is.na(pca.data)] <- 0 # "Impute" missing values as 0
 
-        pca.data <- t(pca.data)        # # Transpose dataset
-        
-
-        
-        p.pca <- prcomp(pca.data, center = TRUE, scale. = TRUE) # Perform principal component analysis
         
         # Biplot extension displaying top contributing proteins currently only available for 2D plot.
         
         if(type == '2d') {
+            
+            pca.data <- log2(dt)  # Log2 transform data
+            pca.data[is.na(pca.data)] <- 0 # "Impute" missing values as 0
+            
+            pca.data <- t(pca.data)        # Transpose dataset
+            
+            p.pca <- prcomp(pca.data, center = TRUE, scale. = TRUE)
             
             pcaplot <- factoextra::fviz_pca_biplot(p.pca, title = '', label = "var", habillage = condition,
                                                    addEllipses = TRUE, ellipse.level = ellipse,
@@ -687,7 +761,43 @@ server <- function(session, input, output) {
             
             return (pcaplot)
             
+        } else if (type == '2dpaired') {
+            
+            assign("dt", dt, envir = .GlobalEnv)
+            
+            pca.data <- dt
+            pca.data[is.na(pca.data)] <- .5 # "Impute" missing values as 0
+
+            pca.data <- pca.data[rowSums(pca.data) != .5,]
+            
+            pca.data <- t(pca.data)        # Transpose dataset
+            
+            pca.res = pca(X = pca.data,
+                          multilevel = sampleinfo$samples$replicate, logratio = 'CLR')
+            
+            pcaplot <- plotIndiv(
+                pca.res,
+                ind.names = sampleinfo$samples$replicate,
+                group = sampleinfo$samples$condition,
+                title = "Multilevel PCA",
+                legend = T,
+                style = "ggplot2",
+                ellipse = FALSE,
+                ellipse.level = .9
+            )
+            return(pcaplot)
+            
+            
+            
         } else if (type == '3d') {
+            
+            pca.data <- log2(dt)  # Log2 transform data
+            pca.data[is.na(pca.data)] <- 0 # "Impute" missing values as 0
+            
+            pca.data <- t(pca.data)        # Transpose dataset
+            
+            p.pca <- prcomp(pca.data, center = TRUE, scale. = TRUE)
+            
             pcaplot <- plotly::plot_ly(x = p.pca$x[,1],
                                        y = p.pca$x[,2],
                                        z = p.pca$x[,3],
@@ -700,8 +810,39 @@ server <- function(session, input, output) {
                                             zaxis = list(title = 'PC3')))
             
             return (pcaplot)
+        } else if (type == '3dpaired') {
+            
+            pca.data <- dt
+            pca.data[is.na(pca.data)] <- .5 # "Impute" missing values as 0
+            
+            pca.data <- pca.data[rowSums(pca.data) != .5,]
+            
+            pca.data <- t(pca.data)        # Transpose dataset
+            
+            pca.res = pca(X = pca.data,
+                          ncomp = 3,
+                          multilevel = sampleinfo$samples$replicate, logratio = 'CLR')
+            
+            pcaplot <- plotly::plot_ly(x = pca.res$x[,1],
+                                       y = pca.res$x[,2],
+                                       z = pca.res$x[,3],
+                                       color = condition,
+                                       colors = c("red","green","blue"),
+                                       sizes = c(100, 150)) %>%
+                plotly::add_markers() %>%
+                plotly::layout(scene = list(xaxis = list(title = 'PC1'),
+                                            yaxis = list(title = 'PC2'),
+                                            zaxis = list(title = 'PC3')))
+
+            return(pcaplot)
+            
         } else if (type == 'UMAP') {
             
+            pca.data <- log2(dt)  # Log2 transform data
+            pca.data[is.na(pca.data)] <- 0 # "Impute" missing values as 0
+            
+            pca.data <- t(pca.data)        # Transpose dataset
+
             um <- umap::umap(pca.data, n_neighbors = ncol(dt))
             
             df <- data.frame(x = um$layout[,1],
@@ -720,18 +861,31 @@ server <- function(session, input, output) {
     # Render PCA plots
     
     observeEvent(input$loadPCAplots, {
-        output$pca2dplot <- renderPlot({
-            c <- input$contribs
-            e <- input$ellipse
-            pca2d <- plotPCA(c,e, '2d')
+        
+        # If unpaired
+        if(!any(duplicated(sampleinfo$samples$replicate))){
+            output$pca2dplot <- renderPlot({
+                plotPCA(input$contribs, input$ellipse, '2d')
+            })
+        } else {
+            output$pca2dplot <- renderPlot({
+                plotPCA(0, input$ellipse, '2dpaired')
 
-            pca2d
-        })
-        
-        output$pca3dplot <- plotly::renderPlotly({
-            plotPCA(0,0, '3d')
-        })
-        
+            })
+        }
+
+        # If unpaired
+        if(!any(duplicated(sampleinfo$samples$replicate))){
+            output$pca3dplot <- plotly::renderPlotly({
+                plotPCA(0,0, '3d')
+            })
+        } else {
+            output$pca3dplot <- plotly::renderPlotly({
+                plotPCA(0, 0, '3dpaired')
+                
+            })
+        }
+
         updateTasks(text = "Inspect data", value = (tasks$tasks[id == "0004", value] + 100/3), color = "green", i = 0004)
     })
     
@@ -755,10 +909,12 @@ server <- function(session, input, output) {
         
         #annotation_col = data.frame(tmp)
         
-        if(exists("maindata$data_annotation")){
-            if(all(maindata$data_annotation[, as.character(.SD[[1L]])] %in% names(maindata$data_origin[,-..convertColumns]))){
+        data_annotation <- maindata$data_annotation
+        
+        if(!is.null(data_annotation)){
+            if(all(data_annotation[, as.character(.SD[[1L]])] %in% names(maindata$data_origin[,-..convertColumns]))){
                 hmap <- pheatmap::pheatmap(
-                    annotation_col = dframe(maindata$data_annotation, "V1")[2:4],
+                    annotation_col = dframe(data_annotation, "V1")[2:4],
                     cor_mat_raw_logged,
                     legend_breaks = c(min(cor_mat_raw_logged), 1),
                     legend_labels = c(0, 1)
@@ -780,29 +936,32 @@ server <- function(session, input, output) {
 
     # Differential expression: set contrasts ----
     observeEvent(input$contrast1, {
+        subsample_data()
+        updateContrasts()
+    })
+    
+    updateContrasts <- function(){
+
+        group <- sampleinfo$group
         
-        group <- maindata$group
+        #print(group)
         
-        if (!exists("group")){
+        if (is.null(group)){
             return(NULL)
-        } else if (exists("group")){
-            cont1 <- input$contrast1
+        } else {
+            
+            if(input$contrast1 %in% group) {
+                cont1 <- input$contrast1
+            } else {
+                cont1 <- group[1]
+            }
+            
             cont2 <- group[group != cont1]
             
             updateSelectInput(session, "contrast2", choices = cont2)
         }
         
-        
-        # if (!exists("group")){
-        #     return(NULL)
-        # } else if (exists("group")){
-        #     cont1 <- input$contrast1
-        #     cont2 <- group[group != cont1]
-        #     
-        #     updateSelectInput(session, "contrast2", choices = cont2)
-        # }
-        
-    })
+    }
 
     observeEvent(input$setContrast, {
         output$enrichment <- renderMenu({
@@ -819,14 +978,14 @@ server <- function(session, input, output) {
                                  icon = shiny::icon("angle-double-right"), selected = F))
         })
         
-        pairing <- input$pairing
+        #pairing <- input$pairing
+        
+        pairing <- ifelse(any(duplicated(sampleinfo$samples$replicate)), 1, 2)
         
         contrasts <- paste(input$contrast1,input$contrast2, sep = '-')
-        #assign("contrasts", contrasts, envir = .GlobalEnv)
-        
+
         contrast <- diff_exp(contrasts, pairing)
-        #assign('contrast', contrast, envir = .GlobalEnv)
-        
+
         rcont$contrasts <- contrasts
         rcont$contrast <- contrast
         
@@ -846,14 +1005,17 @@ server <- function(session, input, output) {
         
         if(best_fit == 'nbinom') {
             dds <- DESeqDataSetFromMatrix(countData  = maindata$data_wide,
-                                          colData    = samples,
-                                          design     = ~ condition + replicate)
+                                          colData    = sampleinfo$samples,
+                                          design     = ~ sampleinfo$condition + sampleinfo$replicate)
             dds <- DESeq(dds)
         }
         
         # Create Annotation data and expression set (Biobase)
-        phenoData <- new("AnnotatedDataFrame", data = samples)
+        phenoData <- new("AnnotatedDataFrame", data = sampleinfo$samples)
         exampleSet <- ExpressionSet(assayData = as.matrix(log2(dframe(maindata$data_wide, sampleinfo$sID))), phenoData = phenoData)
+        
+        condition <- sampleinfo$condition
+        replicate <- sampleinfo$replicate
         
         unpaired <- model.matrix( ~ 0 + condition )
         paired <- model.matrix( ~ 0 + condition + replicate )
@@ -868,14 +1030,16 @@ server <- function(session, input, output) {
         fit <- lmFit(exampleSet, design)
         
         # Decide possible contrasts
-        c <- expand.grid(maindata$group, maindata$group)
+        c <- expand.grid(sampleinfo$group, sampleinfo$group)
         cc <- factor(ifelse(c$Var1 != c$Var2, paste(c$Var1, c$Var2, sep = '-'), NA ))
         cc <- cc[!is.na(cc)]
         names(cc) <- gsub('-','', gsub('condition','',cc))
         
+        #print(cc)
+
         cont.matrix <- makeContrasts(contrasts = cc, levels = design) # All possible contrasts
         
-        print(coeff)
+        #print(coeff)
         
         # Contrast groups, run empirical bayes statistics
         fit.cont <- contrasts.fit(fit, cont.matrix)
@@ -899,6 +1063,8 @@ server <- function(session, input, output) {
         contrast <- contrast[maindata$data_wide[,..convertColumns], nomatch = 0]
         names(contrast) <- c(sampleinfo$sID, names(contrast[, 2:ncol(contrast)]))
         setcolorder(contrast, c(convertColumns, "logFC", "CI.L", "CI.R", "t", "P.Value", "adj.P.Val", "B"))
+        
+        assign("contrast", contrast, envir = .GlobalEnv)
         
         return( contrast )
         

@@ -46,6 +46,8 @@ sidebar <- dashboardSidebar(
         menuItem("Dataset options", icon = icon("table"),
                  menuSubItem("File input", tabName = "file-input", href = NULL, newtab = TRUE,
                              icon = shiny::icon("angle-double-right"), selected = T),
+                 menuSubItem("Data summary", tabName = "data-summary", href = NULL, newtab = TRUE,
+                             icon = shiny::icon("angle-double-right"), selected = F),
                  menuSubItem("Filters", tabName = "filters", href = NULL, newtab = TRUE,
                              icon = shiny::icon("angle-double-right"), selected = F),
                  startExpanded = T
@@ -195,7 +197,27 @@ body <- dashboardBody(
                         
                     )
                 )
-),
+        ),
+        
+        tabItem(tabName = "data-summary",
+                box(
+                    infoBoxOutput("datainfoBox"),
+                    infoBoxOutput("sampleinfoBox"),
+                    infoBoxOutput("conditioninfoBox"),
+                    rHandsontableOutput("hot")
+                    
+                )),
+
+
+
+        # Data summary
+
+        # tabItem(tabName = "data-summary",
+        #         box(title = "NA frequencies", status = "warning", solidHeader = F,
+        #             plotOutput("nafreq"))
+        # ),
+
+
         
         # Filters: NA cutoff
         
@@ -326,11 +348,11 @@ body <- dashboardBody(
                                                "Condition2" = 2,
                                                "Condition3" = 3),
                                 selected = 2),
-                    radioButtons("pairing", label = "Design",
-                                 choices = list("Paired" = 1,
-                                                "Unpaired" = 2),
-                                 selected = 2,
-                                 inline = T),
+                    # radioButtons("pairing", label = "Design",
+                    #              choices = list("Paired" = 1,
+                    #                             "Unpaired" = 2),
+                    #              selected = 2,
+                    #              inline = T),
                     actionButton("setContrast", "Select")
                 )
         ),

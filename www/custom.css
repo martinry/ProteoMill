@@ -23,6 +23,22 @@ hr {
     margin-bottom: 10px !important;
 }
 
+.info-box-icon {
+    display: none !important;
+}
+
+.info-box-content {
+    margin-left: 0px !important;
+    text-align: center !important;
+}
+
+.info-box-number {
+    color: green !important;
+    text-align: center !important;
+    font-size: 36px !important;
+    font-family: "Open Sans" !important;
+}
+
 .help-block {
     margin-top: 0px !important;
     margin-bottom: 0px !important;
