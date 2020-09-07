@@ -1,15 +1,16 @@
 library(shiny)
 library(shinydashboard)
+library(plotly)
+library(visNetwork)
 library(rhandsontable)
+library(DT)
+library(networkD3)
 
-#setwd("~/qodb-shiny/")
-
-#tissues <- list()
 
 # Notification menus ----
 
-help <- dropdownMenuOutput("helpMenu")
-notifications <- dropdownMenuOutput("notifMenu")
+help <- shinydashboard::dropdownMenuOutput("helpMenu")
+notifications <- shinydashboard::dropdownMenuOutput("notifMenu")
 
 header <- dashboardHeader(help,
                           notifications,
@@ -194,7 +195,9 @@ body <- dashboardBody(
                                                       "Sample dataset 8" = 8))),
                             actionButton("useDemoData", label = "Use demo data")
                             #DT::dataTableOutput("contrasttable")
-                        )
+                        ),
+                        box(actionButton("memused", "Check memory"))
+                        
                         
                     )
                 )

@@ -1,8 +1,4 @@
-library(igraph)
-library(visNetwork)
-
-#setwd("C://Users/martinry/qodb-shiny/")
-
+library(data.table)
 
 # Upload dataset ----
 
@@ -17,10 +13,10 @@ undup <- function(genes){
 
 if(!exists("interactions")){
  
- interactions <- data.table::fread("C://Users/martinry/interactions5.txt")
+ interactions <- data.table::fread("lib/interactions5.txt.gz")
  assign("interactions", interactions, envir = .GlobalEnv)
  
- pdesc <- data.table::fread("C://Users/martinry/protein_descriptions.txt")
+ pdesc <- data.table::fread("lib/protein_descriptions.txt.gz")
  assign("pdesc", pdesc, envir = .GlobalEnv)
  
 }

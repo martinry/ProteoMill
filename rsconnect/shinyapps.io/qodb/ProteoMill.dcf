@@ -1,0 +1,13 @@
+name: ProteoMill
+title: ProteoMill
+username:
+account: qodb
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2764357
+bundleId: 3602311
+url: https://qodb.shinyapps.io/ProteoMill/
+when: 1599484155.81817
+lastSyncTime: 1599484155.81818
+asMultiple: FALSE
+asStatic: FALSE

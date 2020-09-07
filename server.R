@@ -1,4 +1,6 @@
 # Load packages ----
+library(shiny)
+library(shinydashboard)
 library(knitr)
 library(limma)
 library(Biobase)
@@ -12,9 +14,19 @@ library(DT)
 library(AnnotationDbi)
 library(EnsDb.Hsapiens.v86)
 library(networkD3)
-library(XML) # Set in knee app
+library(XML)
 library(mixOmics)
 library(rhandsontable)
+library(stringr)
+library(factoextra)
+library(pheatmap)
+library(rmarkdown)
+library(fitdistrplus)
+library(igraph)
+library(visNetwork)
+library(R.utils)
+
+
 
 # Generic functions ----
 
@@ -58,20 +70,13 @@ get_delim <- function(c){
 }
 
 
-get_interactions <- function(){
-
-  url <- "https://stringdb-static.org/download/protein.links.v11.0/9606.protein.links.v11.0.txt.gz"
-
-  interactions <- data.table::fread(knee::collect(url),
-                                    sep = ' ',
-                                    header = T)
-  return(interactions)
-}
-
-
 
 # Server ----
 server <- function(session, input, output) {
+    
+    observeEvent(input$memused, {
+        print(ll()[order(ll()$KB),])
+    })
     
     # Define reactive variables ----
     notifications <- reactiveValues()
@@ -81,6 +86,7 @@ server <- function(session, input, output) {
     rcont <- reactiveValues()
     pathways <- reactiveValues()
     
+    sampleinfo$sID <- identifier(2)
     
     # Notifications ----
     
@@ -331,7 +337,7 @@ server <- function(session, input, output) {
 
         updateNotifications(paste0("Default ID set to ", i),"info-circle", "info")
         
-    }, ignoreInit = F)
+    })
     
     
     
@@ -352,11 +358,6 @@ server <- function(session, input, output) {
         sampleinfo$condition <- condition
         sampleinfo$replicate <- replicate
         
-         assign("samples", samples, envir = .GlobalEnv)
-         assign("condition", condition, envir = .GlobalEnv)
-        # assign("replicate", replicate, envir = .GlobalEnv)
-         assign("group", group, envir = .GlobalEnv)
-        
         sampleinfo$group <- group
         
         updateContrasts()
@@ -368,14 +369,8 @@ server <- function(session, input, output) {
         samples <- sampleinfo$samples
         condition <- samples$condition
         
-        assign("saa", samples, envir = .GlobalEnv)
-        assign("coo", condition, envir = .GlobalEnv)
-        
         group <- sapply(as.character(unique(condition)), function(x) paste("condition", x, sep = ''))
         sampleinfo$group <- group
-        
-        print(samples)
-        print(group)
     }
     
     
@@ -396,7 +391,7 @@ server <- function(session, input, output) {
             condition_subset <- data_origin[, grep(condition,names(data_origin)), with = F]
             
             # Determine if rows pass NA threshold
-            rows_to_keep <- rowSums(is.na(condition_subset)) <= threshold # !! set global
+            rows_to_keep <- rowSums(is.na(condition_subset)) <= threshold
             
             # Subset rownames
             keep <- data_origin[rows_to_keep, UNIPROTID]
@@ -404,6 +399,9 @@ server <- function(session, input, output) {
             return(keep)
             
         }
+        
+        # assign("group", sampleinfo$group, envir = .GlobalEnv)
+        # assign("subset_NA", subset_NA, envir = .GlobalEnv)
         
         # Apply function to all regions
         condition_sub <- lapply(names(sampleinfo$group), subset_NA)
@@ -442,8 +440,6 @@ server <- function(session, input, output) {
         empty_rows <- apply(maindata$data_wide[,2:ncol(maindata$data_wide)], 1, function(x) all(is.na(x)))
         maindata$data_wide <- maindata$data_wide[!empty_rows,]
         
-        assign('tmpData', maindata$data_wide, envir = .GlobalEnv)
-        
         maindata$data_origin <- maindata$data_wide
         
         convertColumns <- c("UNIPROTID", "ENTREZID", "SYMBOL", "GENEID", "PROTEINID")
@@ -465,8 +461,6 @@ server <- function(session, input, output) {
                         tr3[!is.na(tr3)],
                         tr4[!is.na(tr4)],
                         tr5[!is.na(tr5)])
-            
-            #        tr <- as.data.table(trs[which.max(lapply(lapply(trs, lengths), sum))])
             
             i <- convertColumns[which.max(lapply(lapply(trs, lengths), sum))]
             
@@ -545,7 +539,7 @@ server <- function(session, input, output) {
         
         sample_data(maindata$data_wide)
         
-        assign("thiss", maindata$data_wide, envir = .GlobalEnv)
+        #assign("thiss", maindata$data_wide, envir = .GlobalEnv)
         
     }
     
@@ -743,9 +737,6 @@ server <- function(session, input, output) {
         
         subsample_data()
         
-        #print(sampleinfo$samples)
-        #print(sampleinfo$group)
-        
         if(!is.null(data_wide)){
             data_origin <- maindata$data_origin
             data_wide <- filter_na(data_origin, input$missingvalues)
@@ -758,19 +749,6 @@ server <- function(session, input, output) {
         } else {
             updateNotifications("Upload a dataset first.","exclamation-triangle", "danger")
         }
-        
-        # if(exists("maindata$data_wide")){
-        #     maindata$data_wide <- filter_na(input$missingvalues)
-        #     assign("maindata$data_wide", maindata$data_wide, envir = .GlobalEnv)
-        #     
-        #     unlock_menus()
-        #     renderNAfreq()
-        #     
-        #     updateTasks(text = "Set a filter", value = 100, color = "green", i = 0003)
-        #     updateNotifications(paste0("NA cutoff set to ", input$missingvalues, ".") ,"check-circle", "success")
-        # } else {
-        #     updateNotifications("Upload a dataset first.","exclamation-triangle", "danger")
-        # }
         
     })
     
@@ -986,8 +964,6 @@ server <- function(session, input, output) {
 
         group <- sampleinfo$group
         
-        #print(group)
-        
         if (is.null(group)){
             return(NULL)
         } else {
@@ -1077,11 +1053,7 @@ server <- function(session, input, output) {
         cc <- cc[!is.na(cc)]
         names(cc) <- gsub('-','', gsub('condition','',cc))
         
-        #print(cc)
-
         cont.matrix <- makeContrasts(contrasts = cc, levels = design) # All possible contrasts
-        
-        #print(coeff)
         
         # Contrast groups, run empirical bayes statistics
         fit.cont <- contrasts.fit(fit, cont.matrix)
@@ -1209,10 +1181,10 @@ server <- function(session, input, output) {
             UPREGULATED_genes <- contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval, UNIPROTID]
             DOWNREGULATED_genes <- contrast[logFC < (input$min_fc * -1) & adj.P.Val < input$min_pval, UNIPROTID]
             
-            UPREGULATED_pathways <- knee::ora(UPREGULATED_genes)@output
+            UPREGULATED_pathways <- ora(UPREGULATED_genes)@output
             pathways$UPREGULATED_pathways <- UPREGULATED_pathways
             
-            DOWNREGULATED_pathways<- knee::ora(DOWNREGULATED_genes)@output
+            DOWNREGULATED_pathways<- ora(DOWNREGULATED_genes)@output
             pathways$DOWNREGULATED_pathways <- DOWNREGULATED_pathways
             
             output$upregulated_pathways_table <- DT::renderDT(
@@ -1262,7 +1234,7 @@ server <- function(session, input, output) {
                     contrast <- rcont$contrast
                     sID <- sampleinfo$sID
                     
-                    res <- knee::enrichment_results(UPREGULATED_pathways, DOWNREGULATED_pathways, contrast)
+                    res <- enrichment_results(UPREGULATED_pathways, DOWNREGULATED_pathways, contrast)
 
                     tba <- contrast[!(UNIPROTID %in% res$Gene), c("UNIPROTID", "logFC", "CI.L", "CI.R", "P.Value")]
                     colnames(tba) <- c("Gene", "logFC", "CI.L", "CI.R", "P.Value")
@@ -1287,8 +1259,7 @@ server <- function(session, input, output) {
                     
                     setcolorder(res, c(convertColumns, names(tba[,2:ncol(tba)])))
 
-                    print(input$abstractionlevel)
-                    pathways$v <- knee::volcano(res, abstraction = input$abstractionlevel, sID)
+                    pathways$v <- volcano(res, abstraction = input$abstractionlevel, sID)
 
                     plotly::ggplotly(pathways$v$volcano_plot) %>%
                         layout(dragmode = "select")
@@ -1493,8 +1464,6 @@ server <- function(session, input, output) {
         
     
     observeEvent(input$highlight_nodes, {
-        
-        print(input$network_proteins)
 
         if(nchar(input$network_proteins) > 0){
             
@@ -1594,7 +1563,7 @@ server <- function(session, input, output) {
             
             
             
-            status <- knee::history(candidates$UNIPROTID)
+            status <- history(candidates$UNIPROTID)
             status <- as.data.table(status)
             
             setkey(status, "Accession")
@@ -1681,7 +1650,7 @@ server <- function(session, input, output) {
     })
     
     getVolcano <- reactive({
-        res <- knee::enrichment_results(UPREGULATED_pathways, DOWNREGULATED_pathways)
+        res <- enrichment_results(UPREGULATED_pathways, DOWNREGULATED_pathways)
         
         tba <- contrast[!(UNIPROTID %in% res$Gene), c("UNIPROTID", "logFC", "CI.L", "CI.R", "P.Value")]
         colnames(tba) <- c("Gene", "logFC", "CI.L", "CI.R", "P.Value")
@@ -1706,7 +1675,7 @@ server <- function(session, input, output) {
         
         setcolorder(res, c(convertColumns, names(tba[,2:ncol(tba)])))
 
-        v <- knee::volcano(res, abstraction = input$abstractionlevel)
+        v <- volcano(res, abstraction = input$abstractionlevel)
         
     })
     
