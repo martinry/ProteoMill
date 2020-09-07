@@ -1,5 +1,6 @@
 library(shiny)
 library(shinydashboard)
+library(rhandsontable)
 
 #setwd("~/qodb-shiny/")
 
@@ -374,11 +375,19 @@ body <- dashboardBody(
                 plotOutput("contrasttable", width = "800px", height = "1600px")),
         tabItem(tabName = "differentialexpression",
                 fluidRow(
-                    column(width = 8,
+                    column(width = 5,
+                    # box(width = NULL,
+                    #     downloadButton('download',"Download"),
+                    #     tags$p(),
+                    #     tabPanel("Table", DT::dataTableOutput("diffexptable")))
+                    
                     box(width = NULL,
-                        downloadButton('download',"Download"),
-                        tags$p(),
-                        tabPanel("Table", DT::dataTableOutput("diffexptable")))
+                        downloadButton('download',"Download")),
+                    
+                    tabBox(width = NULL,
+                           
+                           tabPanel("Up-regulated genes", DT::dataTableOutput("diffexptable_up")),
+                           tabPanel("Down-regulated genes", DT::dataTableOutput("diffexptable_down")))
                     ))
                 ),
 
@@ -407,7 +416,7 @@ body <- dashboardBody(
                         actionButton("loadPathwayPlots", "Load plots")
                     ),
                     tabBox(width = 9,
-                    #tabPanel("Similarity matrix", plotOutput("similarity_plot", height = 850)),
+                    tabPanel("Similarity matrix", plotOutput("similarity_plot", height = 850)),
                     tabPanel("Volcano plot", plotly::plotlyOutput("volcano_plot", height = 750)),
                     tabPanel("Sankey diagram", networkD3::sankeyNetworkOutput("sankey", height = 750)))
                 )),

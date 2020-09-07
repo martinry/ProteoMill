@@ -1113,17 +1113,44 @@ server <- function(session, input, output) {
     }
     
 
-    output$diffexptable <- DT::renderDataTable({
+    output$diffexptable_up <- DT::renderDataTable({
         
         contrast <- rcont$contrast
         
         if(!is.null(contrast)){
+            contrast <- contrast[order(logFC, decreasing = T)]
             df <- DT::datatable(dframe(rcont$contrast, sampleinfo$sID),
                                 options = list(autoWidth = TRUE,
-                                               scrollX=TRUE))
-            df %>% DT::formatSignif('adj.P.Val', digits = 2)
+                                               scrollX=TRUE,
+                                               order = list(1, 'desc'))) %>% 
+                formatRound(columns=c(1, 2, 3, 4, 5, 6, 7), digits=2)
+            # df %>% DT::formatSignif('logFC', digits = 2)
+            # df %>% DT::formatSignif('CI.L', digits = 2)
+            # df %>% DT::formatSignif('CI.R', digits = 2)
+            # df %>% DT::formatSignif('adj.P.Val', digits = 2)
+            
         }
 
+    })
+    
+    output$diffexptable_down <- DT::renderDataTable({
+        
+        contrast <- rcont$contrast
+        
+        if(!is.null(contrast)){
+            contrast <- contrast[order(logFC, decreasing = F)]
+            df <- DT::datatable(dframe(rcont$contrast, sampleinfo$sID),
+                                options = list(autoWidth = TRUE,
+                                               scrollX=TRUE,
+                                               order = list(1, 'asc'))) %>% 
+                formatRound(columns=c(1, 2, 3, 4, 5, 6, 7), digits=2)
+            # df %>% DT::formatSignif('logFC', digits = 2)
+            # df %>% DT::formatSignif('CI.L', digits = 2)
+            # df %>% DT::formatSignif('CI.R', digits = 2)
+            # df %>% DT::formatSignif('adj.P.Val', digits = 2)
+            
+        }
+        
     })
     
     
