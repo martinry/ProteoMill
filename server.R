@@ -934,18 +934,22 @@ server <- function(session, input, output) {
                     annotation_col = dframe(data_annotation, "V1")[2:4],
                     cor_mat_raw_logged,
                     legend_breaks = c(min(cor_mat_raw_logged), 1),
-                    legend_labels = c(0, 1)
+                    legend_labels = c(0, 1),
+                    silent = T
                 )
             }
         } else {
             hmap <- pheatmap::pheatmap(
                 cor_mat_raw_logged,
                 legend_breaks = c(min(cor_mat_raw_logged), 1),
-                legend_labels = c(0, 1)
+                legend_labels = c(0, 1),
+                silent = T
             )
         }
         
-        output$samplecorrheatmap = renderPlot({hmap})
+        output$samplecorrheatmap = renderPlot({
+            hmap
+            })
         
         updateTasks(text = "Inspect data", value = (tasks$tasks[id == "0004", value] + 100/3), color = "green", i = 0004)
         
@@ -1092,7 +1096,7 @@ server <- function(session, input, output) {
                                 options = list(autoWidth = TRUE,
                                                scrollX=TRUE,
                                                order = list(1, 'desc'))) %>% 
-                formatRound(columns=c(1, 2, 3, 4, 5, 6, 7), digits=2)
+                formatRound(columns=c(1, 2, 3, 4, 5, 6, 7), digits=4)
             # df %>% DT::formatSignif('logFC', digits = 2)
             # df %>% DT::formatSignif('CI.L', digits = 2)
             # df %>% DT::formatSignif('CI.R', digits = 2)
@@ -1112,7 +1116,7 @@ server <- function(session, input, output) {
                                 options = list(autoWidth = TRUE,
                                                scrollX=TRUE,
                                                order = list(1, 'asc'))) %>% 
-                formatRound(columns=c(1, 2, 3, 4, 5, 6, 7), digits=2)
+                formatRound(columns=c(1, 2, 3, 4, 5, 6, 7), digits=4)
             # df %>% DT::formatSignif('logFC', digits = 2)
             # df %>% DT::formatSignif('CI.L', digits = 2)
             # df %>% DT::formatSignif('CI.R', digits = 2)

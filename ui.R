@@ -376,7 +376,7 @@ body <- dashboardBody(
                 plotOutput("contrasttable", width = "800px", height = "1600px")),
         tabItem(tabName = "differentialexpression",
                 fluidRow(
-                    column(width = 5,
+                    column(width = 6,
                     # box(width = NULL,
                     #     downloadButton('download',"Download"),
                     #     tags$p(),
