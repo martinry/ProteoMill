@@ -25,6 +25,7 @@ library(fitdistrplus)
 library(igraph)
 library(visNetwork)
 library(R.utils)
+library(umap)
 
 
 
@@ -817,7 +818,7 @@ server <- function(session, input, output) {
             pcaplot <- plotly::plot_ly(x = p.pca$x[,1],
                                        y = p.pca$x[,2],
                                        z = p.pca$x[,3],
-                                       color = condition,
+                                       color = sampleinfo$samples$condition,
                                        colors = c("red","green","blue"),
                                        sizes = c(100, 150)) %>%
                 plotly::add_markers() %>%
@@ -842,7 +843,7 @@ server <- function(session, input, output) {
             pcaplot <- plotly::plot_ly(x = pca.res$x[,1],
                                        y = pca.res$x[,2],
                                        z = pca.res$x[,3],
-                                       color = condition,
+                                       color = sampleinfo$samples$condition,
                                        colors = c("red","green","blue"),
                                        sizes = c(100, 150)) %>%
                 plotly::add_markers() %>%
@@ -863,9 +864,9 @@ server <- function(session, input, output) {
             
             df <- data.frame(x = um$layout[,1],
                              y = um$layout[,2],
-                             Sample <- condition)
+                             Sample <- sampleinfo$samples$condition)
             
-            ggplot(df, aes(x, y, colour = condition, shape = condition)) +
+            ggplot(df, aes(x, y, colour = sampleinfo$samples$condition, shape = sampleinfo$samples$condition)) +
                 geom_point(size = 4)
             
             
