@@ -22,7 +22,7 @@ undup <- function(genes){
 if(!exists("interactions")){
  
  #interactions <- data.table::fread("lib/interactions5.txt.gz")
- interactions <- arrow::read_feather("lib/interactions")
+ interactions <- arrow::read_feather("lib/interactions.feather")
  assign("interactions", interactions, envir = .GlobalEnv)
  
  pdesc <- data.table::fread("lib/protein_descriptions.txt.gz")
