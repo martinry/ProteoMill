@@ -194,9 +194,7 @@ body <- dashboardBody(
                                                       "Sample dataset 7" = 7,
                                                       "Sample dataset 8" = 8))),
                             actionButton("useDemoData", label = "Use demo data")
-                            #DT::dataTableOutput("contrasttable")
-                        ),
-                        box(actionButton("memused", "Check memory"))
+                        )
                         
                         
                     )

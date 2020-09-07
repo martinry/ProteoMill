@@ -74,10 +74,6 @@ get_delim <- function(c){
 # Server ----
 server <- function(session, input, output) {
     
-    observeEvent(input$memused, {
-        print(ll()[order(ll()$KB),])
-    })
-    
     # Define reactive variables ----
     notifications <- reactiveValues()
     tasks <- reactiveValues()
