@@ -1,4 +1,6 @@
-library(data.table)
+require(data.table)
+require(arrow)
+
 
 source("bin/All_Classes.R")
 source("bin/hierarchy.R")
@@ -19,7 +21,8 @@ undup <- function(genes){
 
 if(!exists("interactions")){
  
- interactions <- data.table::fread("lib/interactions5.txt.gz")
+ #interactions <- data.table::fread("lib/interactions5.txt.gz")
+ interactions <- arrow::read_feather("lib/interactions")
  assign("interactions", interactions, envir = .GlobalEnv)
  
  pdesc <- data.table::fread("lib/protein_descriptions.txt.gz")

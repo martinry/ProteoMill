@@ -1,10 +1,10 @@
-library(shiny)
-library(shinydashboard)
-library(plotly)
-library(visNetwork)
-library(rhandsontable)
-library(DT)
-library(networkD3)
+require(shiny)
+require(shinydashboard)
+require(plotly)
+require(visNetwork)
+require(rhandsontable)
+require(DT)
+require(networkD3)
 
 
 # Notification menus ----
@@ -137,14 +137,14 @@ body <- dashboardBody(
     
     # Intro animation
     
-    #tags$div(class = "overlay",
-    #         tags$h1(class = "ml9",
-    #                 tags$span(class = "text-wrapper",
-    #                           tags$span(class = "letters", "Quantitative Omics Discovery Base"))),
-    #         tags$div(class = 'begindiv',
-    #                  actionLink('removeBanner', label = 'LAUNCH')
-    #         )
-    #),
+    tags$div(class = "overlay",
+             tags$h1(class = "ml9",
+                     tags$span(class = "text-wrapper",
+                               tags$span(class = "letters", "ProteoMill"))),
+             tags$div(class = 'begindiv',
+                      actionLink('removeBanner', label = 'LAUNCH')
+             )
+    ),
     tags$script(src = "custom.js"),
     tags$script(src = "animate-notifs.js"),
 
