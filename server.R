@@ -172,6 +172,9 @@ server <- function(session, input, output) {
         
     }
     
+    observeEvent("", {
+        updateTasks(0, 0, 0, 0)
+    }, ignoreNULL = T, ignoreInit = F)
     
     
     # A function to append notification items to the menu
@@ -252,7 +255,7 @@ server <- function(session, input, output) {
         
         if(input$sidebarmenu == "interactions"){
             v <- pathways$v
-            if(!exists("v")){
+            if(is.null("v")){
                 updateNotifications("Run pathway analysis first.","exclamation-triangle", "danger")
             } else{
                 updateTasks(text = "Run network analysis", value = 100, color = "green", i = 0007)
@@ -759,7 +762,7 @@ server <- function(session, input, output) {
         
         dt <- dframe(maindata$data_origin, sampleinfo$sID)
         
-
+        assign("dt", dt, envir = .GlobalEnv)
         
         # Biplot extension displaying top contributing proteins currently only available for 2D plot.
         
@@ -772,7 +775,7 @@ server <- function(session, input, output) {
             
             p.pca <- prcomp(pca.data, center = TRUE, scale. = TRUE)
             
-            pcaplot <- factoextra::fviz_pca_biplot(p.pca, title = '', label = "var", habillage = condition,
+            pcaplot <- factoextra::fviz_pca_biplot(p.pca, title = '', label = "var", habillage = sampleinfo$samples$condition,
                                                    addEllipses = TRUE, ellipse.level = ellipse,
                                                    select.var = list(contrib = contribs), repel = TRUE)
             
