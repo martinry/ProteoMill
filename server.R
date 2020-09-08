@@ -762,8 +762,6 @@ server <- function(session, input, output) {
         
         dt <- dframe(maindata$data_origin, sampleinfo$sID)
         
-        assign("dt", dt, envir = .GlobalEnv)
-        
         # Biplot extension displaying top contributing proteins currently only available for 2D plot.
         
         if(type == '2d') {
