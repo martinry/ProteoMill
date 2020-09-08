@@ -253,14 +253,14 @@ server <- function(session, input, output) {
                             frameborder = "0")})))
         }
         
-        if(input$sidebarmenu == "interactions"){
-            v <- pathways$v
-            if(is.null("v")){
-                updateNotifications("Run pathway analysis first.","exclamation-triangle", "danger")
-            } else{
-                updateTasks(text = "Run network analysis", value = 100, color = "green", i = 0007)
-            }
-        }
+        # if(input$sidebarmenu == "interactions"){
+        #     v <- pathways$v
+        #     if(is.null("v")){
+        #         updateNotifications("Run pathway analysis first.","exclamation-triangle", "danger")
+        #     } else{
+        #         updateTasks(text = "Run network analysis", value = 100, color = "green", i = 0007)
+        #     }
+        # }
 
     })
     
@@ -654,7 +654,7 @@ server <- function(session, input, output) {
             dat$ind <- factor(dat$ind, levels = levels(dat$ind)[order(levels(dat$ind))])
             dat$values <- log2(dat$values)
             
-            if(nrow(sampleinfo$samples) > 30) {
+            if(input$violintype == 1) {
                 
                 ggplot(dat, 
                        aes(x = sample, y = values, fill = sample)) + 
@@ -781,7 +781,7 @@ server <- function(session, input, output) {
             
         } else if (type == '2dpaired') {
             
-            assign("dt", dt, envir = .GlobalEnv)
+            #assign("dt", dt, envir = .GlobalEnv)
             
             pca.data <- dt
             pca.data[is.na(pca.data)] <- .5 # "Impute" missing values as 0
@@ -1080,7 +1080,7 @@ server <- function(session, input, output) {
         names(contrast) <- c(sampleinfo$sID, names(contrast[, 2:ncol(contrast)]))
         setcolorder(contrast, c(convertColumns, "logFC", "CI.L", "CI.R", "t", "P.Value", "adj.P.Val", "B"))
         
-        assign("contrast", contrast, envir = .GlobalEnv)
+        #assign("contrast", contrast, envir = .GlobalEnv)
         
         return( contrast )
         
@@ -1169,6 +1169,56 @@ server <- function(session, input, output) {
       })
     })
     
+    show_selected <- function(p, g){
+        
+        output$selected_pathway <- renderUI({
+            
+            HTML(paste(p, g, '<br/>', sep = '<br/>'))
+            
+        })
+        
+    }
+    
+    observeEvent(input$upregulated_pathways_table_rows_selected, {
+        UPREGULATED_pathways <- pathways$UPREGULATED_pathways
+        i = input$upregulated_pathways_table_rows_selected[1]
+        up <- UPREGULATED_pathways[i,]
+        p <- paste("<b>", up[,Pathway_name], "</b>")
+        g <- paste(unlist(up[,genes]), collapse = ", ")
+        
+        show_selected(p, g)
+        
+        
+        # output$selected_pathway <- renderUI({
+        #     UPREGULATED_pathways <- pathways$UPREGULATED_pathways
+        #     
+        #     if(!is.null(UPREGULATED_pathways) & !is.null(input$upregulated_pathways_table_rows_selected)){
+        #         i = input$upregulated_pathways_table_rows_selected[1]
+        #         up <- UPREGULATED_pathways[i,]
+        #         p <- paste("<b>", up[,Pathway_name], "</b>")
+        #         g <- paste(unlist(up[,genes]), collapse = ", ")
+        #         HTML(paste(p, g, '<br/>', sep = '<br/>'))
+        #     }
+        # })
+        
+        
+    })
+    
+    observeEvent(input$downregulated_pathways_table_rows_selected, {
+        DOWNREGULATED_pathways <- pathways$DOWNREGULATED_pathways
+        i = input$downregulated_pathways_table_rows_selected[1]
+        down <- DOWNREGULATED_pathways[i,]
+        p <- paste("<b>", down[,Pathway_name], "</b>")
+        g <- paste(unlist(down[,genes]), collapse = ", ")
+        
+        show_selected(p, g)
+        
+        
+    })
+    
+    
+    
+    
     observeEvent(input$generate_pathways, {
         
         contrast <- rcont$contrast
@@ -1192,24 +1242,24 @@ server <- function(session, input, output) {
             output$upregulated_pathways_table <- DT::renderDT(
                 
                 DT::datatable(UPREGULATED_pathways[, -c("genes", "background")],
+                              selection = 'single',
                               options = list(autoWidth = TRUE,
                                              scrollX=TRUE,
                                              columnDefs = list(
                                                  list(width = '100px', targets = c(1, 3)),
                                                  list(width = '60px', targets = c(6, 7))
-                                             ))), server = F
-                
+                                             )))
             )
             
             output$downregulated_pathways_table <- DT::renderDT(
                 DT::datatable(DOWNREGULATED_pathways[, -c("genes", "background")],
+                              selection = 'single',
                               options = list(autoWidth = TRUE,
                                              scrollX=TRUE,
                                              columnDefs = list(
                                                  list(width = '100px', targets = c(1, 3)),
                                                  list(width = '60px', targets = c(6, 7))
-                                             ))),
-                server = F
+                                             )))
             )
             
             updateTasks(text = "Run pathway enrichment", value = 100, color = "green", i = 0006)
@@ -1261,7 +1311,7 @@ server <- function(session, input, output) {
                     
                     setcolorder(res, c(convertColumns, names(tba[,2:ncol(tba)])))
 
-                    pathways$v <- volcano(res, abstraction = input$abstractionlevel, sID)
+                    pathways$v <- volcano(res, "Global", sID)
 
                     plotly::ggplotly(pathways$v$volcano_plot) %>%
                         layout(dragmode = "select")
@@ -1319,8 +1369,7 @@ server <- function(session, input, output) {
     })
     
     output$sankey <- renderSankeyNetwork({
-        
-        assign("res", pathways$v$res, envir = .GlobalEnv)
+        res <- pathways$v$res
 
         df <- pathways$v$res[Pathway_name != "[No significant over-representation]"]
         
@@ -1371,10 +1420,6 @@ server <- function(session, input, output) {
                                      (abs(logFC) >= input$fccutoff)]$UNIPROTID
         }
 
-        # if(!exists("g")){
-        #     ints2 <- interactions[(protein1 %in% proteins) & (protein2 %in% proteins)]
-        #     ints2 <- ints2[score > input$interactioncutoff]
-        # }
         
         ints2 <- interactions[(protein1 %in% proteins) & (protein2 %in% proteins)]
         ints2 <- ints2[score > input$interactioncutoff]
@@ -1415,8 +1460,6 @@ server <- function(session, input, output) {
             data.table(
                 from = ints2$protein1,
                 to = ints2$protein2
-                #label = ints2$mode
-                
             )
 
         g <- igraph::graph_from_data_frame(edges, directed = F, vertices = nodes)
@@ -1689,13 +1732,6 @@ server <- function(session, input, output) {
 
     
 
-    #reactiveFunction <- reactive({ ggplotly(v$volcano_plot) })
-    
-    # output$reactiveTable <- renderDataTable({ reactiveFunction() }, rownames = FALSE)
-    # 
-    # output$whatever <- renderUI({
-    #     dataTableOutput("reactiveTable")
-    # })
     
     
     output$download <- downloadHandler(

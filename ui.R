@@ -211,8 +211,8 @@ body <- dashboardBody(
                            ),
                            box(title = "Expression levels",
                                width = NULL,
-                               plotOutput("violinplot")
-                               
+                               plotOutput("violinplot"),
+                               radioButtons("violintype", "", choices = list("By condition" = 1, "By sample" = 2), inline = T)
                            )),
                     column(width = 3,
                            box(title = "Mapped IDs",
@@ -395,21 +395,30 @@ body <- dashboardBody(
         # Pathway enrichment: Table, Similarity matrix, Volcano plot
         
         tabItem(tabName = "pathwayenrichment",
-                box(title = "Pathway settings", status = "warning", width = 3,
-                    selectInput(inputId = "pathdb", label = "Pathway database",
-                                choices = list("REACTOME" = 'REACTOME'),
-                                selected = 'REACTOME'),
-                    radioButtons(inputId = "abstractionlevel", label = "Level of abstraction",
-                                 choices = list("Global", "Lowest"),
-                                 selected = "Lowest", inline = T),
-                    numericInput("min_fc", "Min. log2 fold change", value = 0, min = 0, max = 50, step = .5),
-                    numericInput("min_pval", "Min. adj. P-value", value = 0.05, min = 0, max = 1, step = .01),
-                    htmlOutput("number_of_genes"),
-                    actionButton(inputId = "generate_pathways", label = "Generate pathway data")
-                    ),
-                tabBox(width = 9,
-                       tabPanel("Enrichment of up-regulated genes", DT::dataTableOutput("upregulated_pathways_table", width = 900)),
-                       tabPanel("Enrichment of down-regulated genes", DT::dataTableOutput("downregulated_pathways_table", width = 900)))
+                fluidRow(
+                    column(width = 3,
+                           box(title = "Pathway settings", status = "warning", width = NULL,
+                               selectInput(inputId = "pathdb", label = "Pathway database",
+                                           choices = list("REACTOME" = 'REACTOME'),
+                                           selected = 'REACTOME'),
+                               numericInput("min_fc", "Min. log2 fold change", value = 0, min = 0, max = 50, step = .5),
+                               numericInput("min_pval", "Min. adj. P-value", value = 0.05, min = 0, max = 1, step = .01),
+                               htmlOutput("number_of_genes"),
+                               actionButton(inputId = "generate_pathways", label = "Generate pathway data")
+                               ),
+                           
+                           box(title = "Selected pathway info", width = NULL,
+                               htmlOutput("selected_pathway")
+                               )
+                           ),
+                    column(width = 9,
+                           tabBox(width = NULL,
+                                  tabPanel("Enrichment of up-regulated genes", DT::dataTableOutput("upregulated_pathways_table", width = 900)),
+                                  tabPanel("Enrichment of down-regulated genes", DT::dataTableOutput("downregulated_pathways_table", width = 900)))
+                           )
+                )
+                ,
+                
         ),
         tabItem(tabName = "pathwayvisualization",
                 fluidRow(
