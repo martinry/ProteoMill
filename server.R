@@ -173,8 +173,8 @@ server <- function(session, input, output) {
     }
     
     observeEvent("", {
-        updateTasks(0, 0, 0, 0)
-    }, ignoreNULL = T, ignoreInit = F)
+        updateTasks(text = "Upload a dataset", value = 0, color = "green", i = 0001)
+    }, ignoreNULL = T, ignoreInit = F, once = T)
     
     
     # A function to append notification items to the menu
@@ -253,14 +253,14 @@ server <- function(session, input, output) {
                             frameborder = "0")})))
         }
         
-        # if(input$sidebarmenu == "interactions"){
-        #     v <- pathways$v
-        #     if(is.null("v")){
-        #         updateNotifications("Run pathway analysis first.","exclamation-triangle", "danger")
-        #     } else{
-        #         updateTasks(text = "Run network analysis", value = 100, color = "green", i = 0007)
-        #     }
-        # }
+        if(input$sidebarmenu == "interactions"){
+            v <- pathways$v
+            if(is.null("v")){
+                updateNotifications("Run pathway analysis first.","exclamation-triangle", "danger")
+            } else{
+                updateTasks(text = "Run network analysis", value = 100, color = "green", i = 0007)
+            }
+        }
 
     })
     

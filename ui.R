@@ -448,20 +448,20 @@ body <- dashboardBody(
                     column(width = 3,
                            box(
                                title = "Network settings", width = NULL,
-                               radioButtons("network_layout_options", label = "Layout options",
-                                            choices = list(
-                                                "Nicely" = 1,
-                                                "Circle" = 2,
-                                                "Grid" = 3,
-                                                "Sphere" = 4,
-                                                "Randomly" = 5
-                                            ), inline = T),
+                               # radioButtons("network_layout_options", label = "Layout options",
+                               #              choices = list(
+                               #                  "Nicely" = 1,
+                               #                  "Circle" = 2,
+                               #                  "Grid" = 3,
+                               #                  "Sphere" = 4,
+                               #                  "Randomly" = 5
+                               #              ), inline = T),
                                radioButtons(
                                    "network_regulation",
                                    label = "Subset by up- or down-regulation",
                                    choices = list("Up-regulated" = 1, "Down-regulated" = 2, "Both" = 3),
                                    selected = 3,
-                                   inline = T),
+                                   inline = F),
                                numericInput(
                                    "pvaluecutoff",
                                    label = "Maximum adj. Pvalue",
