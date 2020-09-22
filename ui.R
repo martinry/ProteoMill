@@ -240,9 +240,12 @@ body <- dashboardBody(
         tabItem(tabName = "filters",
                 box(
                     title = "Missing values cutoff", status = "primary", solidHeader = F, width = 3,
-                    helpText("Set maximum number allowed missing values per condition."),
-                    numericInput("missingvalues", label = "NA cutoff",
-                                 min = 0, max = 50, value = 1), # max = number of samples / conditions
+                    helpText("Set maximum number allowed missing values for each condition."),
+                    br(),
+                    helpText("To proceed without removing any proteins with missing values, set the cutoff to a value higher than the number of samples / conditions"),
+                    br(),
+                    numericInput("missingvalues", label = "Cutoff",
+                                 min = 0, max = 9999, value = 1), # max = number of samples / conditions
                     actionButton("loadfilterplot", "Load plot"),
                     actionButton("setcutoff", "Set cutoff")
                 ),
@@ -319,7 +322,10 @@ body <- dashboardBody(
                     sliderInput("ellipse",
                                 "Ellipse level:",
                                 min = 0,  max = 1, value = .75),
-                    actionButton("loadPCAplots", "Load plots")
+                    actionButton("loadPCAplots", "Load plots"),
+                    p(),
+                    hr(),
+                    helpText("Please review pairing mode under Settings")
                 ),
                 tabBox(
                     tabPanel("PCA 2D", plotOutput("pca2dplot", width = "600px", height = "520px")),
@@ -369,7 +375,10 @@ body <- dashboardBody(
                     #                             "Unpaired" = 2),
                     #              selected = 2,
                     #              inline = T),
-                    actionButton("setContrast", "Select")
+                    actionButton("setContrast", "Select"),
+                    p(),
+                    hr(),
+                    helpText("Please review pairing mode under Settings")
                 )
         ),
         tabItem(tabName = "diffexpoutput",
@@ -385,8 +394,15 @@ body <- dashboardBody(
                     box(width = NULL,
                         downloadButton('download',"Download")),
                     
+                    box(width = NULL,
+                        helpText("Display only proteins that have:"),
+                        br(),
+                        numericInput("diffexp_limit_fc", "Abs. log2 fold-change greater than or equal to", min = 0, max = 50, value = 0, step = .5),
+                        numericInput("diffexp_limit_pval", "Adj. P-value less than", min = 0, max = 1, value = 1, step = .1),
+                        ),
+                    
                     tabBox(width = NULL,
-                           
+                           tabPanel("Summary statistics", tableOutput("diffexptable_summary")),
                            tabPanel("Up-regulated genes", DT::dataTableOutput("diffexptable_up")),
                            tabPanel("Down-regulated genes", DT::dataTableOutput("diffexptable_down")))
                     ))
@@ -401,8 +417,8 @@ body <- dashboardBody(
                                selectInput(inputId = "pathdb", label = "Pathway database",
                                            choices = list("REACTOME" = 'REACTOME'),
                                            selected = 'REACTOME'),
-                               numericInput("min_fc", "Min. log2 fold change", value = 0, min = 0, max = 50, step = .5),
-                               numericInput("min_pval", "Min. adj. P-value", value = 0.05, min = 0, max = 1, step = .01),
+                               numericInput("min_fc", "Min log2 fold change", value = 0, min = 0, max = 50, step = .5),
+                               numericInput("min_pval", "Max adj. P-value", value = 0.05, min = 0, max = 1, step = .01),
                                htmlOutput("number_of_genes"),
                                actionButton(inputId = "generate_pathways", label = "Generate pathway data")
                                ),
@@ -462,14 +478,14 @@ body <- dashboardBody(
                                    choices = list("Up-regulated" = 1, "Down-regulated" = 2, "Both" = 3),
                                    selected = 3,
                                    inline = F),
-                               numericInput(
-                                   "pvaluecutoff",
-                                   label = "Maximum adj. Pvalue",
-                                   min = 0,
-                                   max = 1,
-                                   value = 0.05,
-                                   step = 0.0001
-                               ),
+                               # numericInput(
+                               #     "pvaluecutoff",
+                               #     label = "Maximum adj. Pvalue",
+                               #     min = 0,
+                               #     max = 1,
+                               #     value = 0.05,
+                               #     step = 0.0001
+                               # ),
                                numericInput(
                                    "fccutoff",
                                    label = "Minimum abs. log2FC",
@@ -514,44 +530,47 @@ body <- dashboardBody(
         ),
         tabItem(tabName = "settings",
                 fluidRow(
-                    box(title = "Settings", width = 3,
-                        h5("Display options"),
-                        hr(),
-                        radioButtons(
-                            inputId = 'colorScheme',
-                            label = 'Preferred color scheme',
-                            choices = list(
-                                "Normal" = 1,
-                                "Colorblind friendly" = 2
-                            ),
-                            inline = T
-                        ), 
-                        radioButtons(inputId = 'textSize', label = 'Text size',
-                                     choices = list("Small", "Medium", "Large"), selected = "Medium", inline = T),
-                        h5("Target organism"),
-                        hr(),
-                        selectInput("species", "Select species",
-                                    list("Species" = list("Human (Homo sapiens)"))),
-                        h5("Identifier type"),
-                        hr(),
-                        selectInput("displayIdentifier",
-                                    label = "Display ID labels as",
-                                    choices = list(
-                                        "UniProtKB" = 2,
-                                        "Entrez" = 3,
-                                        "Gene Symbol" = 4,
-                                        "Ens. Gene ID" = 5,
-                                        "Ens. Protein ID" = 6
-                                    ),
-                                    selected = 1),
-                        h5("Differential expression"),
-                        hr(),
-                        selectInput("setDEengine",
-                                    label = "Set engine",
-                                    choices = list("Limma version 3.39.1" = 1,
-                                                   "DESeq2 version 3.10" = 2),
-                                    selected = 1)
-                        )
+                    column(width = 5,
+                        box(title = "Settings", width = NULL,
+                            h4("Display options"),
+                            hr(),
+                            radioButtons(
+                                inputId = 'colorScheme',
+                                label = 'Preferred color scheme',
+                                choices = list(
+                                    "Normal" = 1,
+                                    "Colorblind friendly" = 2
+                                ),
+                                inline = T
+                            ), 
+                            radioButtons(inputId = 'textSize', label = 'Text size',
+                                         choices = list("Small", "Medium", "Large"), selected = "Medium", inline = T),
+                            h4("Target organism"),
+                            hr(),
+                            selectInput("species", "Select species",
+                                        list("Species" = list("Human (Homo sapiens)"))),
+                            h4("Identifier type"),
+                            hr(),
+                            selectInput("displayIdentifier",
+                                        label = "Display ID labels as",
+                                        choices = list(
+                                            "UniProtKB" = 2,
+                                            "Entrez" = 3,
+                                            "Gene Symbol" = 4,
+                                            "Ens. Gene ID" = 5,
+                                            "Ens. Protein ID" = 6
+                                        ),
+                                        selected = 1),
+                            h4("Differential expression"),
+                            hr(),
+                            selectInput("setDEengine",
+                                        label = "Set engine",
+                                        choices = list("Limma version 3.39.1" = 1,
+                                                       "DESeq2 version 3.10" = 2),
+                                        selected = 1),
+                            radioButtons("diffexppairing", "Pairing", choices = list("Paired" = 1, "Unpaired" = 2), inline = T, selected = 2)
+                            )
+                    )
                     )
                 )
     )

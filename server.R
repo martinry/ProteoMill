@@ -239,7 +239,7 @@ server <- function(session, input, output) {
         }
         
         if(input$sidebarmenu == "about"){
-            updateNotifications("You must gather your party before venturing forth.","exclamation-triangle", "danger")
+            updateNotifications("This feature is not yet available.","exclamation-triangle", "danger")
         }
         
         if(input$sidebarmenu == "news"){
@@ -359,6 +359,20 @@ server <- function(session, input, output) {
         sampleinfo$replicate <- replicate
         
         sampleinfo$group <- group
+        
+        # assign("sam", samples, envir = .GlobalEnv)
+        # 
+        # pairing <- any(duplicated(as.character(samples[samples$condition == as.character(samples$condition[1]), "replicate"])))
+        # 
+        # if(pairing) {
+        #     updateRadioButtons(session, "diffexppairing", label = "Pairing", choices = list("Paired" = 1, "Unpaired" = 2), inline = T, selected = 1)
+        #     #updateNotifications(paste0("Pairing set to Unpaired. Change in Settings."), "info-circle", "info")
+        # } else {
+        #     updateRadioButtons(session, "diffexppairing", label = "Pairing", choices = list("Paired" = 1, "Unpaired" = 2), inline = T, selected = 2)
+        #     #updateNotifications(paste0("Pairing set to Paired. Change in Settings."), "info-circle", "info")
+        #         }
+        
+        
         
         updateContrasts()
         
@@ -881,11 +895,11 @@ server <- function(session, input, output) {
     observeEvent(input$loadPCAplots, {
         
         # If unpaired
-        if(!any(duplicated(sampleinfo$samples$replicate))){
+        if(input$diffexppairing == 2){
             output$pca2dplot <- renderPlot({
                 plotPCA(input$contribs, input$ellipse, '2d')
             })
-        } else {
+        } else if(input$diffexppairing == 1) {
             output$pca2dplot <- renderPlot({
                 plotPCA(0, input$ellipse, '2dpaired')
 
@@ -893,11 +907,11 @@ server <- function(session, input, output) {
         }
 
         # If unpaired
-        if(!any(duplicated(sampleinfo$samples$replicate))){
+        if(input$diffexppairing == 2){
             output$pca3dplot <- plotly::renderPlotly({
                 plotPCA(0,0, '3d')
             })
-        } else {
+        } else if(input$diffexppairing == 1) {
             output$pca3dplot <- plotly::renderPlotly({
                 plotPCA(0, 0, '3dpaired')
                 
@@ -998,9 +1012,9 @@ server <- function(session, input, output) {
                                  icon = shiny::icon("angle-double-right"), selected = F))
         })
         
-        #pairing <- input$pairing
+        pairing <- input$diffexppairing
         
-        pairing <- ifelse(any(duplicated(sampleinfo$samples$replicate)), 1, 2)
+        
         
         contrasts <- paste(input$contrast1,input$contrast2, sep = '-')
 
@@ -1080,11 +1094,57 @@ server <- function(session, input, output) {
         names(contrast) <- c(sampleinfo$sID, names(contrast[, 2:ncol(contrast)]))
         setcolorder(contrast, c(convertColumns, "logFC", "CI.L", "CI.R", "t", "P.Value", "adj.P.Val", "B"))
         
-        #assign("contrast", contrast, envir = .GlobalEnv)
         
         return( contrast )
         
     }
+    
+    output$diffexptable_summary <- renderTable({
+        contrast <- rcont$contrast
+        
+        if(!is.null(contrast)){
+            contrast <- contrast[abs(logFC) >= input$diffexp_limit_fc]
+            contrast <- contrast[adj.P.Val < input$diffexp_limit_pval]
+            # df <- data.frame("Mean logFC (up-regulated)" = mean(contrast[!is.na(logFC) & logFC > 0, logFC]),
+            #                  "Min. logFC" = min(contrast[!is.na(logFC), logFC]),
+            #                  "Max. logFC" = max(contrast[!is.na(logFC), logFC]))
+            
+            contrast <- contrast[!is.na(logFC)]
+            
+            df <- data.frame(contrast[, .N],
+                             contrast[logFC >= 0, .N],
+                             contrast[logFC <= 0, .N],
+                             mean(contrast[, logFC]),
+                             mean(contrast[logFC >= 0, logFC]),
+                             mean(contrast[logFC <= 0, logFC]),
+                             min(contrast[logFC >= 0, logFC]),
+                             min(contrast[logFC <= 0, logFC]),
+                             max(contrast[logFC >= 0, logFC]),
+                             max(contrast[logFC <= 0, logFC])
+                             )
+            
+            df <- t(df)
+            
+            rownames(df) <- c("DE genes (all)",
+                              "DE genes (up-regulated)",
+                              "DE genes (down-regulated)",
+                              "Mean logFC (all)",
+                              "Mean logFC (up-regulated)",
+                              "Mean logFC (down-regulated)",
+                              "Min. logFC (up-regulated)",
+                              "Min. logFC (down-regulated)",
+                              "Max. logFC (up-regulated)",
+                              "Max. logFC (down-regulated)")
+            
+            df
+            
+            #DT::datatable(df)
+            
+            
+        }
+        
+        
+    }, rownames = T, colnames = F)
     
 
     output$diffexptable_up <- DT::renderDataTable({
@@ -1092,8 +1152,10 @@ server <- function(session, input, output) {
         contrast <- rcont$contrast
         
         if(!is.null(contrast)){
+            contrast <- contrast[abs(logFC) >= input$diffexp_limit_fc]
+            contrast <- contrast[adj.P.Val < input$diffexp_limit_pval]
             contrast <- contrast[order(logFC, decreasing = T)]
-            df <- DT::datatable(dframe(rcont$contrast, sampleinfo$sID),
+            df <- DT::datatable(dframe(contrast, sampleinfo$sID),
                                 options = list(autoWidth = TRUE,
                                                scrollX=TRUE,
                                                order = list(1, 'desc'))) %>% 
@@ -1112,8 +1174,10 @@ server <- function(session, input, output) {
         contrast <- rcont$contrast
         
         if(!is.null(contrast)){
+            contrast <- contrast[abs(logFC) >= input$diffexp_limit_fc]
+            contrast <- contrast[adj.P.Val < input$diffexp_limit_pval]
             contrast <- contrast[order(logFC, decreasing = F)]
-            df <- DT::datatable(dframe(rcont$contrast, sampleinfo$sID),
+            df <- DT::datatable(dframe(contrast, sampleinfo$sID),
                                 options = list(autoWidth = TRUE,
                                                scrollX=TRUE,
                                                order = list(1, 'asc'))) %>% 
