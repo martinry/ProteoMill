@@ -1472,18 +1472,18 @@ server <- function(session, input, output) {
         dir <- input$network_regulation
 
         if(dir == 1){
-            proteins <- contrast[(adj.P.Val <= input$pvaluecutoff) &
-                                     (abs(logFC) >= input$fccutoff) &
+            proteins <- contrast[(abs(logFC) >= input$fccutoff) &
                                      (logFC > 0)]$UNIPROTID
         } else if(dir == 2){
-            proteins <- contrast[(adj.P.Val <= input$pvaluecutoff) &
-                                     (abs(logFC) >= input$fccutoff) &
+            proteins <- contrast[(abs(logFC) >= input$fccutoff) &
                                      (logFC <= 0)]$UNIPROTID
         } else {
-            proteins <- contrast[(adj.P.Val <= input$pvaluecutoff) &
-                                     (abs(logFC) >= input$fccutoff)]$UNIPROTID
+            proteins <- contrast[(abs(logFC) >= input$fccutoff)]$UNIPROTID
         }
-
+        
+        # assign("cntrst", contrast, envir = .GlobalEnv)
+        # assign("res", res, envir = .GlobalEnv)
+        # assign("sID", sID, envir = .GlobalEnv)
         
         ints2 <- interactions[(protein1 %in% proteins) & (protein2 %in% proteins)]
         ints2 <- ints2[score > input$interactioncutoff]
@@ -1530,6 +1530,8 @@ server <- function(session, input, output) {
         
         r <- res[V(g)$label, on = "UNIPROTID", ]
         
+        # assign("g", g, envir = .GlobalEnv)
+        # assign("r", r, envir = .GlobalEnv)
         
         g <- set.vertex.attribute(g, name = "name",  value = as.vector (r[, ..sID][[1]]))
         g <- set.vertex.attribute(g, name = "color", value = r$col)
