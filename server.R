@@ -1469,6 +1469,14 @@ server <- function(session, input, output) {
         res <- pathways$v$res
         sID <- sampleinfo$sID
         
+        print(colnames(contrast))
+        print(head(contrast))
+        
+        print(colnames(res))
+        print(head(res))
+        
+        print(sID)
+        
         dir <- input$network_regulation
 
         if(dir == 1){
@@ -1525,10 +1533,17 @@ server <- function(session, input, output) {
                 from = ints2$protein1,
                 to = ints2$protein2
             )
+        
+        print(head(nodes))
+        print(head(edges))
 
         g <- igraph::graph_from_data_frame(edges, directed = F, vertices = nodes)
         
         r <- res[V(g)$label, on = "UNIPROTID", ]
+        
+        print(head(res))
+        
+        print(head(r))
         
         # assign("g", g, envir = .GlobalEnv)
         # assign("r", r, envir = .GlobalEnv)
