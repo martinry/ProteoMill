@@ -26,6 +26,7 @@ require(igraph)
 require(visNetwork)
 require(R.utils)
 require(umap)
+library(shinyWidgets)
 
 
 

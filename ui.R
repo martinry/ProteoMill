@@ -1,5 +1,6 @@
 require(shiny)
 require(shinydashboard)
+require(shinyWidgets)
 require(plotly)
 require(visNetwork)
 require(rhandsontable)
@@ -631,7 +632,7 @@ body <- dashboardBody(
                 )
     ),
     div(class = "footer_wrapper",
-        div(class = "sticky_footer", p("© 2020 · ProteoMill | Martin Rydén", style = "margin-top: 10px")))
+        div(class = "sticky_footer", span("© 2020 · ProteoMill | Martin Rydén", style = "line-height: 35px; float: right; margin-right: 10px;")))
 )
 
 # Load dashboard page ----

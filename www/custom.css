@@ -14,18 +14,19 @@ body {
 }
 
 .footer_wrapper{
-    
-}
-
-.sticky_footer {
-    position:fixed;
+	height:35px;
+    position:absolute;
+    display:inline-block;
     bottom: 0;
     right: 0;
     left: 0;
-    background:#A9B1B9;
+    background:#0b1b2b;
     color: #fff;
-    opacity: 0.6;
     text-align: center;
+}
+
+.sticky_footer {
+
     
 }
 
