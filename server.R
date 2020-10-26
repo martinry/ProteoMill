@@ -253,6 +253,7 @@ server <- function(session, input, output) {
                             frameborder = "0")})))
         }
         
+        
         if(input$sidebarmenu == "interactions"){
             v <- pathways$v
             if(is.null("v")){
@@ -611,18 +612,70 @@ server <- function(session, input, output) {
         else infoBox("Treatments", 0)
     })
     
-    observe({
-        if(!is.null(input$hot)){
-            sampleinfo$samples <- as.data.frame(hot_to_r(input$hot))
-            output$hot <- renderRHandsontable({
-                rhandsontable(sampleinfo$samples, width = 600, rowHeaders = NULL)
-            })
-        }
-    })    
+    # observe({
+    #     if(!is.null(input$hot)){
+    #         sampleinfo$samples <- as.data.frame(hot_to_r(input$hot))
+    #         output$hot <- renderRHandsontable({
+    #             rhandsontable(sampleinfo$samples, width = 600, rowHeaders = NULL)
+    #         })
+    #     }
+    # })    
+    # 
+    # output$hot <- renderRHandsontable({
+    #     if(!is.null(sampleinfo$samples)) rhandsontable(sampleinfo$samples, width = 600, rowHeaders = NULL)
+    # })
     
-    output$hot <- renderRHandsontable({
-        if(!is.null(sampleinfo$samples)) rhandsontable(sampleinfo$samples, width = 600, rowHeaders = NULL)
+    # output$sampletable <- DT::renderDataTable({
+    #     
+    #     sampleinfo <- sampleinfo$samples
+    #     
+    #     if(!is.null(sampleinfo)){
+    #         
+    #         DT::datatable(sampleinfo, rownames = F)
+    #         
+    #     }
+    #     
+    # })
+    
+    observe({
+        #sam <- sampleinfo$samples
+        #assign("sam", sam, envir = .GlobalEnv)
+        samples <- sampleinfo$samples$samples
+        
+        if(!is.null(samples)) {
+            
+            samples <- as.character(samples[order(samples)])
+            
+            print(samples)
+            
+            shinyWidgets::updatePickerInput(
+                session = session,
+                inputId = "includesamples",
+                choices = samples,
+                selected = samples
+            )
+            #updateCheckboxGroupInput(session = session, inputId = "includesamples", inline = T, choices = samples[order(samples)], selected = samples[order(samples)])
+        }
+        
     })
+    
+    observeEvent(input$confirmexclude, {
+        
+        print(input$includesamples)
+        
+        #sampleinfo$samples <- sampleinfo$samples[sampleinfo$samples$samples %in% input$includesamples,]
+        
+        maindata$data_wide <- maindata$data_wide[, c(convertColumns, as.character(input$includesamples)), with = F]
+        
+        maindata$data_origin <- maindata$data_origin[, c(convertColumns, as.character(input$includesamples)), with = F]
+        
+        sample_data(maindata$data_wide)
+        
+        assign("dw", maindata$data_wide, envir = .GlobalEnv)
+        assign("sdt", sampleinfo$samples, envir = .GlobalEnv)
+        
+    })
+    
     
     output$identifierinfo <- renderTable({
         if(!is.null(maindata$data_wide)) {
@@ -686,15 +739,15 @@ server <- function(session, input, output) {
             
             naf <- as.data.frame(NA_frequency)
             
-            theme_set(theme_classic())
             
             
             
             # Draw plot
-            ggplot(naf, aes(x = Var1, y = Freq)) +
-                geom_bar(stat = "identity", width = .9, fill = "tomato3") +
+            ggplot(naf, aes(x = Var1, y = Freq, color = Var1)) +
+                geom_bar(stat = "identity", width = .9, fill = "white") +
                 labs(x = "Number of missing values in at least one sample", y = "Number of rows") +
-                theme(axis.text.x = element_text(angle = 65, vjust = 0.6))
+                theme(axis.text.x = element_text(vjust = 0.6), legend.position = "none") +
+                scale_color_grey()
             
         })
     }
@@ -797,9 +850,13 @@ server <- function(session, input, output) {
             
             p.pca <- prcomp(pca.data, center = TRUE, scale. = TRUE)
             
+            assign("p.pca", p.pca, envir = .GlobalEnv)
+            
             pcaplot <- plotly::plot_ly(x = p.pca$x[,1],
                                        y = p.pca$x[,2],
                                        z = p.pca$x[,3],
+                                       text = rownames(p.pca$x),
+                                       hoverinfo = "text",
                                        color = sampleinfo$samples$condition,
                                        colors = c("red","green","blue"),
                                        sizes = c(100, 150)) %>%
@@ -822,9 +879,13 @@ server <- function(session, input, output) {
                           ncomp = 3,
                           multilevel = sampleinfo$samples$replicate, logratio = 'CLR')
             
+            assign("pca.res", pca.res, envir = .GlobalEnv)
+            
             pcaplot <- plotly::plot_ly(x = pca.res$x[,1],
                                        y = pca.res$x[,2],
                                        z = pca.res$x[,3],
+                                       text = rownames(pca.res$x),
+                                       hoverinfo = "text",
                                        color = sampleinfo$samples$condition,
                                        colors = c("red","green","blue"),
                                        sizes = c(100, 150)) %>%
@@ -1029,14 +1090,14 @@ server <- function(session, input, output) {
         condition <- sampleinfo$condition
         replicate <- sampleinfo$replicate
         
-        assign("phenoData", phenoData, envir = .GlobalEnv)
-        assign("exampleSet", exampleSet, envir = .GlobalEnv)
-        assign("condition", condition, envir = .GlobalEnv)
-        assign("replicate", replicate, envir = .GlobalEnv)
-        assign("group", sampleinfo$group, envir = .GlobalEnv)
-        assign("data_wide", maindata$data_wide, envir = .GlobalEnv)
-        assign("data_wide", maindata$data_wide, envir = .GlobalEnv)
-        assign("samples", sampleinfo$samples, envir = .GlobalEnv)
+        #assign("phenoData", phenoData, envir = .GlobalEnv)
+        #assign("exampleSet", exampleSet, envir = .GlobalEnv)
+        #assign("condition", condition, envir = .GlobalEnv)
+        #assign("replicate", replicate, envir = .GlobalEnv)
+        #assign("group", sampleinfo$group, envir = .GlobalEnv)
+        #assign("data_wide", maindata$data_wide, envir = .GlobalEnv)
+        #assign("data_wide", maindata$data_wide, envir = .GlobalEnv)
+        #assign("samples", sampleinfo$samples, envir = .GlobalEnv)
         
 
         
@@ -1138,9 +1199,7 @@ server <- function(session, input, output) {
             contrast <- contrast[adj.P.Val < input$diffexp_limit_pval]
             contrast <- contrast[order(logFC, decreasing = T)]
             df <- DT::datatable(dframe(contrast, sampleinfo$sID),
-                                options = list(autoWidth = TRUE,
-                                               scrollX=TRUE,
-                                               order = list(1, 'desc'))) %>% 
+                                options = list(order = list(1, 'desc'))) %>% 
                 formatRound(columns=c(1, 2, 3, 4, 5, 6, 7), digits=4)
             
         }
@@ -1156,9 +1215,7 @@ server <- function(session, input, output) {
             contrast <- contrast[adj.P.Val < input$diffexp_limit_pval]
             contrast <- contrast[order(logFC, decreasing = F)]
             df <- DT::datatable(dframe(contrast, sampleinfo$sID),
-                                options = list(autoWidth = TRUE,
-                                               scrollX=TRUE,
-                                               order = list(1, 'asc'))) %>% 
+                                options = list(order = list(1, 'asc'))) %>% 
                 formatRound(columns=c(1, 2, 3, 4, 5, 6, 7), digits=4)
             # df %>% DT::formatSignif('logFC', digits = 2)
             # df %>% DT::formatSignif('CI.L', digits = 2)
@@ -1681,6 +1738,28 @@ server <- function(session, input, output) {
         }
         
         
+        
+    })
+    
+    
+    # Contact ----
+    
+    observeEvent(input$sendcomment, {
+        
+        envelope <- paste(sep = "\n",
+            paste("Date:", date()),
+            paste("Name:", input$cname),
+            paste("Email:", input$email),
+            paste("Comment:", input$suggestion))
+        
+        if(nchar(envelope) > 5000){
+            updateNotifications(paste0("Too many characters."), "exclamation-triangle", "danger")
+            
+        } else {
+            fwrite(list(envelope), paste0("contact/", format(as.POSIXct(Sys.time()), "%F.%Hh%Mm%Ss"), ".txt"))
+            
+            updateNotifications(paste0("Contact form submitted. Thanks!"), "thumbs-up", "success") 
+        }
         
     })
     

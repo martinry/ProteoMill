@@ -97,8 +97,10 @@ sidebar <- dashboardSidebar(
              color: #fff;"),
     sidebarMenu(id = "sidebarmenu",
         menuItem("News", tabName = "news", icon = icon("book")),
-        menuItem("About", tabName = "about", icon = icon("book")),
+        menuItem("Contact", tabName = "contact", icon = icon("at")),
+        #menuItem("About", tabName = "about", icon = icon("book")),
         menuItem("Settings", tabName = "settings", icon = icon("sliders-h"))
+        
     )
 )
 
@@ -147,11 +149,6 @@ body <- dashboardBody(
              tags$div(style = "margin-top: 55px; opacity: .85;",
                       tags$video(playsinline = "playsinline", loop = "true", autoplay = "autoplay", muted = "muted", width="60%", height="auto",
                                  tags$source(src = "media1.mp4", type="video/mp4")))
-             
-             
-             # HTML('<video autoplay>
-             #            <source src="media.io_1980ee25f0494d6988fd1d0289f29585.mp4", type="video/mp4">
-             #        </video>'),
     ),
     tags$script(src = "custom.js"),
     tags$script(src = "animate-notifs.js"),
@@ -215,7 +212,31 @@ body <- dashboardBody(
         # Data summary ----
         tabItem(tabName = "data-summary",
                 fluidRow(
-                    column(width = 6,
+                    column(width = 5,
+                           box(title = "Mapped IDs",
+                               width = NULL,
+                               tableOutput("identifierinfo")
+                           ),
+                           box(title = "Include/exclude samples",
+                               width = NULL,
+                               #helpText("Deselect samples that you want to exclude."),
+                               #h6(actionLink("samplesselectall","Select all"), strong(" | "), actionLink("samplesdeselectall","Deselect all")),
+                               #checkboxGroupInput("includesamples", "", inline = T, choices = list()),
+                               pickerInput(
+                                   inputId = "includesamples", 
+                                   label = "Deselect a sample to exclude it", 
+                                   choices = LETTERS, 
+                                   options = list(
+                                       `actions-box` = TRUE, 
+                                       size = 10,
+                                       `selected-text-format` = "count > 3"
+                                   ), 
+                                   multiple = TRUE
+                               ),
+                               actionButton("confirmexclude", label = "Confirm selection"))),
+                               #rHandsontableOutput("hot"))),
+                               #DT::dataTableOutput("sampletable"))),
+                    column(width = 7,
                            box(width = NULL,
                                infoBoxOutput("datainfoBox"),
                                infoBoxOutput("sampleinfoBox"),
@@ -225,15 +246,7 @@ body <- dashboardBody(
                                width = NULL,
                                plotOutput("violinplot"),
                                radioButtons("violintype", "", choices = list("By condition" = 1, "By sample" = 2), inline = T)
-                           )),
-                    column(width = 3,
-                           box(title = "Mapped IDs",
-                               width = NULL,
-                               tableOutput("identifierinfo")
-                               ),
-                           box(title = "Sample info",
-                               width = NULL,
-                               rHandsontableOutput("hot")))
+                           ))
                     )),
 
 
@@ -256,12 +269,12 @@ body <- dashboardBody(
                     br(),
                     helpText("To proceed without removing any proteins with missing values, set the cutoff to a value higher than the number of samples / conditions"),
                     br(),
-                    numericInput("missingvalues", label = "Cutoff",
+                    numericInput("missingvalues", label = "",
                                  min = 0, max = 9999, value = 1), # max = number of samples / conditions
-                    actionButton("loadfilterplot", "Load plot"),
+                    actionButton("loadfilterplot", "Show plot"),
                     actionButton("setcutoff", "Set cutoff")
                 ),
-                box(title = "NA frequencies", status = "warning", solidHeader = F,
+                box(title = "", status = "warning", solidHeader = F,
                     plotOutput("nafreq"))
         ),
 
@@ -325,43 +338,58 @@ body <- dashboardBody(
         # Quality control: PCA: 2D, 3D
         
         tabItem(tabName = "PCA",
-                box(title = "PCA settings",
-                    status = "warning",
-                    width = 3,
-                    sliderInput("contribs",
-                                "Number of contributors:",
-                                min = 1,  max = 300, value = 10),
-                    sliderInput("ellipse",
-                                "Ellipse level:",
-                                min = 0,  max = 1, value = .75),
-                    actionButton("loadPCAplots", "Load plots"),
-                    p(),
-                    hr(),
-                    helpText("Please review pairing mode under Settings")
+                fluidRow(
+                    column(width = 3,
+                           box(title = "PCA settings",
+                               status = "warning",
+                               width = NULL,
+                               sliderInput("contribs",
+                                           "Number of contributors:",
+                                           min = 1,  max = 300, value = 10),
+                               sliderInput("ellipse",
+                                           "Ellipse level:",
+                                           min = 0,  max = 1, value = .75),
+                               actionButton("loadPCAplots", "Load plots"),
+                               p(),
+                               hr(),
+                               helpText("Please review pairing mode under Settings")
+                           )
+                          ),
+                    column(width = 9,
+                           tabBox(width = NULL,
+                               tabPanel("PCA 2D", plotOutput("pca2dplot", width = "600px", height = "550px")),
+                               tabPanel("PCA 3D", plotly::plotlyOutput("pca3dplot", width = "600px", height = "600px"))))
+                           )
+                    
                 ),
-                tabBox(
-                    tabPanel("PCA 2D", plotOutput("pca2dplot", width = "600px", height = "520px")),
-                    tabPanel("PCA 3D", plotly::plotlyOutput("pca3dplot")))),
+                
+                
         tabItem(tabName = "UMAP",
                 fluidRow(
-                    box(width = 3,
-                        status = "warning",
-                        actionButton("loadUMAP","Load plot")
-                    ),
-                    box(title = "UMAP",
-                        plotOutput("UMAPplot"))
+                    column(width = 3,
+                        box(width = NULL,
+                            status = "warning",
+                            actionButton("loadUMAP","Load plot")
+                        )),
+                    column(width = 9,
+                        box(title = "UMAP",
+                            width = NULL,
+                            plotOutput("UMAPplot"))
+                    )
                 )),
         tabItem(tabName = "samplecorr",
                 fluidRow(
+                    column(width = 3,
                         box(title = "Heatmap settings",
-                            width = 3,
+                            width = NULL,
                             status = "warning",
                             actionButton("generateheatmap","Generate Heatmap")
-                        ),
+                        )),
                         
-                        box(title = "Sample correlation", width = 6,
+                    column(width = 9,
+                        box(title = "Sample correlation", width = NULL,
                             plotOutput("samplecorrheatmap", width = "700px", height = "600px"))
-                    )
+                    ))
 
         ),
         
@@ -397,7 +425,7 @@ body <- dashboardBody(
                 plotOutput("contrasttable", width = "800px", height = "1600px")),
         tabItem(tabName = "differentialexpression",
                 fluidRow(
-                    column(width = 6,
+                    column(width = 12,
                     # box(width = NULL,
                     #     downloadButton('download',"Download"),
                     #     tags$p(),
@@ -540,6 +568,22 @@ body <- dashboardBody(
                            )
                 )
         ),
+        
+        tabItem(tabName = "contact",
+                fluidRow(
+                    column(width = 5,
+                           box(title = "Contact", width = NULL,
+                               helpText("Found a bug? Use this form to contact me about anything: errors, feature requests, ideas or other comments."),
+                               textInput("cname", "Name", placeholder = "Anonymous"),
+                               textInput("email", "Email", placeholder = "Anonymous"),
+                               textAreaInput("suggestion", "Comment"),
+                               actionButton("sendcomment", "Send", icon = icon("paper-plane"))
+                           )
+                    )
+                )
+        ),
+        
+        
         tabItem(tabName = "settings",
                 fluidRow(
                     column(width = 5,
@@ -585,8 +629,9 @@ body <- dashboardBody(
                     )
                     )
                 )
-    )
-    #, div(class = "sticky_footer", p("Copyright © Martin Rydén, 2020", style = "margin-top: 10px"))
+    ),
+    div(class = "footer_wrapper",
+        div(class = "sticky_footer", p("© 2020 · ProteoMill | Martin Rydén", style = "margin-top: 10px")))
 )
 
 # Load dashboard page ----

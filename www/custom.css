@@ -13,6 +13,10 @@ body {
     
 }
 
+.footer_wrapper{
+    
+}
+
 .sticky_footer {
     position:fixed;
     bottom: 0;
