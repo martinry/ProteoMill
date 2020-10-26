@@ -146,7 +146,7 @@ body <- dashboardBody(
                       ),
              tags$div(style = "margin-top: 55px; opacity: .85;",
                       tags$video(playsinline = "playsinline", loop = "true", autoplay = "autoplay", muted = "muted", width="60%", height="auto",
-                                 tags$source(src = "media.io_1980ee25f0494d6988fd1d0289f29585.mp4", type="video/mp4")))
+                                 tags$source(src = "media1.mp4", type="video/mp4")))
              
              
              # HTML('<video autoplay>
