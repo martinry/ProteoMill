@@ -12,4 +12,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 * 3D PCA plots now show sample names on hover
 
-![](../img/pca3dlabel.png) 
+![](../img/pca3dlabel.png){width=300px}
+
+* Added splash-screen video
+
+* Samples can be excluded (Dataset options > Data summary > Include/exclude samples)
