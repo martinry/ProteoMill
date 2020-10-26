@@ -9,6 +9,17 @@ knitr::opts_chunk$set(echo = TRUE)
 #library(shiny)
 ```
 
+### Example
+A dataset with two conditions and three replicates each would look like this:
+
+```{r tmp, echo = F}
+m <- matrix(rnorm(60, 200, 50), 6, 6)
+rownames(m) <- paste0("Protein", LETTERS[1:6])
+colnames(m) <- paste0(rep(LETTERS[1:2], each=3), "_", rep(1:3))
+m
+```
+
+
 ## Expected format
 
 The first column in the data file should contain the *identifiers.* Currently, the following identifier types are accepted:
@@ -23,15 +34,6 @@ Ensembl Protein ID  | ENSP00000467252 ENSP00000386786 ENSP00000351310 ENSP000003
 
 A header row is expected, where each column corresponds to a sample name in the format *condition_replicate*.
 
-### Example
-A dataset with two conditions and three replicates each would look like this:
-
-```{r tmp, echo = F}
-m <- matrix(rnorm(60, 200, 50), 6, 6)
-rownames(m) <- paste0("Protein", LETTERS[1:6])
-colnames(m) <- paste0(rep(LETTERS[1:2], each=3), "_", rep(1:3))
-m
-```
 
 
 

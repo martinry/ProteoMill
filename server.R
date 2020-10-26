@@ -281,10 +281,6 @@ server <- function(session, input, output) {
                                     if(i == "0001"){tags$iframe(src = paste0("https://qodb.shinyapps.io/generateDataset/"), width="100%", height="600px", frameborder="0")})
                             
                         }),
-                        # if(i == "0001"){
-                        #     renderUI({
-                        #     tags$iframe(src = paste0("https://qodb.shinyapps.io/generateDataset/"), width="100%", height="600px", frameborder="0")
-                        #     })},
                         size = "l",
                         easyClose = T,
                         footer = list(modalButton("Dismiss"))
@@ -359,21 +355,7 @@ server <- function(session, input, output) {
         sampleinfo$replicate <- replicate
         
         sampleinfo$group <- group
-        
-        # assign("sam", samples, envir = .GlobalEnv)
-        # 
-        # pairing <- any(duplicated(as.character(samples[samples$condition == as.character(samples$condition[1]), "replicate"])))
-        # 
-        # if(pairing) {
-        #     updateRadioButtons(session, "diffexppairing", label = "Pairing", choices = list("Paired" = 1, "Unpaired" = 2), inline = T, selected = 1)
-        #     #updateNotifications(paste0("Pairing set to Unpaired. Change in Settings."), "info-circle", "info")
-        # } else {
-        #     updateRadioButtons(session, "diffexppairing", label = "Pairing", choices = list("Paired" = 1, "Unpaired" = 2), inline = T, selected = 2)
-        #     #updateNotifications(paste0("Pairing set to Paired. Change in Settings."), "info-circle", "info")
-        #         }
-        
-        
-        
+
         updateContrasts()
         
         return (FALSE)
@@ -414,9 +396,6 @@ server <- function(session, input, output) {
             
         }
         
-        # assign("group", sampleinfo$group, envir = .GlobalEnv)
-        # assign("subset_NA", subset_NA, envir = .GlobalEnv)
-        
         # Apply function to all regions
         condition_sub <- lapply(names(sampleinfo$group), subset_NA)
         
@@ -445,7 +424,6 @@ server <- function(session, input, output) {
             header = T)
         
         maindata$data_wide <- maindata$data_wide[!duplicated(names(maindata$data_wide)[1])]
-        #maindata$data_wide <- maindata$data_wide[apply(maindata$data_wide[, 2:ncol(maindata$data_wide)], 1, function(x) sum(x, na.rm = T) > 500)]
         
         for(j in seq_along(maindata$data_wide)){
             set(maindata$data_wide, i = which(maindata$data_wide[[j]] == 0 & is.numeric(maindata$data_wide[[j]])), j = j, value = NA)
@@ -553,8 +531,6 @@ server <- function(session, input, output) {
         
         sample_data(maindata$data_wide)
         
-        #assign("thiss", maindata$data_wide, envir = .GlobalEnv)
-        
     }
     
     # File input: Main data ----
@@ -569,8 +545,6 @@ server <- function(session, input, output) {
 
         updateNotifications("Dataset uploaded.","check-circle", "success")
         updateTasks(text = "Upload a dataset", value = 100, color = "green", i = 0001)
-        
-        
         
     })
     
@@ -674,8 +648,6 @@ server <- function(session, input, output) {
                        aes(x = sample, y = values, fill = sample)) + 
                     geom_violin(trim = FALSE, scale = "width") +
                     geom_boxplot(width=0.1, fill="white") +
-                    # labs(title ="Distribution of M2 Macrophages", 
-                    #      x = "Tissue Samples", y = "Cibersort Count") +
                     theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust = 1), legend.position = "none") +
                     xlab("Samples") + ylab("Log2 Expression") +
                     scale_fill_brewer(palette = "BuGn")
@@ -686,8 +658,6 @@ server <- function(session, input, output) {
                        aes(x = ind, y = values, fill = sample)) + 
                     geom_violin(trim = FALSE, scale = "width") +
                     geom_boxplot(width=0.1, fill="white") +
-                    # labs(title ="Distribution of M2 Macrophages", 
-                    #      x = "Tissue Samples", y = "Cibersort Count") +
                     theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust = 1), legend.position = "none") +
                     xlab("Samples") + ylab("Log2 Expression") +
                     scale_fill_brewer(palette = "BuGn")
@@ -726,15 +696,12 @@ server <- function(session, input, output) {
                 labs(x = "Number of missing values in at least one sample", y = "Number of rows") +
                 theme(axis.text.x = element_text(angle = 65, vjust = 0.6))
             
-            #graphics::barplot(NA_frequency, xlab = "Na frequency", ylab = "Number of genes")
-            
         })
     }
     
     
     
     observeEvent(input$loadfilterplot, {
-        
         
         data_wide <- maindata$data_wide
         
@@ -845,7 +812,7 @@ server <- function(session, input, output) {
         } else if (type == '3dpaired') {
             
             pca.data <- dt
-            pca.data[is.na(pca.data)] <- .5 # "Impute" missing values as 0
+            pca.data[is.na(pca.data)] <- .5 # "Impute" missing values as 0.5
             
             pca.data <- pca.data[rowSums(pca.data) != .5,]
             
@@ -1042,7 +1009,18 @@ server <- function(session, input, output) {
                                           colData    = sampleinfo$samples,
                                           design     = ~ sampleinfo$condition + sampleinfo$replicate)
             dds <- DESeq(dds)
+            
+            
+            # dt <- data_wide[, -..convertColumns]
+            # 
+            # dt[, names(dt) := lapply(.SD, as.integer)]
+            # 
+            # dds <- DESeqDataSetFromMatrix(countData  = dt,
+            #                               colData    = samples,
+            #                               design     = ~ condition + replicate)
+            # dds <- DESeq(dds)
         }
+        
         
         # Create Annotation data and expression set (Biobase)
         phenoData <- new("AnnotatedDataFrame", data = sampleinfo$samples)
@@ -1050,6 +1028,17 @@ server <- function(session, input, output) {
         
         condition <- sampleinfo$condition
         replicate <- sampleinfo$replicate
+        
+        assign("phenoData", phenoData, envir = .GlobalEnv)
+        assign("exampleSet", exampleSet, envir = .GlobalEnv)
+        assign("condition", condition, envir = .GlobalEnv)
+        assign("replicate", replicate, envir = .GlobalEnv)
+        assign("group", sampleinfo$group, envir = .GlobalEnv)
+        assign("data_wide", maindata$data_wide, envir = .GlobalEnv)
+        assign("data_wide", maindata$data_wide, envir = .GlobalEnv)
+        assign("samples", sampleinfo$samples, envir = .GlobalEnv)
+        
+
         
         unpaired <- model.matrix( ~ 0 + condition )
         paired <- model.matrix( ~ 0 + condition + replicate )
@@ -1105,10 +1094,6 @@ server <- function(session, input, output) {
         if(!is.null(contrast)){
             contrast <- contrast[abs(logFC) >= input$diffexp_limit_fc]
             contrast <- contrast[adj.P.Val < input$diffexp_limit_pval]
-            # df <- data.frame("Mean logFC (up-regulated)" = mean(contrast[!is.na(logFC) & logFC > 0, logFC]),
-            #                  "Min. logFC" = min(contrast[!is.na(logFC), logFC]),
-            #                  "Max. logFC" = max(contrast[!is.na(logFC), logFC]))
-            
             contrast <- contrast[!is.na(logFC)]
             
             df <- data.frame(contrast[, .N],
@@ -1138,9 +1123,6 @@ server <- function(session, input, output) {
             
             df
             
-            #DT::datatable(df)
-            
-            
         }
         
         
@@ -1160,10 +1142,6 @@ server <- function(session, input, output) {
                                                scrollX=TRUE,
                                                order = list(1, 'desc'))) %>% 
                 formatRound(columns=c(1, 2, 3, 4, 5, 6, 7), digits=4)
-            # df %>% DT::formatSignif('logFC', digits = 2)
-            # df %>% DT::formatSignif('CI.L', digits = 2)
-            # df %>% DT::formatSignif('CI.R', digits = 2)
-            # df %>% DT::formatSignif('adj.P.Val', digits = 2)
             
         }
 
@@ -1190,8 +1168,6 @@ server <- function(session, input, output) {
         }
         
     })
-    
-    
     
     # Differential expression: confidence intervals
     
@@ -1251,20 +1227,6 @@ server <- function(session, input, output) {
         g <- paste(unlist(up[,genes]), collapse = ", ")
         
         show_selected(p, g)
-        
-        
-        # output$selected_pathway <- renderUI({
-        #     UPREGULATED_pathways <- pathways$UPREGULATED_pathways
-        #     
-        #     if(!is.null(UPREGULATED_pathways) & !is.null(input$upregulated_pathways_table_rows_selected)){
-        #         i = input$upregulated_pathways_table_rows_selected[1]
-        #         up <- UPREGULATED_pathways[i,]
-        #         p <- paste("<b>", up[,Pathway_name], "</b>")
-        #         g <- paste(unlist(up[,genes]), collapse = ", ")
-        #         HTML(paste(p, g, '<br/>', sep = '<br/>'))
-        #     }
-        # })
-        
         
     })
     
@@ -1627,14 +1589,16 @@ server <- function(session, input, output) {
     # Goodness-of-fit ----
     observeEvent(input$generatedistributions, {
         
-        if(exists("maindata$data_wide")){
+        data_wide <- maindata$data_wide
+        
+        if(!is.null(data_wide)){
             
-            maindata$data_wide_NAex <- na.exclude(dframe(maindata$data_origin, sampleinfo$sID))
+            data_wide_NAex <- na.exclude(dframe(maindata$data_origin, sampleinfo$sID))
             
-            fit.lnorm <- tryCatch( apply(maindata$data_wide_NAex, 1, function(x) fitdistrplus::fitdist(as.numeric(x), "lnorm")),
+            fit.lnorm <- tryCatch( apply(data_wide_NAex, 1, function(x) fitdistrplus::fitdist(as.numeric(x), "lnorm")),
                                    error = function(e) print(e))
             
-            fit.norm <- tryCatch( apply(maindata$data_wide_NAex, 1,  function(x) fitdistrplus::fitdist(as.numeric(x), "norm")),
+            fit.norm <- tryCatch( apply(data_wide_NAex, 1,  function(x) fitdistrplus::fitdist(as.numeric(x), "norm")),
                                   error = function(e) print(e))
             
             # Render "data type" distribution plots
@@ -1822,6 +1786,27 @@ server <- function(session, input, output) {
         }, 
         content = function(fname){
             fwrite(rcont$contrast, fname, sep = ";")
+        }
+    )
+    
+    # output$downloadDemo <- downloadHandler(
+    #     filename = function(){
+    #         if(!is.null(maindata$inFile$name)) paste(gsub("condition", "", rcont$contrasts), gsub(".csv", "", maindata$inFile$name), "csv", sep = ".")
+    #         else paste0(input$selectDemoData, ".csv")
+    #     }, 
+    #     content = function(fname){
+    #         sample_1_exp <- "data/donors.uniprot.csv"
+    #         fwrite(sample_1_exp, fname, sep = ";")
+    #     }
+    # )
+    
+    output$downloadDemo <- downloadHandler(
+        filename <- function() {
+            paste0("Sample dataset ", input$selectDemoData, ".csv")
+        },
+        
+        content <- function(file) {
+            file.copy("data/donors.uniprot.csv", file)
         }
     )
     

@@ -143,19 +143,30 @@ body <- dashboardBody(
                                tags$span(class = "letters", "ProteoMill"))),
              tags$div(class = 'begindiv',
                       actionLink('removeBanner', label = 'LAUNCH')
-             )
+                      ),
+             tags$div(style = "margin-top: 55px; opacity: .85;",
+                      tags$video(playsinline = "playsinline", loop = "true", autoplay = "autoplay", muted = "muted", width="60%", height="auto",
+                                 tags$source(src = "media.io_1980ee25f0494d6988fd1d0289f29585.mp4", type="video/mp4")))
+             
+             
+             # HTML('<video autoplay>
+             #            <source src="media.io_1980ee25f0494d6988fd1d0289f29585.mp4", type="video/mp4">
+             #        </video>'),
     ),
     tags$script(src = "custom.js"),
     tags$script(src = "animate-notifs.js"),
 
     tabItems(
-        # File input
+        # File input ----
         tabItem(tabName = "file-input",
                 fluidRow(
-                    tabBox(width = 4,
+                    column(width = 5,
+                    tabBox(width = NULL,
                         tabPanel(
                             title = "Dataset",
-                            footer = helpText('Accepted filetypes are csv, tsv and txt.'),
+                            
+                            p(helpText('Welcome! Click on',  tags$strong('Upload a dataset'), 'in the task menu ', shiny::icon("tasks"), ' or download one our demo datasets to learn about accepted file formats.')),
+                            
                             selectInput("dataSep", label = 'Separator',
                                          choices = list("Auto detect" = 1, "Comma" = 2, "Semicolon" = 3, "Tab" = 4),
                                          selected = 1),
@@ -193,14 +204,15 @@ body <- dashboardBody(
                                                       "Sample dataset 6" = 6,
                                                       "Sample dataset 7" = 7,
                                                       "Sample dataset 8" = 8))),
-                            actionButton("useDemoData", label = "Use demo data")
+                            actionButton("useDemoData", label = "Use demo data"),
+                            downloadButton('downloadDemo',"Download")
                         )
-                        
-                        
                     )
                 )
+            )
         ),
         
+        # Data summary ----
         tabItem(tabName = "data-summary",
                 fluidRow(
                     column(width = 6,
@@ -574,7 +586,8 @@ body <- dashboardBody(
                     )
                 )
     )
-    )
+    #, div(class = "sticky_footer", p("Copyright © Martin Rydén, 2020", style = "margin-top: 10px"))
+)
 
 # Load dashboard page ----
 
