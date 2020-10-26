@@ -311,12 +311,12 @@ server <- function(session, input, output) {
         })
         output$differential <- renderMenu({
             menuItem("Differential analysis", class = 'btn-10', tabName = "differential", icon = icon("adjust"), href = NULL,
-                     menuSubItem("Contrasts", tabName = "contrasts", href = NULL, newtab = TRUE,
+                     menuSubItem("Set contrasts", tabName = "contrasts", href = NULL, newtab = TRUE,
                                  icon = shiny::icon("angle-double-right"), selected = F),
                      menuSubItem("Differential expression", tabName = "differentialexpression", href = NULL, newtab = TRUE,
-                                 icon = shiny::icon("angle-double-right"), selected = F),
-                     menuSubItem("Confidence intervals", tabName = "diffexpoutput", href = NULL, newtab = TRUE,
                                  icon = shiny::icon("angle-double-right"), selected = F)
+                     # menuSubItem("Confidence intervals", tabName = "diffexpoutput", href = NULL, newtab = TRUE,
+                     #             icon = shiny::icon("angle-double-right"), selected = F)
             )
         })
         
@@ -702,6 +702,7 @@ server <- function(session, input, output) {
                        aes(x = sample, y = values, fill = sample)) + 
                     geom_violin(trim = FALSE, scale = "width") +
                     geom_boxplot(width=0.1, fill="white") +
+                    ggthemes::theme_clean() +
                     theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust = 1), legend.position = "none") +
                     xlab("Samples") + ylab("Log2 Expression") +
                     scale_fill_brewer(palette = "BuGn")
@@ -712,6 +713,7 @@ server <- function(session, input, output) {
                        aes(x = ind, y = values, fill = sample)) + 
                     geom_violin(trim = FALSE, scale = "width") +
                     geom_boxplot(width=0.1, fill="white") +
+                    ggthemes::theme_clean() +
                     theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust = 1), legend.position = "none") +
                     xlab("Samples") + ylab("Log2 Expression") +
                     scale_fill_brewer(palette = "BuGn")
@@ -747,6 +749,7 @@ server <- function(session, input, output) {
             ggplot(naf, aes(x = Var1, y = Freq, color = Var1)) +
                 geom_bar(stat = "identity", width = .9, fill = "white") +
                 labs(x = "Number of missing values in at least one sample", y = "Number of rows") +
+                ggthemes::theme_clean() +
                 theme(axis.text.x = element_text(vjust = 0.6), legend.position = "none") +
                 scale_color_grey()
             
@@ -810,7 +813,7 @@ server <- function(session, input, output) {
             
             pcaplot <- factoextra::fviz_pca_biplot(p.pca, title = '', label = "var", habillage = sampleinfo$samples$condition,
                                                    addEllipses = TRUE, ellipse.level = ellipse,
-                                                   select.var = list(contrib = contribs), repel = TRUE)
+                                                   select.var = list(contrib = contribs), repel = TRUE) + theme_light()
             
             return (pcaplot)
             
@@ -910,8 +913,12 @@ server <- function(session, input, output) {
                              y = um$layout[,2],
                              Sample <- sampleinfo$samples$condition)
             
-            ggplot(df, aes(x, y, colour = sampleinfo$samples$condition, shape = sampleinfo$samples$condition)) +
-                geom_point(size = 4)
+            Condition <- sampleinfo$samples$condition
+            
+            ggplot(df, aes(x, y, color = Condition, shape = sampleinfo$samples$condition)) +
+                geom_point(size = 4) + guides(shape = "none") + theme_light()
+            
+            
             
             
             
@@ -1158,9 +1165,9 @@ server <- function(session, input, output) {
             contrast <- contrast[adj.P.Val < input$diffexp_limit_pval]
             contrast <- contrast[!is.na(logFC)]
             
-            df <- data.frame(contrast[, .N],
-                             contrast[logFC >= 0, .N],
-                             contrast[logFC <= 0, .N],
+            df <- data.frame(as.character(contrast[, .N]),
+                             as.character(contrast[logFC >= 0, .N]),
+                             as.character(contrast[logFC <= 0, .N]),
                              mean(contrast[, logFC]),
                              mean(contrast[logFC >= 0, logFC]),
                              mean(contrast[logFC <= 0, logFC]),

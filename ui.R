@@ -264,32 +264,55 @@ body <- dashboardBody(
         # Filters: NA cutoff
         
         tabItem(tabName = "filters",
-                box(
-                    title = "Missing values cutoff", status = "primary", solidHeader = F, width = 3,
-                    helpText("Set maximum number allowed missing values for each condition."),
-                    br(),
-                    helpText("To proceed without removing any proteins with missing values, set the cutoff to a value higher than the number of samples / conditions"),
-                    br(),
-                    numericInput("missingvalues", label = "",
-                                 min = 0, max = 9999, value = 1), # max = number of samples / conditions
-                    actionButton("loadfilterplot", "Show plot"),
-                    actionButton("setcutoff", "Set cutoff")
-                ),
-                box(title = "", status = "warning", solidHeader = F,
-                    plotOutput("nafreq"))
+                fluidRow(
+                    column(width = 4,
+                           box(
+                               width = NULL,
+                               title = "Missing values cutoff", status = "primary", solidHeader = F,
+                               helpText("Set maximum number allowed missing values for each condition."),
+                               br(),
+                               helpText("To proceed without removing any proteins with missing values, set the cutoff to a value higher than the number of samples / conditions"),
+                               br(),
+                               numericInput("missingvalues", label = "",
+                                            min = 0, max = 9999, value = 1), # max = number of samples / conditions
+                               actionButton("loadfilterplot", "Show plot"),
+                               actionButton("setcutoff", "Set cutoff")
+                           )
+                    ),
+                    column(width = 8,
+                           box(
+                               width = NULL,
+                               status = "warning",
+                               solidHeader = F,
+                               plotOutput("nafreq")
+                               )
+                           )
+                )
+                
         ),
 
 
         # Data type: distributions
         
         tabItem(tabName = "validateIDs",
-                box(
-                    title = "Validate IDs", status = "primary", solidHeader = F,
-                    helpText("NB: Depending on the number of IDs, this process may take a long time to run."),
-                    actionButton("listCandidates", label = "List outdated IDs"),
-                    br(),
-                    hr(),
-                    DT::DTOutput("obsolete")
+                fluidRow(
+                    column(width = 6,
+                        box(width = NULL,
+                            title = "Validate IDs", status = "primary", solidHeader = F,
+                            p(helpText("NB: Depending on the number of IDs, this process may take a long time to run.")),
+                            actionButton("listCandidates", label = "List outdated IDs"),
+                            p(),
+                            hr(),
+                            DT::DTOutput("obsolete")
+                        )
+                    ),
+                    column(width = 6,
+                           box(width = NULL,
+                               title = "Convert IDs",
+                               textAreaInput("idstoconvert", "Identifiers"),
+                               actionButton("convertids", label = "Convert IDs")
+                               )
+                           )
                 )
         ),
                 
@@ -297,7 +320,7 @@ body <- dashboardBody(
         # Data type: distributions
         
         tabItem(tabName = "goodnessOfFit",
-                box(
+                box(width = NULL,
                     title = "Assess goodness-of-fit", status = "primary", solidHeader = F,
                     selectInput(inputId = "fit", label = "Fit to distribution",
                                 choices = list("Normal/Log-Normal" = 1),
@@ -346,7 +369,7 @@ body <- dashboardBody(
                                width = NULL,
                                sliderInput("contribs",
                                            "Number of contributors:",
-                                           min = 1,  max = 300, value = 10),
+                                           min = 1,  max = 50, value = 5),
                                sliderInput("ellipse",
                                            "Ellipse level:",
                                            min = 0,  max = 1, value = .75),
@@ -384,7 +407,7 @@ body <- dashboardBody(
                         box(title = "Heatmap settings",
                             width = NULL,
                             status = "warning",
-                            actionButton("generateheatmap","Generate Heatmap")
+                            actionButton("generateheatmap","Load plot")
                         )),
                         
                     column(width = 9,
