@@ -1,4 +1,0 @@
-"Date: Mon Oct 26 17:30:36 2020
-Name: 
-Email: 
-Comment: hello there"
