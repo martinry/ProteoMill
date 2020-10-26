@@ -1337,7 +1337,7 @@ server <- function(session, input, output) {
                     
                     setcolorder(res, c(convertColumns, names(tba[,2:ncol(tba)])))
 
-                    pathways$v <- volcano(res, "Global", sID)
+                    pathways$v <- volcano(res, "Lowest", sID)
 
                     plotly::ggplotly(pathways$v$volcano_plot) %>%
                         layout(dragmode = "select")
