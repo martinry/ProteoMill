@@ -658,8 +658,6 @@ server <- function(session, input, output) {
     
     observeEvent(input$confirmexclude, {
         
-        assign("ics", input$includesamples, envir = .GlobalEnv)
-        
         # Check that we still have at least two conditions
         
         if(!is.null(input$includesamples)) {
@@ -860,8 +858,6 @@ server <- function(session, input, output) {
             
             p.pca <- prcomp(pca.data, center = TRUE, scale. = TRUE)
             
-            assign("p.pca", p.pca, envir = .GlobalEnv)
-            
             pcaplot <- plotly::plot_ly(x = p.pca$x[,1],
                                        y = p.pca$x[,2],
                                        z = p.pca$x[,3],
@@ -888,8 +884,6 @@ server <- function(session, input, output) {
             pca.res = pca(X = pca.data,
                           ncomp = 3,
                           multilevel = sampleinfo$samples$replicate, logratio = 'CLR')
-            
-            assign("pca.res", pca.res, envir = .GlobalEnv)
             
             pcaplot <- plotly::plot_ly(x = pca.res$x[,1],
                                        y = pca.res$x[,2],
@@ -1103,17 +1097,6 @@ server <- function(session, input, output) {
         
         condition <- sampleinfo$condition
         replicate <- sampleinfo$replicate
-        
-        #assign("phenoData", phenoData, envir = .GlobalEnv)
-        #assign("exampleSet", exampleSet, envir = .GlobalEnv)
-        #assign("condition", condition, envir = .GlobalEnv)
-        #assign("replicate", replicate, envir = .GlobalEnv)
-        #assign("group", sampleinfo$group, envir = .GlobalEnv)
-        #assign("data_wide", maindata$data_wide, envir = .GlobalEnv)
-        #assign("data_wide", maindata$data_wide, envir = .GlobalEnv)
-        #assign("samples", sampleinfo$samples, envir = .GlobalEnv)
-        
-
         
         unpaired <- model.matrix( ~ 0 + condition )
         paired <- model.matrix( ~ 0 + condition + replicate )
