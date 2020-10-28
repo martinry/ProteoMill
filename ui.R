@@ -1,12 +1,35 @@
-
+# Load packages ----
 suppressPackageStartupMessages({
     require(shiny)
     require(shinydashboard)
     require(shinyWidgets)
     require(visNetwork)
     require(DT)
+    require(knitr)
+    require(limma)
+    require(Biobase)
+    require(ggplot2)
+    require(ggrepel)
+    require(RColorBrewer)
+    require(dplyr)
+    require(plotly)
+    require(data.table)
+    require(AnnotationDbi)
+    require(EnsDb.Hsapiens.v86)
+    require(networkD3)
+    require(XML)
+    require(mixOmics)
+    require(stringr)
+    require(factoextra)
+    require(pheatmap)
+    require(rmarkdown)
+    require(fitdistrplus)
+    require(igraph)
+    require(R.utils)
+    require(umap)
     
 })
+
 
 # Notification menus ----
 
@@ -659,33 +682,6 @@ body <- dashboardBody(
     div(class = "footer_wrapper",
         div(class = "sticky_footer", span("© 2020 · ProteoMill | Martin Rydén", style = "line-height: 35px; float: right; margin-right: 20px;")))
 )
-
-
-suppressPackageStartupMessages({
-    require(knitr)
-    require(limma)
-    require(Biobase)
-    require(ggplot2)
-    require(ggrepel)
-    require(RColorBrewer)
-    require(dplyr)
-    require(plotly)
-    require(data.table)
-    require(AnnotationDbi)
-    require(EnsDb.Hsapiens.v86)
-    require(networkD3)
-    require(XML)
-    require(mixOmics)
-    require(stringr)
-    require(factoextra)
-    require(pheatmap)
-    require(rmarkdown)
-    require(fitdistrplus)
-    require(igraph)
-    require(R.utils)
-    require(umap)
-    
-})
 
 # Load dashboard page ----
 
