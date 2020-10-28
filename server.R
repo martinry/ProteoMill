@@ -1,34 +1,5 @@
 # Load packages ----
-require(shiny)
-require(shinydashboard)
-require(knitr)
-require(limma)
-require(Biobase)
-require(ggplot2)
-require(ggrepel)
-require(RColorBrewer)
-require(dplyr)
-require(plotly)
-require(data.table)
-require(DT)
-require(AnnotationDbi)
-require(EnsDb.Hsapiens.v86)
-require(networkD3)
-require(XML)
-require(mixOmics)
-require(rhandsontable)
-require(stringr)
-require(factoextra)
-require(pheatmap)
-require(rmarkdown)
-require(fitdistrplus)
-require(igraph)
-require(visNetwork)
-require(R.utils)
-require(umap)
-library(shinyWidgets)
-
-
+# Moved to ui.R
 
 # Generic functions ----
 

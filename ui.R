@@ -1,12 +1,12 @@
-require(shiny)
-require(shinydashboard)
-require(shinyWidgets)
-require(plotly)
-require(visNetwork)
-require(rhandsontable)
-require(DT)
-require(networkD3)
 
+suppressPackageStartupMessages({
+    require(shiny)
+    require(shinydashboard)
+    require(shinyWidgets)
+    require(visNetwork)
+    require(DT)
+    
+})
 
 # Notification menus ----
 
@@ -660,6 +660,34 @@ body <- dashboardBody(
         div(class = "sticky_footer", span("© 2020 · ProteoMill | Martin Rydén", style = "line-height: 35px; float: right; margin-right: 20px;")))
 )
 
+
+suppressPackageStartupMessages({
+    require(knitr)
+    require(limma)
+    require(Biobase)
+    require(ggplot2)
+    require(ggrepel)
+    require(RColorBrewer)
+    require(dplyr)
+    require(plotly)
+    require(data.table)
+    require(AnnotationDbi)
+    require(EnsDb.Hsapiens.v86)
+    require(networkD3)
+    require(XML)
+    require(mixOmics)
+    require(stringr)
+    require(factoextra)
+    require(pheatmap)
+    require(rmarkdown)
+    require(fitdistrplus)
+    require(igraph)
+    require(R.utils)
+    require(umap)
+    
+})
+
 # Load dashboard page ----
 
 dashboardPage(title = "ProteoMill | Differential expression pathway and network analysis tool", skin = 'black', header, sidebar, body)
+
