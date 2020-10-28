@@ -426,7 +426,7 @@ server <- function(session, input, output) {
             header = T)
         
         maindata$data_wide <- maindata$data_wide[!duplicated(names(maindata$data_wide)[1])]
-        
+
         for(j in seq_along(maindata$data_wide)){
             set(maindata$data_wide, i = which(maindata$data_wide[[j]] == 0 & is.numeric(maindata$data_wide[[j]])), j = j, value = NA)
         }
@@ -639,15 +639,12 @@ server <- function(session, input, output) {
     # })
     
     observe({
-        #sam <- sampleinfo$samples
-        #assign("sam", sam, envir = .GlobalEnv)
+
         samples <- sampleinfo$samples$samples
         
         if(!is.null(samples)) {
             
             samples <- as.character(samples[order(samples)])
-            
-            print(samples)
             
             shinyWidgets::updatePickerInput(
                 session = session,
@@ -655,25 +652,34 @@ server <- function(session, input, output) {
                 choices = samples,
                 selected = samples
             )
-            #updateCheckboxGroupInput(session = session, inputId = "includesamples", inline = T, choices = samples[order(samples)], selected = samples[order(samples)])
         }
         
     })
     
     observeEvent(input$confirmexclude, {
         
-        print(input$includesamples)
+        assign("ics", input$includesamples, envir = .GlobalEnv)
         
-        #sampleinfo$samples <- sampleinfo$samples[sampleinfo$samples$samples %in% input$includesamples,]
+        # Check that we still have at least two conditions
         
-        maindata$data_wide <- maindata$data_wide[, c(convertColumns, as.character(input$includesamples)), with = F]
+        if(!is.null(input$includesamples)) {
+            if(sum(sapply(levels(sampleinfo$samples$condition), FUN = function(x) any(startsWith(input$includesamples, x)))) >= 2) {
+                maindata$data_wide <- maindata$data_wide[, c(convertColumns, as.character(input$includesamples)), with = F]
+                maindata$data_wide <- maindata$data_wide[apply(maindata$data_wide[, -convertColumns, with = F], 1, FUN = function(x) !all(is.na(x))),]
+                
+                maindata$data_origin <- maindata$data_origin[, c(convertColumns, as.character(input$includesamples)), with = F]
+                maindata$data_origin <- maindata$data_origin[apply(maindata$data_origin[, -convertColumns, with = F], 1, FUN = function(x) !all(is.na(x))),]
+                
+                sample_data(maindata$data_wide)
+                
+            } else {
+                updateNotifications("At least two groups needed for comparison.","exclamation-triangle", "danger")
+            }
+        } else {
+            updateNotifications("At least two groups needed for comparison.","exclamation-triangle", "danger")
+        }
         
-        maindata$data_origin <- maindata$data_origin[, c(convertColumns, as.character(input$includesamples)), with = F]
-        
-        sample_data(maindata$data_wide)
-        
-        assign("dw", maindata$data_wide, envir = .GlobalEnv)
-        assign("sdt", sampleinfo$samples, envir = .GlobalEnv)
+
         
     })
     
@@ -748,7 +754,7 @@ server <- function(session, input, output) {
             # Draw plot
             ggplot(naf, aes(x = Var1, y = Freq, color = Var1)) +
                 geom_bar(stat = "identity", width = .9, fill = "white") +
-                labs(x = "Number of missing values in at least one sample", y = "Number of rows") +
+                labs(x = "Number of missing values in at least one sample", y = "Number of proteins") +
                 ggthemes::theme_clean() +
                 theme(axis.text.x = element_text(vjust = 0.6), legend.position = "none") +
                 scale_color_grey()
@@ -798,7 +804,7 @@ server <- function(session, input, output) {
     
     plotPCA <- function(contribs, ellipse, type) {
         
-        dt <- dframe(maindata$data_origin, sampleinfo$sID)
+        dt <- dframe(filter_na(maindata$data_origin, 1), sampleinfo$sID)
         
         # Biplot extension displaying top contributing proteins currently only available for 2D plot.
         
@@ -1495,14 +1501,7 @@ server <- function(session, input, output) {
         contrast <- rcont$contrast
         res <- pathways$v$res
         sID <- sampleinfo$sID
-        
-        print(colnames(contrast))
-        print(head(contrast))
-        
-        print(colnames(res))
-        print(head(res))
-        
-        print(sID)
+    
         
         dir <- input$network_regulation
 
@@ -1516,9 +1515,6 @@ server <- function(session, input, output) {
             proteins <- contrast[(abs(logFC) >= input$fccutoff)]$UNIPROTID
         }
         
-        # assign("cntrst", contrast, envir = .GlobalEnv)
-        # assign("res", res, envir = .GlobalEnv)
-        # assign("sID", sID, envir = .GlobalEnv)
         
         ints2 <- interactions[(protein1 %in% proteins) & (protein2 %in% proteins)]
         ints2 <- ints2[score > input$interactioncutoff]
@@ -1561,19 +1557,11 @@ server <- function(session, input, output) {
                 to = ints2$protein2
             )
         
-        print(head(nodes))
-        print(head(edges))
 
         g <- igraph::graph_from_data_frame(edges, directed = F, vertices = nodes)
         
         r <- res[V(g)$label, on = "UNIPROTID", ]
-        
-        print(head(res))
-        
-        print(head(r))
-        
-        # assign("g", g, envir = .GlobalEnv)
-        # assign("r", r, envir = .GlobalEnv)
+ 
         
         g <- set.vertex.attribute(g, name = "name",  value = as.vector (r[, ..sID][[1]]))
         g <- set.vertex.attribute(g, name = "color", value = r$col)

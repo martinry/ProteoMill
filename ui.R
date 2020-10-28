@@ -112,6 +112,7 @@ body <- dashboardBody(
     
     # Import css and js
     tags$head(
+        tags$meta(name="google-site-verification", content="JC0Ph8rzlXWiAL6lWXnusIUEOhJSqf8u2yVzK5g2P04"),
         tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"),
         tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Quicksand"),
         tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Patrick+Hand"),
@@ -119,6 +120,7 @@ body <- dashboardBody(
         tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Poiret+One"),
         tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Open+Sans"),
         tags$script(src = "https://cdnjs.cloudflare.com/ajax/libs/animejs/2.0.2/anime.min.js") # To do: keep local copy
+            
     ),
     
     # Clickable notifications
@@ -655,7 +657,7 @@ body <- dashboardBody(
                 )
     ),
     div(class = "footer_wrapper",
-        div(class = "sticky_footer", span("© 2020 · ProteoMill | Martin Rydén", style = "line-height: 35px; float: right; margin-right: 10px;")))
+        div(class = "sticky_footer", span("© 2020 · ProteoMill | Martin Rydén", style = "line-height: 35px; float: right; margin-right: 20px;")))
 )
 
 # Load dashboard page ----
