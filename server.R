@@ -1,5 +1,26 @@
 # Load packages ----
-# Moved to ui.R
+require(AnnotationDbi)
+require(EnsDb.Hsapiens.v86)
+require(Biobase)
+require(ggplot2)
+require(ggrepel)
+require(RColorBrewer)
+require(dplyr)
+require(plotly)
+require(data.table)
+require(networkD3)
+require(XML)
+require(mixOmics)
+require(stringr)
+require(factoextra)
+require(pheatmap)
+require(rmarkdown)
+require(fitdistrplus)
+require(igraph)
+require(R.utils)
+require(umap)
+require(knitr)
+require(limma)
 
 # Generic functions ----
 
@@ -1863,3 +1884,5 @@ server <- function(session, input, output) {
     
     
 }
+
+
