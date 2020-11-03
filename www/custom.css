@@ -37,6 +37,13 @@
 	color:#000 !important;
 	text-align:center !important;
 }
+	
+.left-side, .main-sidebar, .content-wrapper, .main-footer, .right-side {
+	-webkit-transition: -webkit-transform .1s ease-in-out,width .1s ease-in-out  !important;
+    -moz-transition: -moz-transform .1s ease-in-out,width .1s ease-in-out  !important;
+    -o-transition: -o-transform .1s ease-in-out,width .1s ease-in-out  !important;
+    transition: transform .1s ease-in-out,width .1s ease-in-out  !important;
+}
 
 #mill {
     width: 33px;
