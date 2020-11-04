@@ -1944,6 +1944,7 @@ server <- function(session, input, output) {
             paste("hello.html")
         },
         content = function(file) {
+            setwd("~/ProteoMill/")
             src <- normalizePath('reports/report.Rmd')
             
             # temporarily switch to the temp dir, in case you do not have write
