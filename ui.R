@@ -298,7 +298,7 @@ body <- dashboardBody(
                            box(width = NULL,
                                title = "Convert IDs",
                                helpText("Insert a list of identifiers. Separators are automatically detected."),
-                               textAreaInput("idstoconvert", ""),
+                               textAreaInput("idstoconvert", "", height = "150px"),
                                actionButton("convertids", label = "Convert IDs"),
                                p(),
                                hr(),

@@ -1764,7 +1764,14 @@ server <- function(session, input, output) {
     observeEvent(input$convertids, {
         
         if(input$idstoconvert != "") {
-            keys <- strsplit(gsub("[^[:alnum:] ]", "", input$idstoconvert), " +")[[1]]
+            
+            assign("idstoconvert", input$idstoconvert, envir = .GlobalEnv)
+            
+            keys <- gsub("\n", ";", input$idstoconvert)
+            
+            keys <- strsplit(gsub("[^[:alnum:] ]", " ", keys), " +")[[1]]
+            
+            assign("keys", keys, envir = .GlobalEnv)
             
             tr1 <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = keys, column = "SYMBOL", keytype = "UNIPROTID", multiVals = "first")
             tr2 <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = keys, column = "UNIPROTID", keytype = "ENTREZID", multiVals = "first")

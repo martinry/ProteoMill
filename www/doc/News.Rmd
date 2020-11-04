@@ -8,7 +8,15 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## October 26, 2020
+##### November 04, 2020
+
+* ProteoMill automatically detects and converts identifiers, but there is now a dedicated tool for converting arbitrary identifier lists between ID types.
+
+![](../img/convids.png){width=350px}
+
+* Improved functionality for generating report
+
+##### October 26, 2020
 
 * 3D PCA plots now show sample names on hover
 
