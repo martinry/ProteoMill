@@ -1,0 +1,130 @@
+---
+title: "ProteoMill Report"
+description: | 
+  This report was automatically generated using the [ProteoMill](https://proteomill.com/) web tool.
+date: "`r format(Sys.time(), '%a %d %b, %Y')`"
+output:
+  distill::distill_article
+---
+
+<!--
+choices = list("Dataset options" = c("Data summary", "Missing values"),
+               "Inspect data" = c("PCA 2D", "PCA 3D", "UMAP", "Heatmap"),
+               "Differential analysis" = "Differential expression",
+               "Enrichment analysis" = c("Pathway enrichment", "Volcano plot", "Sankey diagram")),
+-->
+
+
+```{r violin1, echo = FALSE, out.width = '60%', out.height= '40%'}
+
+if("Data summary" %in% input$p2){
+	if(!is.null(plots$violin1)) plots$violin1
+}
+
+```
+
+```{r violin2, echo = FALSE, out.width = '60%', out.height= '40%'}
+
+if("Data summary" %in% input$p2){
+	if(!is.null(plots$violin2)) plots$violin2
+}
+
+```
+
+
+```{r mv, echo = FALSE, out.width = '60%'}
+
+if("Missing values" %in% input$p2) if(!is.null(plots$mv)) plots$mv
+
+```
+
+```{r pca2d, echo = FALSE, out.width = '60%'}
+
+if("PCA 2D" %in% input$p2) if(!is.null(plots$pcaplot2d)) plots$pcaplot2d
+
+```
+
+```{r pca3d, echo = FALSE, out.width = '80%'}
+
+if("PCA 3D" %in% input$p2) if(!is.null(plots$pcaplot3d)) plots$pcaplot3d
+
+```
+
+```{r umap, echo = FALSE, out.width = '80%', out.height= '50%'}
+
+if("UMAP" %in% input$p2) if(!is.null(plots$umap)) plots$umap
+
+```
+
+```{r heatmap, echo = FALSE, out.width = '80%'}
+
+if("Heatmap" %in% input$p2) if(!is.null(plots$hmap)) plots$hmap
+
+```
+
+
+```{r diffexpsummary, echo = FALSE}
+
+if("Differential expression" %in% input$p2) {
+	
+	if(!is.null(maindata$diffexptable_summary)) maindata$diffexptable_summary
+}
+
+
+
+```
+
+```{r diffexp_up, echo = FALSE, out.width = '80%'}
+
+if("Differential expression" %in% input$p2) {
+	
+	if(!is.null(maindata$diffexptable_up)) maindata$diffexptable_up
+	
+	
+}
+
+
+```
+
+
+```{r upregulated_pathways, echo = FALSE, out.width = '80%'}
+
+if("Pathway enrichment" %in% input$p2) {
+	
+	if(!is.null(pathways$upregulated_pathways_table)) pathways$upregulated_pathways_table
+	
+}
+
+
+```
+
+```{r downregulated_pathways, echo = FALSE, out.width = '80%'}
+
+if("Pathway enrichment" %in% input$p2) {
+	
+	if(!is.null(pathways$downregulated_pathways_table)) pathways$downregulated_pathways_table
+	
+}
+
+```
+
+```{r volcano, echo = FALSE, out.width = '100%'}
+
+if("Volcano plot" %in% input$p2) {
+	
+	if(!is.null(plots$volcano)) plots$volcano
+	
+}
+
+```
+
+```{r sankey, echo = FALSE, out.width = '100%'}
+
+if("Sankey diagram" %in% input$p2) {
+	
+	if(!is.null(plots$sankey)) plots$sankey
+	
+}
+
+```
+

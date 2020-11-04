@@ -21,6 +21,7 @@ require(R.utils)
 require(umap)
 require(knitr)
 require(limma)
+require(DESeq2)
 
 # Generic functions ----
 
@@ -75,6 +76,7 @@ server <- function(session, input, output) {
     maindata <- reactiveValues()
     rcont <- reactiveValues()
     pathways <- reactiveValues()
+    plots <- reactiveValues()
     
     sampleinfo$sID <- identifier(2)
     
@@ -428,10 +430,10 @@ server <- function(session, input, output) {
         
         maindata$data_origin <- maindata$data_wide
         
-        convertColumns <- c("UNIPROTID", "ENTREZID", "SYMBOL", "GENEID", "PROTEINID")
-        
-        assign('convertColumns', convertColumns, envir = .GlobalEnv)
-        
+        # convertColumns <- c("UNIPROTID", "ENTREZID", "SYMBOL", "GENEID", "PROTEINID")
+        # 
+        # assign('convertColumns', convertColumns, envir = .GlobalEnv)
+        # 
         keys <- maindata$data_wide[, as.character(.SD[[1L]])][1:10]
         
         if(i == "auto") {
@@ -605,31 +607,6 @@ server <- function(session, input, output) {
         else infoBox("Treatments", 0)
     })
     
-    # observe({
-    #     if(!is.null(input$hot)){
-    #         sampleinfo$samples <- as.data.frame(hot_to_r(input$hot))
-    #         output$hot <- renderRHandsontable({
-    #             rhandsontable(sampleinfo$samples, width = 600, rowHeaders = NULL)
-    #         })
-    #     }
-    # })    
-    # 
-    # output$hot <- renderRHandsontable({
-    #     if(!is.null(sampleinfo$samples)) rhandsontable(sampleinfo$samples, width = 600, rowHeaders = NULL)
-    # })
-    
-    # output$sampletable <- DT::renderDataTable({
-    #     
-    #     sampleinfo <- sampleinfo$samples
-    #     
-    #     if(!is.null(sampleinfo)){
-    #         
-    #         DT::datatable(sampleinfo, rownames = F)
-    #         
-    #     }
-    #     
-    # })
-    
     observe({
 
         samples <- sampleinfo$samples$samples
@@ -694,7 +671,7 @@ server <- function(session, input, output) {
             
             if(input$violintype == 1) {
                 
-                ggplot(dat, 
+                plots$violin1 <- ggplot(dat, 
                        aes(x = sample, y = values, fill = sample)) + 
                     geom_violin(trim = FALSE, scale = "width") +
                     geom_boxplot(width=0.1, fill="white") +
@@ -703,9 +680,11 @@ server <- function(session, input, output) {
                     xlab("Samples") + ylab("Log2 Expression") +
                     scale_fill_brewer(palette = "BuGn")
                 
+                plots$violin1
+                
             } else {
                 
-                ggplot(dat, 
+                plots$violin2 <- ggplot(dat, 
                        aes(x = ind, y = values, fill = sample)) + 
                     geom_violin(trim = FALSE, scale = "width") +
                     geom_boxplot(width=0.1, fill="white") +
@@ -713,6 +692,8 @@ server <- function(session, input, output) {
                     theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust = 1), legend.position = "none") +
                     xlab("Samples") + ylab("Log2 Expression") +
                     scale_fill_brewer(palette = "BuGn")
+                
+                plots$violin2
                 
             }
             
@@ -742,12 +723,14 @@ server <- function(session, input, output) {
             
             
             # Draw plot
-            ggplot(naf, aes(x = Var1, y = Freq, color = Var1)) +
+            plots$mv <- ggplot(naf, aes(x = Var1, y = Freq, color = Var1)) +
                 geom_bar(stat = "identity", width = .9, fill = "white") +
                 labs(x = "Number of missing values in at least one sample", y = "Number of proteins") +
                 ggthemes::theme_clean() +
                 theme(axis.text.x = element_text(vjust = 0.6), legend.position = "none") +
                 scale_color_grey()
+            
+            plots$mv
             
         })
     }
@@ -807,11 +790,11 @@ server <- function(session, input, output) {
             
             p.pca <- prcomp(pca.data, center = TRUE, scale. = TRUE)
             
-            pcaplot <- factoextra::fviz_pca_biplot(p.pca, title = '', label = "var", habillage = sampleinfo$samples$condition,
+            plots$pcaplot2d <- factoextra::fviz_pca_biplot(p.pca, title = '', label = "var", habillage = sampleinfo$samples$condition,
                                                    addEllipses = TRUE, ellipse.level = ellipse,
                                                    select.var = list(contrib = contribs), repel = TRUE) + theme_light()
             
-            return (pcaplot)
+            return (plots$pcaplot2d)
             
         } else if (type == '2dpaired') {
             
@@ -827,7 +810,7 @@ server <- function(session, input, output) {
             pca.res = pca(X = pca.data,
                           multilevel = sampleinfo$samples$replicate, logratio = 'CLR')
             
-            pcaplot <- plotIndiv(
+            plots$pcaplot2d <- plotIndiv(
                 pca.res,
                 ind.names = sampleinfo$samples$replicate,
                 group = sampleinfo$samples$condition,
@@ -837,7 +820,7 @@ server <- function(session, input, output) {
                 ellipse = FALSE,
                 ellipse.level = .9
             )
-            return(pcaplot)
+            return(plots$pcaplot2d)
             
             
             
@@ -850,7 +833,7 @@ server <- function(session, input, output) {
             
             p.pca <- prcomp(pca.data, center = TRUE, scale. = TRUE)
             
-            pcaplot <- plotly::plot_ly(x = p.pca$x[,1],
+            plots$pcaplot3d <- plotly::plot_ly(x = p.pca$x[,1],
                                        y = p.pca$x[,2],
                                        z = p.pca$x[,3],
                                        text = rownames(p.pca$x),
@@ -863,7 +846,7 @@ server <- function(session, input, output) {
                                             yaxis = list(title = 'PC2'),
                                             zaxis = list(title = 'PC3')))
             
-            return (pcaplot)
+            return (plots$pcaplot3d)
         } else if (type == '3dpaired') {
             
             pca.data <- dt
@@ -877,7 +860,7 @@ server <- function(session, input, output) {
                           ncomp = 3,
                           multilevel = sampleinfo$samples$replicate, logratio = 'CLR')
             
-            pcaplot <- plotly::plot_ly(x = pca.res$x[,1],
+            plots$pcaplot3d <- plotly::plot_ly(x = pca.res$x[,1],
                                        y = pca.res$x[,2],
                                        z = pca.res$x[,3],
                                        text = rownames(pca.res$x),
@@ -890,7 +873,7 @@ server <- function(session, input, output) {
                                             yaxis = list(title = 'PC2'),
                                             zaxis = list(title = 'PC3')))
 
-            return(pcaplot)
+            return(plots$pcaplot3d)
             
         } else if (type == 'UMAP') {
             
@@ -907,9 +890,10 @@ server <- function(session, input, output) {
             
             Condition <- sampleinfo$samples$condition
             
-            ggplot(df, aes(x, y, color = Condition, shape = sampleinfo$samples$condition)) +
+            plots$umap <- ggplot(df, aes(x, y, color = Condition, shape = sampleinfo$samples$condition)) +
                 geom_point(size = 4) + guides(shape = "none") + theme_light()
             
+            plots$umap
             
             
             
@@ -973,7 +957,7 @@ server <- function(session, input, output) {
         
         if(!is.null(data_annotation)){
             if(all(data_annotation[, as.character(.SD[[1L]])] %in% names(maindata$data_origin[,-..convertColumns]))){
-                hmap <- pheatmap::pheatmap(
+                plots$hmap <- pheatmap::pheatmap(
                     annotation_col = dframe(data_annotation, "V1")[2:4],
                     cor_mat_raw_logged,
                     legend_breaks = c(min(cor_mat_raw_logged), 1),
@@ -982,7 +966,7 @@ server <- function(session, input, output) {
                 )
             }
         } else {
-            hmap <- pheatmap::pheatmap(
+            plots$hmap <- pheatmap::pheatmap(
                 cor_mat_raw_logged,
                 legend_breaks = c(min(cor_mat_raw_logged), 1),
                 legend_labels = c(0, 1),
@@ -991,7 +975,7 @@ server <- function(session, input, output) {
         }
         
         output$samplecorrheatmap = renderPlot({
-            hmap
+            plots$hmap
             })
         
         updateTasks(text = "Inspect data", value = (tasks$tasks[id == "0004", value] + 100/3), color = "green", i = 0004)
@@ -1065,74 +1049,120 @@ server <- function(session, input, output) {
         
         best_fit = 'normal'
         
-        if(best_fit == 'nbinom') {
-            dds <- DESeqDataSetFromMatrix(countData  = maindata$data_wide,
-                                          colData    = sampleinfo$samples,
-                                          design     = ~ sampleinfo$condition + sampleinfo$replicate)
-            dds <- DESeq(dds)
+        dw <- maindata$data_wide
+        sinf <- sampleinfo$samples
+        
+        assign("dw", dw, envir = .GlobalEnv)
+        assign("sinf", sinf, envir = .GlobalEnv)
+        
+        assign("coeff", coeff, envir = .GlobalEnv)
+        
+        
+        
+        if(input$setDEengine == 2) {
             
+            dw <- maindata$data_wide
             
-            # dt <- data_wide[, -..convertColumns]
-            # 
-            # dt[, names(dt) := lapply(.SD, as.integer)]
-            # 
-            # dds <- DESeqDataSetFromMatrix(countData  = dt,
-            #                               colData    = samples,
-            #                               design     = ~ condition + replicate)
-            # dds <- DESeq(dds)
-        }
-        
-        
-        # Create Annotation data and expression set (Biobase)
-        phenoData <- new("AnnotatedDataFrame", data = sampleinfo$samples)
-        exampleSet <- ExpressionSet(assayData = as.matrix(log2(dframe(maindata$data_wide, sampleinfo$sID))), phenoData = phenoData)
-        
-        condition <- sampleinfo$condition
-        replicate <- sampleinfo$replicate
-        
-        unpaired <- model.matrix( ~ 0 + condition )
-        paired <- model.matrix( ~ 0 + condition + replicate )
-        
-        if(pairing == 1) {
-            design <- paired
-        } else {
-            design <- unpaired
-        }
-        
-        # Fit the linear model
-        fit <- lmFit(exampleSet, design)
-        
-        # Decide possible contrasts
-        c <- expand.grid(sampleinfo$group, sampleinfo$group)
-        cc <- factor(ifelse(c$Var1 != c$Var2, paste(c$Var1, c$Var2, sep = '-'), NA ))
-        cc <- cc[!is.na(cc)]
-        names(cc) <- gsub('-','', gsub('condition','',cc))
-        
-        cont.matrix <- makeContrasts(contrasts = cc, levels = design) # All possible contrasts
-        
-        # Contrast groups, run empirical bayes statistics
-        fit.cont <- contrasts.fit(fit, cont.matrix)
-        fit.cont <- eBayes(fit.cont, robust = T)
-        
-        # Generate data frame with results from linear model fit, with confidence intervals.
-        contrast <- toptable(fit.cont, number = Inf, coef = coeff, confint = TRUE)
-        
-        # Confidence intervals used for plot, global var
-        cint <- contrast
-        cint$protein <- rownames(cint)
-        cint$protein <- factor(cint$protein, levels = cint$protein[order(cint$logFC)])
-        
-        rcont$cint <- cint
+            # Replace NA -> 0
+            for(j in seq_along(dw)){
+                set(dw, i = which(is.na(dw[[j]]) & is.numeric(dw[[j]])), j = j, value = 0)
+            }
+            
+            if(pairing == 1) {
+                # Paired
+                
+                design <- DESeqDataSetFromMatrix(countData  = round(dframe(dw, sampleinfo$sID)),
+                                                 colData    = sinf,
+                                                 design     = ~ 0 + condition + replicate)
+                
+            } else {
+                # Unpaired
+                design <- DESeqDataSetFromMatrix(countData  = round(dframe(dw, sampleinfo$sID)),
+                                                   colData    = sinf,
+                                                   design     = ~ 0 + condition)
+            }
 
-        contrast <- contrast[order(contrast$P.Value, decreasing = F),]
-        contrast <- data.table::as.data.table(contrast, keep.rownames = T)
+            dds <- DESeq(design)
+            
+            contrast <- results(dds, contrast=c("condition", sub("condition", "", input$contrast1), sub("condition", "", input$contrast2)))
+            
+            colnames(contrast) <- c("baseMean", "logFC", "logFC.SE", "stat", "P.Value", "adj.P.Val")
+            
+            # Confidence intervals used for plot, global var
+            cint <- contrast
+            cint$protein <- rownames(cint)
+            cint$protein <- factor(cint$protein, levels = cint$protein[order(cint$logFC)])
+            
+            rcont$cint <- cint
+            
+            contrast <- contrast[order(contrast$P.Value, decreasing = F),]
+            contrast <- data.table::as.data.table(contrast, keep.rownames = T)
+            
+            setkeyv(contrast, "rn")
+            setkeyv(maindata$data_wide, sampleinfo$sID)
+            contrast <- contrast[maindata$data_wide[,..convertColumns], nomatch = 0]
+            names(contrast) <- c(sampleinfo$sID, names(contrast[, 2:ncol(contrast)]))
+            setcolorder(contrast, c(convertColumns, "logFC", "logFC.SE", "baseMean", "stat", "P.Value", "adj.P.Val"))
+            
+
+        } else if(input$setDEengine == 1) {
+            
+            
+            # Create Annotation data and expression set (Biobase)
+            phenoData <- new("AnnotatedDataFrame", data = sampleinfo$samples)
+            exampleSet <- ExpressionSet(assayData = as.matrix(log2(dframe(maindata$data_wide, sampleinfo$sID))), phenoData = phenoData)
+            
+            condition <- sampleinfo$condition
+            replicate <- sampleinfo$replicate
+            
+            unpaired <- model.matrix( ~ 0 + condition )
+            paired <- model.matrix( ~ 0 + condition + replicate )
+            
+            if(pairing == 1) {
+                design <- paired
+            } else {
+                design <- unpaired
+            }
+            
+            # Fit the linear model
+            fit <- lmFit(exampleSet, design)
+            
+            # Decide possible contrasts
+            c <- expand.grid(sampleinfo$group, sampleinfo$group)
+            cc <- factor(ifelse(c$Var1 != c$Var2, paste(c$Var1, c$Var2, sep = '-'), NA ))
+            cc <- cc[!is.na(cc)]
+            names(cc) <- gsub('-','', gsub('condition','',cc))
+            
+            cont.matrix <- makeContrasts(contrasts = cc, levels = design) # All possible contrasts
+            
+            # Contrast groups, run empirical bayes statistics
+            fit.cont <- contrasts.fit(fit, cont.matrix)
+            fit.cont <- eBayes(fit.cont, robust = T)
+            
+            # Generate data frame with results from linear model fit, with confidence intervals.
+            contrast <- toptable(fit.cont, number = Inf, coef = coeff, confint = TRUE)
+            
+            # Confidence intervals used for plot, global var
+            cint <- contrast
+            cint$protein <- rownames(cint)
+            cint$protein <- factor(cint$protein, levels = cint$protein[order(cint$logFC)])
+            
+            rcont$cint <- cint
+            
+            contrast <- contrast[order(contrast$P.Value, decreasing = F),]
+            contrast <- data.table::as.data.table(contrast, keep.rownames = T)
+            
+            setkeyv(contrast, "rn")
+            setkeyv(maindata$data_wide, sampleinfo$sID)
+            contrast <- contrast[maindata$data_wide[,..convertColumns], nomatch = 0]
+            names(contrast) <- c(sampleinfo$sID, names(contrast[, 2:ncol(contrast)]))
+            setcolorder(contrast, c(convertColumns, "logFC", "CI.L", "CI.R", "t", "P.Value", "adj.P.Val", "B"))
+            
+            
+            
+        }
         
-        setkeyv(contrast, "rn")
-        setkeyv(maindata$data_wide, sampleinfo$sID)
-        contrast <- contrast[maindata$data_wide[,..convertColumns], nomatch = 0]
-        names(contrast) <- c(sampleinfo$sID, names(contrast[, 2:ncol(contrast)]))
-        setcolorder(contrast, c(convertColumns, "logFC", "CI.L", "CI.R", "t", "P.Value", "adj.P.Val", "B"))
-        
+        assign("contrast", contrast, envir = .GlobalEnv)
         
         return( contrast )
         
@@ -1171,8 +1201,9 @@ server <- function(session, input, output) {
                               "Max. logFC (up-regulated)",
                               "Max. logFC (down-regulated)")
             
-            df
+            maindata$diffexptable_summary <- df
             
+            maindata$diffexptable_summary
         }
         
         
@@ -1187,9 +1218,12 @@ server <- function(session, input, output) {
             contrast <- contrast[abs(logFC) >= input$diffexp_limit_fc]
             contrast <- contrast[adj.P.Val < input$diffexp_limit_pval]
             contrast <- contrast[order(logFC, decreasing = T)]
-            df <- DT::datatable(dframe(contrast, sampleinfo$sID),
+            maindata$diffexptable_up <- DT::datatable(dframe(contrast, sampleinfo$sID),
                                 options = list(order = list(1, 'desc'))) %>% 
-                formatRound(columns=c(1, 2, 3, 4, 5, 6, 7), digits=4)
+                formatRound(columns=1:(ncol(contrast) - length(convertColumns)), digits=4)
+            
+            maindata$diffexptable_up
+            
             
         }
 
@@ -1205,7 +1239,7 @@ server <- function(session, input, output) {
             contrast <- contrast[order(logFC, decreasing = F)]
             df <- DT::datatable(dframe(contrast, sampleinfo$sID),
                                 options = list(order = list(1, 'asc'))) %>% 
-                formatRound(columns=c(1, 2, 3, 4, 5, 6, 7), digits=4)
+                formatRound(columns=1:(ncol(contrast) - length(convertColumns)), digits=4)
             # df %>% DT::formatSignif('logFC', digits = 2)
             # df %>% DT::formatSignif('CI.L', digits = 2)
             # df %>% DT::formatSignif('CI.R', digits = 2)
@@ -1313,7 +1347,7 @@ server <- function(session, input, output) {
             
             output$upregulated_pathways_table <- DT::renderDT(
                 
-                DT::datatable(UPREGULATED_pathways[, -c("genes", "background")],
+                pathways$upregulated_pathways_table <- DT::datatable(UPREGULATED_pathways[, -c("genes", "background")],
                               selection = 'single',
                               options = list(autoWidth = TRUE,
                                              scrollX=TRUE,
@@ -1323,7 +1357,9 @@ server <- function(session, input, output) {
                                              )))
             )
             
-            output$downregulated_pathways_table <- DT::renderDT(
+            pathways$upregulated_pathways_table
+            
+            pathways$downregulated_pathways_table <- output$downregulated_pathways_table <- DT::renderDT(
                 DT::datatable(DOWNREGULATED_pathways[, -c("genes", "background")],
                               selection = 'single',
                               options = list(autoWidth = TRUE,
@@ -1333,6 +1369,8 @@ server <- function(session, input, output) {
                                                  list(width = '60px', targets = c(6, 7))
                                              )))
             )
+            
+            pathways$downregulated_pathways_table
             
             updateTasks(text = "Run pathway enrichment", value = 100, color = "green", i = 0006)
             updateNotifications("Pathway analysis complete.","check-circle", "success")
@@ -1360,8 +1398,8 @@ server <- function(session, input, output) {
                     
                     res <- enrichment_results(UPREGULATED_pathways, DOWNREGULATED_pathways, contrast)
 
-                    tba <- contrast[!(UNIPROTID %in% res$Gene), c("UNIPROTID", "logFC", "CI.L", "CI.R", "P.Value")]
-                    colnames(tba) <- c("Gene", "logFC", "CI.L", "CI.R", "P.Value")
+                    tba <- contrast[!(UNIPROTID %in% res$Gene), c("UNIPROTID", "logFC", "P.Value")]
+                    colnames(tba) <- c("Gene", "logFC", "P.Value")
                     
                     tba <- tba[!is.na(logFC)]
                     
@@ -1385,8 +1423,10 @@ server <- function(session, input, output) {
 
                     pathways$v <- volcano(res, "Lowest", sID)
 
-                    plotly::ggplotly(pathways$v$volcano_plot) %>%
+                    plots$volcano <- plotly::ggplotly(pathways$v$volcano_plot) %>%
                         layout(dragmode = "select")
+                    
+                    plots$volcano
 
                 })
 
@@ -1462,11 +1502,12 @@ server <- function(session, input, output) {
         links$source <- match(links$source, nodes$name) - 1
         links$target <- match(links$target, nodes$name) - 1
 
-        
-        sankeyNetwork(Links = links, Nodes = nodes, Source = "source",
+        plots$sankey <- sankeyNetwork(Links = links, Nodes = nodes, Source = "source",
                       Target = "target", Value = "value", NodeID = "name",
                       fontFamily = "sans-serif",
                       fontSize = 10, nodeWidth = 60, sinksRight = F)
+        
+        plots$sankey
 
         
     })
@@ -1664,11 +1705,9 @@ server <- function(session, input, output) {
         
         data_wide <- maindata$data_wide
         
-        if(!exists("data_wide")){
-            
-            updateNotifications(paste0("Upload a dataset first."), "exclamation-triangle", "danger")
-            
-        } else{
+        assign("data_wide", data_wide, envir = .GlobalEnv)
+        
+        if(!is.null(data_wide)){
             
             updateNotifications(paste0("Checking for outdated IDs. Please wait."), "info-circle", "info")
             
@@ -1679,7 +1718,12 @@ server <- function(session, input, output) {
                     all(startsWith(x[2:5], "MISSING"))
             ), "UNIPROTID"]
             
-            
+            # EventTime <- Sys.time() + candidates[, .N] * 5
+            # output$eventTimeRemaining <- renderText({
+            #     invalidateLater(1000, session)
+            #     paste("Estimated time remaining:", 
+            #           round(difftime(EventTime, Sys.time(), units='secs')), 'secs')
+            # })
             
             status <- history(candidates$UNIPROTID)
             status <- as.data.table(status)
@@ -1706,9 +1750,43 @@ server <- function(session, input, output) {
                 
             })
             
+        } else{
+            
+            updateNotifications(paste0("Upload a dataset first."), "exclamation-triangle", "danger")
+            
         }
         
         
+        
+    })
+    
+    
+    observeEvent(input$convertids, {
+        
+        if(input$idstoconvert != "") {
+            keys <- strsplit(gsub("[^[:alnum:] ]", "", input$idstoconvert), " +")[[1]]
+            
+            tr1 <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = keys, column = "SYMBOL", keytype = "UNIPROTID", multiVals = "first")
+            tr2 <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = keys, column = "UNIPROTID", keytype = "ENTREZID", multiVals = "first")
+            tr3 <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = keys, column = "UNIPROTID", keytype = "SYMBOL", multiVals = "first")
+            tr4 <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = keys, column = "UNIPROTID", keytype = "GENEID", multiVals = "first")
+            tr5 <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = keys, column = "UNIPROTID", keytype = "PROTEINID", multiVals = "first")
+            
+            trs <- list(tr1[!is.na(tr1)],
+                        tr2[!is.na(tr2)],
+                        tr3[!is.na(tr3)],
+                        tr4[!is.na(tr4)],
+                        tr5[!is.na(tr5)])
+            
+            i <- convertColumns[which.max(lapply(lapply(trs, lengths), sum))]
+            
+            tr_all <- data.table(AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = keys, columns = convertColumns, keytype = i))
+            
+            output$convertedids <- DT::renderDT({
+                tr_all
+            })
+            
+        }
         
     })
     
@@ -1736,93 +1814,73 @@ server <- function(session, input, output) {
     
     # Generate report ----
     
-    observeEvent(input$selectall, {
-
-        updateCheckboxGroupInput (session, "export_filtering", "Filtering", selected = c("Missing values"))
-        updateCheckboxGroupInput (session, "export_data_inspection", "Data inspection", selected = c("PCA 2D", "PCA 3D", "UMAP", "Heatmap"))
-        updateCheckboxGroupInput (session, "export_de", "Differential analysis", selected = c("Fold-change", "P-values"))
-        
-        
-        
-    })
-    
-    observeEvent(input$deselectall, {
-        
-        updateCheckboxGroupInput(session, "export_filtering", "Filtering", inline = T, choices = c("Missing values"))
-        updateCheckboxGroupInput(session, "export_data_inspection", "Data inspection", inline = T, choices = c("PCA 2D", "PCA 3D", "UMAP", "Heatmap"))
-        updateCheckboxGroupInput(session, "export_de", "Differential analysis", inline = T, choices = c("Fold-change", "P-values"))
-        
-        
-    })
-    
-    
-    getOverview <- reactive({
-        data.table(
-            "Variable" = c("Total proteins", "DE proteins (adj. P. < 0.05)"),
-            "Value" = c(maindata$data_origin[, .N], contrast[adj.P.Val < 0.05, .N])
-            
-        )
-        
-    })
-    
-    
-    getDT <- reactive({
-        maindata$data_wide
-        
-    })
-    
-    
-    getpca2d <- reactive({
-        pca2d
-    })
-    
-    
-    getUpPathways <- reactive({
-        UPREGPATH <- UPREGULATED_pathways[, -c("ReactomeID", "background")]
-        data.table::setcolorder(UPREGPATH, c("Pathway_name", "TopReactomeName", "q", "m", "p", "p.adj", "genes"))
-        UPREGPATH
-    })
-    
-    getDownPathways <- reactive({
-        DOWNREGPATH <- DOWNREGULATED_pathways[, -c("ReactomeID", "background")]
-        data.table::setcolorder(DOWNREGPATH, c("Pathway_name", "TopReactomeName", "q", "m", "p", "p.adj", "genes"))
-        DOWNREGPATH
-    })
-    
-    getVolcano <- reactive({
-        res <- enrichment_results(UPREGULATED_pathways, DOWNREGULATED_pathways)
-        
-        tba <- contrast[!(UNIPROTID %in% res$Gene), c("UNIPROTID", "logFC", "CI.L", "CI.R", "P.Value")]
-        colnames(tba) <- c("Gene", "logFC", "CI.L", "CI.R", "P.Value")
-        
-        tba <- tba[!is.na(logFC)]
-        
-        tba[, c("ReactomeID", "P.Adj")] <- NA
-        
-        tba[, "TopReactomeName"] <- "[No significant over-representation]"
-        tba[, "Pathway_name"] <- "[No significant over-representation]"
-        
-        setcolorder(tba, colnames(res))
-        
-        res <- rbindlist(list(res, tba))
-        
-        res$Pathway_name <- stringr::str_wrap(res$Pathway_name, 50)
-        
-        setkeyv(res, "Gene")
-        setkeyv(contrast, "UNIPROTID")
-        res <- res[contrast[,..convertColumns], nomatch = 0]
-        names(res) <- c("UNIPROTID", names(tba[,2:ncol(tba)]), convertColumns[-1])
-        
-        setcolorder(res, c(convertColumns, names(tba[,2:ncol(tba)])))
-
-        v <- volcano(res, abstraction = input$abstractionlevel)
-        
-    })
-    
-    getReg <- reactive({
-        data.table("Upregulated" = contrast[logFC <= 0 & adj.P.Val < 0.05, .N], "Downregulated" = contrast[logFC > 0 & adj.P.Val < 0.05, .N])
-        
-    })
+    # getOverview <- reactive({
+    #     data.table(
+    #         "Variable" = c("Total proteins", "DE proteins (adj. P. < 0.05)"),
+    #         "Value" = c(maindata$data_origin[, .N], contrast[adj.P.Val < 0.05, .N])
+    #         
+    #     )
+    #     
+    # })
+    # 
+    # 
+    # getDT <- reactive({
+    #     maindata$data_wide
+    #     
+    # })
+    # 
+    # 
+    # getpca2d <- reactive({
+    #     pca2d
+    # })
+    # 
+    # 
+    # getUpPathways <- reactive({
+    #     UPREGPATH <- UPREGULATED_pathways[, -c("ReactomeID", "background")]
+    #     data.table::setcolorder(UPREGPATH, c("Pathway_name", "TopReactomeName", "q", "m", "p", "p.adj", "genes"))
+    #     UPREGPATH
+    # })
+    # 
+    # getDownPathways <- reactive({
+    #     DOWNREGPATH <- DOWNREGULATED_pathways[, -c("ReactomeID", "background")]
+    #     data.table::setcolorder(DOWNREGPATH, c("Pathway_name", "TopReactomeName", "q", "m", "p", "p.adj", "genes"))
+    #     DOWNREGPATH
+    # })
+    # 
+    # getVolcano <- reactive({
+    #     res <- enrichment_results(UPREGULATED_pathways, DOWNREGULATED_pathways)
+    #     
+    #     tba <- contrast[!(UNIPROTID %in% res$Gene), c("UNIPROTID", "logFC", "CI.L", "CI.R", "P.Value")]
+    #     colnames(tba) <- c("Gene", "logFC", "CI.L", "CI.R", "P.Value")
+    #     
+    #     tba <- tba[!is.na(logFC)]
+    #     
+    #     tba[, c("ReactomeID", "P.Adj")] <- NA
+    #     
+    #     tba[, "TopReactomeName"] <- "[No significant over-representation]"
+    #     tba[, "Pathway_name"] <- "[No significant over-representation]"
+    #     
+    #     setcolorder(tba, colnames(res))
+    #     
+    #     res <- rbindlist(list(res, tba))
+    #     
+    #     res$Pathway_name <- stringr::str_wrap(res$Pathway_name, 50)
+    #     
+    #     setkeyv(res, "Gene")
+    #     setkeyv(contrast, "UNIPROTID")
+    #     res <- res[contrast[,..convertColumns], nomatch = 0]
+    #     names(res) <- c("UNIPROTID", names(tba[,2:ncol(tba)]), convertColumns[-1])
+    #     
+    #     setcolorder(res, c(convertColumns, names(tba[,2:ncol(tba)])))
+    # 
+    #     v <- volcano(res, abstraction = input$abstractionlevel)
+    #     
+    # })
+    # 
+    # getReg <- reactive({
+    #     data.table("Upregulated" = contrast[logFC <= 0 & adj.P.Val < 0.05, .N], "Downregulated" = contrast[logFC > 0 & adj.P.Val < 0.05, .N])
+    #     
+    # })
 
 
     
@@ -1863,19 +1921,21 @@ server <- function(session, input, output) {
     
     
     output$downloadReport <- downloadHandler(
+        
         filename = function() {
-            paste(gsub("condition", "", rcont$contrasts), gsub(".csv", "", maindata$inFile$name), "html", sep = ".")
+            #paste(gsub("condition", "", rcont$contrasts), gsub(".csv", "", maindata$inFile$name), "html", sep = ".")
+            paste("hello.html")
         },
         content = function(file) {
-            src <- normalizePath('report_file.Rmd')
+            src <- normalizePath('report.Rmd')
             
             # temporarily switch to the temp dir, in case you do not have write
             # permission to the current working directory
             owd <- setwd(tempdir())
             on.exit(setwd(owd))
-            file.copy(src, 'report_file.Rmd', overwrite = TRUE) 
+            file.copy(src, 'report.Rmd', overwrite = TRUE) 
             
-            out <- rmarkdown::render('report_file.Rmd')
+            out <- rmarkdown::render('report.Rmd')
             file.rename(out, file)
         }
     )

@@ -14,8 +14,6 @@ ora <- function(gene,
     database <- REACTOME_low
   }
 
-
-
   # Genes and their counts in input and background, for each pathway
   dt <- database[, list(genes      = list(UniprotID[UniprotID %in% gene]),
                         background = list(UniprotID),

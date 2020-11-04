@@ -7,10 +7,6 @@ require(DT)
 
 
 
-    
-
-
-
 # Notification menus ----
 
 help <- shinydashboard::dropdownMenuOutput("helpMenu")
@@ -57,9 +53,7 @@ sidebar <- dashboardSidebar(
                  menuSubItem("Missing  values", tabName = "filters", href = NULL, newtab = TRUE,
                              icon = shiny::icon("angle-double-right"), selected = F),
                  startExpanded = T
-                 
-                 # menuSubItem("Data type", tabName = "datatype", href = NULL, newtab = TRUE,
-                 #             icon = shiny::icon("angle-double-right"), selected = F)
+
         ),
         menuItemOutput("qualityrm"),
         menuItemOutput("quality"),
@@ -84,7 +78,7 @@ sidebar <- dashboardSidebar(
              margin-top: 2px;
              color: #fff;"),
     sidebarMenu(id = "sidebarmenu",
-        menuItem("Validate IDs", tabName = "validateIDs", icon = icon("check-square")),
+        menuItem("Identifier tools", tabName = "validateIDs", icon = icon("font")),
         menuItem("Goodness-of-fit", tabName = "goodnessOfFit", icon = icon("chart-bar")),
         menuItem("Protein structures", tabName = "structures", icon = icon("fingerprint")),
         menuItem("Generate report", tabName = "file-export", icon = icon("file-download"))
@@ -255,17 +249,6 @@ body <- dashboardBody(
                            ))
                     )),
 
-
-
-        # Data summary
-
-        # tabItem(tabName = "data-summary",
-        #         box(title = "NA frequencies", status = "warning", solidHeader = F,
-        #             plotOutput("nafreq"))
-        # ),
-
-
-        
         # Filters: NA cutoff
         
         tabItem(tabName = "filters",
@@ -304,19 +287,23 @@ body <- dashboardBody(
                     column(width = 6,
                         box(width = NULL,
                             title = "Validate IDs", status = "primary", solidHeader = F,
-                            p(helpText("NB: Depending on the number of IDs, this process may take a long time to run.")),
+                            p(helpText(tags$strong('Please note: '), 'Depending on the number of IDs, this process may take a long time to run.')),
                             actionButton("listCandidates", label = "List outdated IDs"),
                             p(),
                             hr(),
-                            DT::DTOutput("obsolete")
-                        )
+                            p(),
+                            DT::DTOutput("obsolete"))
                     ),
                     column(width = 6,
                            box(width = NULL,
                                title = "Convert IDs",
-                               textAreaInput("idstoconvert", "Identifiers"),
-                               actionButton("convertids", label = "Convert IDs")
-                               )
+                               helpText("Insert a list of identifiers. Separators are automatically detected."),
+                               textAreaInput("idstoconvert", ""),
+                               actionButton("convertids", label = "Convert IDs"),
+                               p(),
+                               hr(),
+                               p(),
+                               DT::DTOutput("convertedids"))
                            )
                 )
         ),
@@ -351,13 +338,20 @@ body <- dashboardBody(
         tabItem(tabName = "file-export",
                 box(
                     title = "Generate report", status = "primary", solidHeader = F,
-                    helpText("Exports generated content to an Rmarkdown document"),
-                    h6(actionLink("selectall","Select all"), strong(" | "), actionLink("deselectall","Deselect all")),
-                    checkboxGroupInput("export_filtering", "Filtering", inline = T, choices = c("Missing values")),
-                    checkboxGroupInput("export_data_inspection", "Data inspection", inline = T, choices = c("PCA 2D", "PCA 3D", "UMAP", "Heatmap")),
-                    checkboxGroupInput("export_de", "Differential analysis", inline = T, choices = c("Fold-change", "P-values")),
-                    
-                    textAreaInput("additionalNotes", "Additional notes"),
+                    p(helpText("Exports generated content to an Rmarkdown document")),
+                    pickerInput(
+                        inputId = "p2",
+                        label = "",
+                        choices = list("Dataset options" = c("Data summary", "Missing values"),
+                                       "Inspect data" = c("PCA 2D", "PCA 3D", "UMAP", "Heatmap"),
+                                       "Differential analysis" = "Differential expression",
+                                       "Enrichment analysis" = c("Pathway enrichment", "Volcano plot", "Sankey diagram")),
+                        multiple = TRUE,
+                        options = list(
+                            `actions-box` = TRUE,
+                            `deselect-all-text` = "Deselect all",
+                            `select-all-text` = "Select all"
+                        )),
                     
                     downloadButton("downloadReport", "Generate report")
                     
@@ -498,8 +492,8 @@ body <- dashboardBody(
                            ),
                     column(width = 9,
                            tabBox(width = NULL,
-                                  tabPanel("Enrichment of up-regulated genes", DT::dataTableOutput("upregulated_pathways_table", width = 900)),
-                                  tabPanel("Enrichment of down-regulated genes", DT::dataTableOutput("downregulated_pathways_table", width = 900)))
+                                  tabPanel("Enrichment of up-regulated genes", DT::dataTableOutput("upregulated_pathways_table")),
+                                  tabPanel("Enrichment of down-regulated genes", DT::dataTableOutput("downregulated_pathways_table")))
                            )
                 )
                 ,

@@ -1,6 +1,5 @@
 require(data.table)
 
-
 source("bin/All_Classes.R")
 source("bin/hierarchy.R")
 source("bin/obsolete.R")
@@ -14,15 +13,14 @@ undup <- function(genes){
 }
 
 
-
+convertColumns <- c("UNIPROTID", "ENTREZID", "SYMBOL", "GENEID", "PROTEINID")
+assign("convertColumns", convertColumns, envir = .GlobalEnv)
 
 # Interaction data ----
 
 if(!exists("interactions")){
  
  interactions <- data.table::fread("lib/interactions5.txt.gz")
- #interactions <- arrow::read_feather("lib/interactions.feather")
- #interactions <- as.data.table(interactions)
  assign("interactions", interactions, envir = .GlobalEnv)
  
  pdesc <- data.table::fread("lib/protein_descriptions.txt.gz")
