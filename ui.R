@@ -21,6 +21,7 @@ header <- dashboardHeader(help,
                                     tags$img(id = 'load-img', src = 'dna.svg', style = 'margin-top: -12px; margin-left: 5px; width: 45px; opacity: .9;'),
                                     tags$span(id = "process-counter", 0, style = 'font-size: 14px; font-family: "Courier"; vertical-align: top; padding-left: 3px;')
                                   ),
+                                  tags$span(class = "loading-menus", tags$text("Loading libraries, please wait...")),
                           tags$i(id = "notif-icon"),
                           tags$div(class = "ml11",
                                    tags$span(class = "text-wrapper2",

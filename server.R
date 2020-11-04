@@ -69,6 +69,9 @@ get_delim <- function(c){
 # Server ----
 server <- function(session, input, output) {
     
+    removeUI(selector = "#notifications-wrapper > span")
+    
+    
     # Define reactive variables ----
     notifications <- reactiveValues()
     tasks <- reactiveValues()
