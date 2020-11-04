@@ -1944,14 +1944,14 @@ server <- function(session, input, output) {
             paste("hello.html")
         },
         content = function(file) {
-            setwd("~/ProteoMill/")
-            src <- normalizePath('reports/report.Rmd')
+            #src <- normalizePath('reports/report.Rmd')
             
             # temporarily switch to the temp dir, in case you do not have write
             # permission to the current working directory
             # owd <- setwd(tempdir())
             # on.exit(setwd(owd))
-            file.copy(src, 'report.Rmd', overwrite = TRUE) 
+            print(getwd())
+            file.copy('reports/report.Rmd', 'report.Rmd', overwrite = TRUE) 
             
             out <- rmarkdown::render('report.Rmd')
             file.rename(out, file)
