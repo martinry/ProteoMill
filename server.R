@@ -1948,8 +1948,8 @@ server <- function(session, input, output) {
             
             # temporarily switch to the temp dir, in case you do not have write
             # permission to the current working directory
-            owd <- setwd(tempdir())
-            on.exit(setwd(owd))
+            # owd <- setwd(tempdir())
+            # on.exit(setwd(owd))
             file.copy(src, 'report.Rmd', overwrite = TRUE) 
             
             out <- rmarkdown::render('report.Rmd')
