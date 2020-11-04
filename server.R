@@ -1941,24 +1941,24 @@ server <- function(session, input, output) {
         
         filename = function() {
             #paste(gsub("condition", "", rcont$contrasts), gsub(".csv", "", maindata$inFile$name), "html", sep = ".")
-            paste("hello.html")
+            paste("proteomill-report.html")
         },
         content = function(file) {
             
             cat(file=stderr(), paste0(getwd()))
             
-            src <- normalizePath('reports/report.Rmd')
+            src <- normalizePath('reports/report.rmd')
             
             # temporarily switch to the temp dir, in case you do not have write
             # permission to the current working directory
-            owd <- setwd(tempdir())
-            on.exit(setwd(owd))
+            # owd <- setwd(tempdir())
+            # on.exit(setwd(owd))
             
-            cat(file=stderr(), paste0(getwd()))
+            # cat(file=stderr(), paste0(getwd()))
             
-            file.copy('reports/report.Rmd', 'report.Rmd', overwrite = TRUE) 
+            file.copy('reports/report.rmd', 'reports/tmp/report.rmd', overwrite = TRUE) 
             
-            out <- rmarkdown::render('report.Rmd')
+            out <- rmarkdown::render('reports/report.rmd')
             file.rename(out, file)
         }
     )
