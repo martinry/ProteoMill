@@ -233,7 +233,7 @@ server <- function(session, input, output) {
             updateNotifications("This feature is not yet available.","exclamation-triangle", "danger")
         }
         
-        if(input$sidebarmenu == "about"){
+        if(input$sidebarmenu == "blast"){
             updateNotifications("This feature is not yet available.","exclamation-triangle", "danger")
         }
         
@@ -1051,14 +1051,7 @@ server <- function(session, input, output) {
         
         dw <- maindata$data_wide
         sinf <- sampleinfo$samples
-        
-        assign("dw", dw, envir = .GlobalEnv)
-        assign("sinf", sinf, envir = .GlobalEnv)
-        
-        assign("coeff", coeff, envir = .GlobalEnv)
-        
-        
-        
+
         if(input$setDEengine == 2) {
             
             dw <- maindata$data_wide
@@ -1104,6 +1097,12 @@ server <- function(session, input, output) {
             names(contrast) <- c(sampleinfo$sID, names(contrast[, 2:ncol(contrast)]))
             setcolorder(contrast, c(convertColumns, "logFC", "logFC.SE", "baseMean", "stat", "P.Value", "adj.P.Val"))
             
+            # Reduce network load
+            if(contrast[, .N] > 2000) {
+                # x <- unname(quantile(abs(contrast$logFC)))
+                # x <- round(x[5] - x[4])
+                updateNumericInput(session = session, "fccutoff", value = 2)
+            }
 
         } else if(input$setDEengine == 1) {
             
@@ -1158,11 +1157,16 @@ server <- function(session, input, output) {
             names(contrast) <- c(sampleinfo$sID, names(contrast[, 2:ncol(contrast)]))
             setcolorder(contrast, c(convertColumns, "logFC", "CI.L", "CI.R", "t", "P.Value", "adj.P.Val", "B"))
             
-            
+            # Reduce network load
+            if(contrast[, .N] > 2000) {
+                # x <- unname(quantile(abs(contrast$logFC)))
+                # x <- round(x[5] - x[4])
+                updateNumericInput(session = session, "fccutoff", value = 2)
+            }
             
         }
         
-        assign("contrast", contrast, envir = .GlobalEnv)
+        #assign("contrast", contrast, envir = .GlobalEnv)
         
         return( contrast )
         
@@ -1333,8 +1337,8 @@ server <- function(session, input, output) {
             updateNotifications("Too few differential genes.","exclamation-triangle", "danger")
         } else {
             
-            updateNumericInput(session = session, inputId = "pvaluecutoff", label = "Maximum adj. Pvalue", value = input$min_pval)
-            updateNumericInput(session = session, inputId = "fccutoff", label = "Minimum abs. log2FC", value = input$min_fc)
+            #updateNumericInput(session = session, inputId = "pvaluecutoff", label = "Maximum adj. Pvalue", value = input$min_pval)
+            #updateNumericInput(session = session, inputId = "fccutoff", label = "Minimum abs. log2FC", value = input$min_fc)
             
             UPREGULATED_genes <- contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval, UNIPROTID]
             DOWNREGULATED_genes <- contrast[logFC < (input$min_fc * -1) & adj.P.Val < input$min_pval, UNIPROTID]
@@ -1397,7 +1401,10 @@ server <- function(session, input, output) {
                     sID <- sampleinfo$sID
                     
                     res <- enrichment_results(UPREGULATED_pathways, DOWNREGULATED_pathways, contrast)
-
+                    
+                    
+                    # # # #
+                    
                     tba <- contrast[!(UNIPROTID %in% res$Gene), c("UNIPROTID", "logFC", "P.Value")]
                     colnames(tba) <- c("Gene", "logFC", "P.Value")
                     
@@ -1412,16 +1419,20 @@ server <- function(session, input, output) {
                     
                     res <- rbindlist(list(res, tba))
                     
-                    res$Pathway_name <- stringr::str_wrap(res$Pathway_name, 50)
+                    
+                    # # # #
                     
                     setkeyv(res, "Gene")
                     setkeyv(contrast, "UNIPROTID")
                     res <- res[contrast[,..convertColumns], nomatch = 0]
-                    names(res) <- c("UNIPROTID", names(tba[,2:ncol(tba)]), convertColumns[-1])
                     
-                    setcolorder(res, c(convertColumns, names(tba[,2:ncol(tba)])))
+                    names(res) <- c("UNIPROTID", c("ReactomeID", "Pathway_name", "TopReactomeName", "P.Adj", "logFC", "P.Value"), convertColumns[-1])
+                    setcolorder(res, c(convertColumns, c("ReactomeID", "Pathway_name", "TopReactomeName", "P.Adj", "logFC", "P.Value")))
+
+                    res$Pathway_name <- stringr::str_wrap(res$Pathway_name, 50)
 
                     pathways$v <- volcano(res, "Lowest", sID)
+                    
 
                     plots$volcano <- plotly::ggplotly(pathways$v$volcano_plot) %>%
                         layout(dragmode = "select")
@@ -1433,9 +1444,11 @@ server <- function(session, input, output) {
             
             output$volcano_plot2 <- renderPlotly(
                 {
-                    plotly::ggplotly(pathways$v$volcano_plot, width = 700, height = 500) %>%
+                    gg <- plotly::ggplotly(pathways$v$volcano_plot, width = 700, height = 500) %>%
                         layout(dragmode = "select") %>% 
                         config(scrollZoom = T)
+                    gg$x$data[[1]]$visible <- 'legendonly'  
+                    gg
                     
                 })
             
@@ -1513,11 +1526,10 @@ server <- function(session, input, output) {
     })
     
     output$xxxx <- renderVisNetwork({
-
+        
         contrast <- rcont$contrast
         res <- pathways$v$res
         sID <- sampleinfo$sID
-    
         
         dir <- input$network_regulation
 
@@ -1572,7 +1584,6 @@ server <- function(session, input, output) {
                 from = ints2$protein1,
                 to = ints2$protein2
             )
-        
 
         g <- igraph::graph_from_data_frame(edges, directed = F, vertices = nodes)
         
@@ -1662,7 +1673,7 @@ server <- function(session, input, output) {
         
         if(!is.null(data_wide)){
             
-            data_wide_NAex <- na.exclude(dframe(maindata$data_origin, sampleinfo$sID))
+            data_wide_NAex <- na.exclude(dframe(maindata$data_origin[1:100], sampleinfo$sID))
             
             fit.lnorm <- tryCatch( apply(data_wide_NAex, 1, function(x) fitdistrplus::fitdist(as.numeric(x), "lnorm")),
                                    error = function(e) print(e))
@@ -1673,7 +1684,9 @@ server <- function(session, input, output) {
             # Render "data type" distribution plots
             output$distributions <- renderPlot({
                 
-                updateSliderInput(session, inputId = "setdist", max = nrow(na.omit(maindata$data_origin)))
+                m <- nrow(data_wide_NAex)
+                
+                updateSliderInput(session, inputId = "setdist", max = m)
                 
                 d1 <- fit.norm
                 d2 <- fit.lnorm
@@ -1704,8 +1717,6 @@ server <- function(session, input, output) {
     observeEvent(input$listCandidates, {
         
         data_wide <- maindata$data_wide
-        
-        assign("data_wide", data_wide, envir = .GlobalEnv)
         
         if(!is.null(data_wide)){
             
@@ -1765,13 +1776,9 @@ server <- function(session, input, output) {
         
         if(input$idstoconvert != "") {
             
-            assign("idstoconvert", input$idstoconvert, envir = .GlobalEnv)
-            
             keys <- gsub("\n", ";", input$idstoconvert)
             
             keys <- strsplit(gsub("[^[:alnum:] ]", " ", keys), " +")[[1]]
-            
-            assign("keys", keys, envir = .GlobalEnv)
             
             tr1 <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = keys, column = "SYMBOL", keytype = "UNIPROTID", multiVals = "first")
             tr2 <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = keys, column = "UNIPROTID", keytype = "ENTREZID", multiVals = "first")

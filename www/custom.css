@@ -1,6 +1,12 @@
 
 /* force rewrite the skin min css */
 
+#sidebarItemExpanded > ul:nth-child(5) > li:nth-child(3), #sidebarItemExpanded > ul:nth-child(5) > li:nth-child(4) {
+	opacity: .4 !important;
+}
+
+li:nth-child(3)
+
 #ss-connect-dialog {
 	bottom: 30%!important;
     left: 50%!important;

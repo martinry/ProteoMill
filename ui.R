@@ -80,6 +80,7 @@ sidebar <- dashboardSidebar(
     sidebarMenu(id = "sidebarmenu",
         menuItem("Identifier tools", tabName = "validateIDs", icon = icon("font")),
         menuItem("Goodness-of-fit", tabName = "goodnessOfFit", icon = icon("chart-bar")),
+        menuItem("BLAST", tabName = "blast", icon = icon("dna")),
         menuItem("Protein structures", tabName = "structures", icon = icon("fingerprint")),
         menuItem("Generate report", tabName = "file-export", icon = icon("file-download"))
     ),
@@ -422,7 +423,7 @@ body <- dashboardBody(
         tabItem(tabName = "contrasts",
                 box(
                     title = "Set contrasts", status = "primary", solidHeader = F,
-                    helpText("Which groups should be differentially expressed?"),
+                    helpText("Which treatments should be compared?"),
                     selectInput("contrast1", label = "Condition 1",
                                 choices = list("Condition1" = 1,
                                                "Condition2" = 2,
@@ -501,13 +502,21 @@ body <- dashboardBody(
         ),
         tabItem(tabName = "pathwayvisualization",
                 fluidRow(
-                    box(width = 3,
-                        actionButton("loadPathwayPlots", "Load plots")
-                    ),
-                    tabBox(width = 9,
-                    #tabPanel("Similarity matrix", plotOutput("similarity_plot", height = 850)),
-                    tabPanel("Volcano plot", plotly::plotlyOutput("volcano_plot", height = 750)),
-                    tabPanel("Sankey diagram", networkD3::sankeyNetworkOutput("sankey", height = 750)))
+                    column(width = 3,
+                           box(width = NULL,
+                               actionButton("loadPathwayPlots", "Load plots")
+                               ),
+                           box(width = NULL,
+                               numericInput("displaylimit", label = "Limit by enrichment P-value", value = "1", min = 0, max = 1, step = 0.1)
+                               )
+                           ),
+                    column(width = 9,
+                           tabBox(width = NULL,
+                                  tabPanel("Volcano plot", plotly::plotlyOutput("volcano_plot", height = 750)),
+                                  tabPanel("Sankey diagram", networkD3::sankeyNetworkOutput("sankey", height = 750))
+                                  )
+                           )
+
                 )),
         tabItem(tabName = "interactions",
                 fluidRow(
@@ -562,7 +571,7 @@ body <- dashboardBody(
                                    label = "Interaction confidence",
                                    min = 0,
                                    max = 10,
-                                   value = 7,
+                                   value = 9,
                                    step = .1
                                )
                            )
