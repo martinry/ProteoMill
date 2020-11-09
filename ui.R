@@ -334,6 +334,24 @@ body <- dashboardBody(
                     )
                 )
         ),
+        
+        # BLAST
+        
+        tabItem(tabName = "blast",
+                fluidRow(
+                    column(width = 3,
+                           box(width = NULL,
+                               helpText("Find closest human homologue using BLAST.")
+                               )
+                           ),
+                    column(width = 3,
+                           box(width = NULL,
+                               
+                           )
+                    )
+                )
+            
+        ),
 
         # Data type: distributions
         

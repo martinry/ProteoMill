@@ -7,18 +7,10 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-
 ## Principal Component Analysis
-Principal component analysis (PCA) is a technique used to emphasize variation and bring out strong patterns in a dataset. It's often used to make data easy to explore and visualize.
+A common goal in many of ProteoMill’s functionalities is to reduce data complexity, and to provide a framework for extracting elements of biological relevance. PCA is a technique that describes dimensions of large variability in a dataset. The datapoints cluster together based on the similarity of their expression profiles.
 
-### 2D example
-First, consider a dataset in only two dimensions, like (height, weight). This dataset can be plotted as points in a plane. But if we want to tease out variation, PCA finds a new coordinate system in which every point has a new (x,y) value. The axes don't actually mean anything physical; they're combinations of height and weight called "principal components" that are chosen to give one axes lots of variation.
-
-![](../img/pca1.png) 
-
-
-### 3D example
-With three dimensions, PCA is more useful, because it's hard to see through a cloud of data. In the example below, the original data are plotted in 3D, but you can project the data into 2D through a transformation no different than finding a camera angle: rotate the axes to find the best angle. To see the "official" PCA transformation, click the "Show PCA" button. The PCA transformation ensures that the horizontal axis PC1 has the most variation, the vertical axis PC2 the second-most, and a third axis PC3 the least. Obviously, PC3 is the one we drop.
+![](../img/pca1.png){width=450px}
 
 ### UMAP
 
