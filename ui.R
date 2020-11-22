@@ -502,9 +502,6 @@ body <- dashboardBody(
                            box(width = NULL,
                                actionButton("loadPathwayPlots", "Load plots")
                                ),
-                           box(width = NULL,
-                               numericInput("displaylimit", label = "Limit by enrichment P-value", value = "1", min = 0, max = 1, step = 0.1)
-                               )
                            ),
                     column(width = 9,
                            tabBox(width = NULL,
