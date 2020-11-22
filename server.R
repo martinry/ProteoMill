@@ -1,27 +1,36 @@
 # Load packages ----
-require(AnnotationDbi)
-require(EnsDb.Hsapiens.v86)
-require(Biobase)
+
+# Plotting
+require(pheatmap)
 require(ggplot2)
 require(ggrepel)
 require(RColorBrewer)
-require(dplyr)
-require(plotly)
-require(data.table)
-require(networkD3)
-require(XML)
-require(mixOmics)
-require(stringr)
-require(factoextra)
-require(pheatmap)
-require(rmarkdown)
-require(fitdistrplus)
-require(igraph)
-require(R.utils)
 require(umap)
-require(knitr)
+require(factoextra)
+require(fitdistrplus)
+require(plotly)
+require(networkD3)
+require(igraph)
+
+# Annotation
+require(AnnotationDbi)
+require(EnsDb.Hsapiens.v86)
+
+# Statistics
 require(limma)
 require(DESeq2)
+require(mixOmics)
+
+# Parsing and reshaping
+require(stringr)
+require(dplyr)
+require(data.table)
+require(XML)
+require(rmarkdown)
+require(R.utils)
+require(knitr)
+require(Biobase)
+
 
 # Generic functions ----
 
@@ -69,6 +78,7 @@ get_delim <- function(c){
 # Server ----
 server <- function(session, input, output) {
     
+    # Remove text "Loading packages, please wait..."
     removeUI(selector = "#notifications-wrapper > span")
     
     
@@ -81,7 +91,7 @@ server <- function(session, input, output) {
     pathways <- reactiveValues()
     plots <- reactiveValues()
     
-    sampleinfo$sID <- identifier(2)
+    sampleinfo$sID <- identifier(2) # Set UNIPROTID as default
     
     # Notifications ----
     
@@ -339,7 +349,6 @@ server <- function(session, input, output) {
     
     # Build sample info ----
     
-    #group <- list()
     sample_data <- function(data) {
         samples <- names(data[, -..convertColumns])
         condition <- as.factor(gsub('_.*', '', samples))
@@ -423,22 +432,24 @@ server <- function(session, input, output) {
             header = T)
         
         maindata$data_wide <- maindata$data_wide[!duplicated(names(maindata$data_wide)[1])]
-
+        
+        # Convert all values to numeric
         for(j in seq_along(maindata$data_wide)){
             set(maindata$data_wide, i = which(maindata$data_wide[[j]] == 0 & is.numeric(maindata$data_wide[[j]])), j = j, value = NA)
         }
         
+        # Remove completely empty rows
         empty_rows <- apply(maindata$data_wide[,2:ncol(maindata$data_wide)], 1, function(x) all(is.na(x)))
         maindata$data_wide <- maindata$data_wide[!empty_rows,]
         
+        # We keep this variable as the originally uploaded dataset.
+        # Used later to enable reverting to original from subsetted dataset.
         maindata$data_origin <- maindata$data_wide
         
-        # convertColumns <- c("UNIPROTID", "ENTREZID", "SYMBOL", "GENEID", "PROTEINID")
-        # 
-        # assign('convertColumns', convertColumns, envir = .GlobalEnv)
-        # 
+        # 10 first rows for converting IDs
         keys <- maindata$data_wide[, as.character(.SD[[1L]])][1:10]
         
+        # Guess input ID based on successful conversions
         if(i == "auto") {
             
             tr1 <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = keys, column = "SYMBOL", keytype = "UNIPROTID", multiVals = "first")
@@ -569,8 +580,6 @@ server <- function(session, input, output) {
     
     # File input: Demo data ----
     observeEvent(input$useDemoData, {
-        
-        
 
         # Sample 1
         
@@ -1528,7 +1537,7 @@ server <- function(session, input, output) {
         
     })
     
-    output$xxxx <- renderVisNetwork({
+    output$interaction_network <- renderVisNetwork({
         
         contrast <- rcont$contrast
         res <- pathways$v$res
@@ -1644,7 +1653,7 @@ server <- function(session, input, output) {
                 
                 selection <- unlist(strsplit(input$network_proteins, get_delim(input$network_proteins)))
 
-                visNetworkProxy("xxxx") %>%
+                visNetworkProxy("interaction_network") %>%
                     visUnselectAll() %>%
                     visSelectNodes(id = selection)
                 
@@ -1654,7 +1663,7 @@ server <- function(session, input, output) {
                 # Single item
                 selection <- as.character(input$network_proteins)
 
-                visNetworkProxy("xxxx") %>%
+                visNetworkProxy("interaction_network") %>%
                     visUnselectAll() %>%
                     visFocus(id = selection)
             }

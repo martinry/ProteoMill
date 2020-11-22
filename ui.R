@@ -193,16 +193,7 @@ body <- dashboardBody(
                             title = 'Demo data',
                             selectInput("selectDemoData", label = "Select a dataset",
                                         list(`Proteomics` = 
-                                                 list("Sample dataset 1" = 1,
-                                                      "Sample dataset 2" = 2,
-                                                      "Sample dataset 3" = 3,
-                                                      "Sample dataset 4" = 4),
-
-                                             `Transcriptomics` = 
-                                                 list("Sample dataset 5" = 5,
-                                                      "Sample dataset 6" = 6,
-                                                      "Sample dataset 7" = 7,
-                                                      "Sample dataset 8" = 8))),
+                                                 list("Sample dataset 1" = 1))),
                             actionButton("useDemoData", label = "Use demo data"),
                             downloadButton('downloadDemo',"Download")
                         )
@@ -221,9 +212,6 @@ body <- dashboardBody(
                            ),
                            box(title = "Include/exclude samples",
                                width = NULL,
-                               #helpText("Deselect samples that you want to exclude."),
-                               #h6(actionLink("samplesselectall","Select all"), strong(" | "), actionLink("samplesdeselectall","Deselect all")),
-                               #checkboxGroupInput("includesamples", "", inline = T, choices = list()),
                                pickerInput(
                                    inputId = "includesamples", 
                                    label = "Deselect a sample to exclude it", 
@@ -236,8 +224,6 @@ body <- dashboardBody(
                                    multiple = TRUE
                                ),
                                actionButton("confirmexclude", label = "Confirm selection"))),
-                               #rHandsontableOutput("hot"))),
-                               #DT::dataTableOutput("sampletable"))),
                     column(width = 7,
                            box(width = NULL,
                                infoBoxOutput("datainfoBox"),
@@ -282,7 +268,7 @@ body <- dashboardBody(
         ),
 
 
-        # Data type: distributions
+        # Identifiers
         
         tabItem(tabName = "validateIDs",
                 fluidRow(
@@ -353,7 +339,7 @@ body <- dashboardBody(
             
         ),
 
-        # Data type: distributions
+        # Generate report
         
         tabItem(tabName = "file-export",
                 box(
@@ -436,8 +422,7 @@ body <- dashboardBody(
 
         ),
         
-        # Differential expression analysis : ANOVA, Contrasts
-                #DT::dataTableOutput("contrasttable") ),
+        # Differential expression analysis
         
         tabItem(tabName = "contrasts",
                 box(
@@ -453,11 +438,7 @@ body <- dashboardBody(
                                                "Condition2" = 2,
                                                "Condition3" = 3),
                                 selected = 2),
-                    # radioButtons("pairing", label = "Design",
-                    #              choices = list("Paired" = 1,
-                    #                             "Unpaired" = 2),
-                    #              selected = 2,
-                    #              inline = T),
+
                     actionButton("setContrast", "Select"),
                     p(),
                     hr(),
@@ -469,10 +450,6 @@ body <- dashboardBody(
         tabItem(tabName = "differentialexpression",
                 fluidRow(
                     column(width = 12,
-                    # box(width = NULL,
-                    #     downloadButton('download',"Download"),
-                    #     tags$p(),
-                    #     tabPanel("Table", DT::dataTableOutput("diffexptable")))
                     
                     box(width = NULL,
                         downloadButton('download',"Download")),
@@ -542,7 +519,7 @@ body <- dashboardBody(
                     box(
                         width = 6,
                         height = 520,#464,
-                        visNetworkOutput("xxxx")
+                        visNetworkOutput("interaction_network")
                     ),
                     box(
                         width = 6,
@@ -555,28 +532,14 @@ body <- dashboardBody(
                     column(width = 3,
                            box(
                                title = "Network settings", width = NULL,
-                               # radioButtons("network_layout_options", label = "Layout options",
-                               #              choices = list(
-                               #                  "Nicely" = 1,
-                               #                  "Circle" = 2,
-                               #                  "Grid" = 3,
-                               #                  "Sphere" = 4,
-                               #                  "Randomly" = 5
-                               #              ), inline = T),
+
                                radioButtons(
                                    "network_regulation",
                                    label = "Subset by up- or down-regulation",
                                    choices = list("Up-regulated" = 1, "Down-regulated" = 2, "Both" = 3),
                                    selected = 3,
                                    inline = F),
-                               # numericInput(
-                               #     "pvaluecutoff",
-                               #     label = "Maximum adj. Pvalue",
-                               #     min = 0,
-                               #     max = 1,
-                               #     value = 0.05,
-                               #     step = 0.0001
-                               # ),
+                               
                                numericInput(
                                    "fccutoff",
                                    label = "Minimum abs. log2FC",

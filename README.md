@@ -1,30 +1,20 @@
 # Description
-Quantative Omics Discovery Base is a fast, efficient web-based tool for exploring functional enrichment of expression sets.
+ProteoMill is a fast, efficient web-based tool for exploring functional enrichment of expression sets.
 
+# Directory structure
 ui.R contains the structure of visual components
 server.R contains core functions that communicate with ui.R
-global.R contains additional core functions and is the link between the server functions and the global environment in R
+global.R contains additional core functions and is the link between the server functions and the global environment in R Shiny
 
-Additional scripts are found in /bin and each represents a major section of the tool.
+bin/ contains additional scripts, each of which represents some major functionality of the tool.
+contact/ is the output directory for the in-app contact form.
+data/ contains all public and private (for testing) datasets.
+lib/ contains all annotation data from STRING and Reactome
+reports/ is a template document used for the "Generate report" feature.
+www/ contains various web elements: CSS, javascript, icons, fonts, and a sub-directory, doc/, which contains all in-app modal
+displays such as News.
 
-# Installation
-
-In order to run this tool, first install
-
-devtools::install_github('martinry/qob')
-
-and download required annotation data from
-
-https://www.dropbox.com/s/gs6l1alc37i1cx2/Large_files.zip?dl=0
-
-Store this folder in your home directory.
-
-
-Finally, install the QODB in your home directory
-
-git clone https://github.com/martinry/qodb-shiny.git
-
-
+# Run locally
 The software has been tested in RStudio. Open one of the following files in RStudio:
 - ui.R
 - server.R
