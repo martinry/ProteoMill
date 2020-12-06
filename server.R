@@ -311,8 +311,8 @@ server <- function(session, input, output) {
             menuItem("Inspect data", icon = icon("check-circle"), href = NULL,
                      menuSubItem("PCA", tabName = "PCA", href = NULL, newtab = TRUE,
                                  icon = shiny::icon("angle-double-right"), selected = F),
-                     menuSubItem("UMAP", tabName = "UMAP", href = NULL, newtab = TRUE,
-                                 icon = shiny::icon("angle-double-right"), selected = F),
+                     # menuSubItem("UMAP", tabName = "UMAP", href = NULL, newtab = TRUE,
+                     #             icon = shiny::icon("angle-double-right"), selected = F),
                      menuSubItem("Heatmap", tabName = "samplecorr", href = NULL, newtab = TRUE,
                                  icon = shiny::icon("angle-double-right"), selected = F)
             )
@@ -450,6 +450,11 @@ server <- function(session, input, output) {
         # 10 first rows for converting IDs
         keys <- maindata$data_wide[, as.character(.SD[[1L]])][1:10]
         
+        
+        # Peptide data input
+        
+        
+        
         # Guess input ID based on successful conversions
         if(i == "auto") {
             
@@ -533,6 +538,8 @@ server <- function(session, input, output) {
         
         maindata$data_origin <- maindata$data_wide
         
+        assign("data_wide", maindata$data_wide, envir = .GlobalEnv)
+        
 
         setkey(maindata$data_wide, "UNIPROTID")
         setkey(pdesc, "UNIPROTID")
@@ -606,8 +613,8 @@ server <- function(session, input, output) {
     # Data summary plot ----
     
     output$datainfoBox <- renderInfoBox({
-        if(!is.null(sampleinfo$samples)) infoBox("Genes", maindata$data_wide[, .N])
-        else infoBox("Genes", 0)
+        if(!is.null(sampleinfo$samples)) infoBox("Proteins", maindata$data_wide[, .N])
+        else infoBox("Proteins", 0)
     })
     
     output$sampleinfoBox <- renderInfoBox({
@@ -690,7 +697,7 @@ server <- function(session, input, output) {
                     geom_boxplot(width=0.1, fill="white") +
                     ggthemes::theme_clean() +
                     theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust = 1), legend.position = "none") +
-                    xlab("Samples") + ylab("Log2 Expression") +
+                    xlab("") + ylab("Log2 Expression") +
                     scale_fill_brewer(palette = "BuGn")
                 
                 plots$violin1
@@ -703,7 +710,7 @@ server <- function(session, input, output) {
                     geom_boxplot(width=0.1, fill="white") +
                     ggthemes::theme_clean() +
                     theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust = 1), legend.position = "none") +
-                    xlab("Samples") + ylab("Log2 Expression") +
+                    xlab("") + ylab("Log2 Expression") +
                     scale_fill_brewer(palette = "BuGn")
                 
                 plots$violin2
@@ -731,8 +738,6 @@ server <- function(session, input, output) {
             NA_frequency <- table(rowSums(allNA))
             
             naf <- as.data.frame(NA_frequency)
-            
-            
             
             
             # Draw plot
@@ -1207,9 +1212,9 @@ server <- function(session, input, output) {
             
             df <- t(df)
             
-            rownames(df) <- c("DE genes (all)",
-                              "DE genes (up-regulated)",
-                              "DE genes (down-regulated)",
+            rownames(df) <- c("DE proteins (all)",
+                              "DE proteins (up-regulated)",
+                              "DE proteins (down-regulated)",
                               "Mean logFC (all)",
                               "Mean logFC (up-regulated)",
                               "Mean logFC (down-regulated)",
@@ -1298,8 +1303,8 @@ server <- function(session, input, output) {
         
         contrast <- rcont$contrast
           
-        up <- paste("Up-regulated:", contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval, .N], "genes", sep = " ")
-        down <- paste("Down-regulated:", contrast[logFC < (input$min_fc * -1) & adj.P.Val < input$min_pval, .N], "genes", sep = " ")
+        up <- paste("Up-regulated:", contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval, .N], "proteins", sep = " ")
+        down <- paste("Down-regulated:", contrast[logFC < (input$min_fc * -1) & adj.P.Val < input$min_pval, .N], "proteins", sep = " ")
         
         HTML(paste(up, down, '<br/>', sep = '<br/>'))
         
@@ -1347,7 +1352,7 @@ server <- function(session, input, output) {
         contrast <- rcont$contrast
         
         if(contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval, .N] < 3 | contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval, .N] < 3){
-            updateNotifications("Too few differential genes.","exclamation-triangle", "danger")
+            updateNotifications("Too few differential proteins.","exclamation-triangle", "danger")
         } else {
             
             #updateNumericInput(session = session, inputId = "pvaluecutoff", label = "Maximum adj. Pvalue", value = input$min_pval)

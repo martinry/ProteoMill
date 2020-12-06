@@ -349,7 +349,7 @@ body <- dashboardBody(
                         inputId = "p2",
                         label = "",
                         choices = list("Dataset options" = c("Data summary", "Missing values"),
-                                       "Inspect data" = c("PCA 2D", "PCA 3D", "UMAP", "Heatmap"),
+                                       "Inspect data" = c("PCA 2D", "PCA 3D", "Heatmap"),
                                        "Differential analysis" = "Differential expression",
                                        "Enrichment analysis" = c("Pathway enrichment", "Volcano plot", "Sankey diagram")),
                         multiple = TRUE,
@@ -393,19 +393,19 @@ body <- dashboardBody(
                 ),
                 
                 
-        tabItem(tabName = "UMAP",
-                fluidRow(
-                    column(width = 3,
-                        box(width = NULL,
-                            status = "warning",
-                            actionButton("loadUMAP","Load plot")
-                        )),
-                    column(width = 9,
-                        box(title = "UMAP",
-                            width = NULL,
-                            plotOutput("UMAPplot"))
-                    )
-                )),
+        # tabItem(tabName = "UMAP",
+        #         fluidRow(
+        #             column(width = 3,
+        #                 box(width = NULL,
+        #                     status = "warning",
+        #                     actionButton("loadUMAP","Load plot")
+        #                 )),
+        #             column(width = 9,
+        #                 box(title = "UMAP",
+        #                     width = NULL,
+        #                     plotOutput("UMAPplot"))
+        #             )
+        #         )),
         tabItem(tabName = "samplecorr",
                 fluidRow(
                     column(width = 3,
@@ -463,8 +463,8 @@ body <- dashboardBody(
                     
                     tabBox(width = NULL,
                            tabPanel("Summary statistics", tableOutput("diffexptable_summary")),
-                           tabPanel("Up-regulated genes", DT::dataTableOutput("diffexptable_up")),
-                           tabPanel("Down-regulated genes", DT::dataTableOutput("diffexptable_down")))
+                           tabPanel("Up-regulated proteins", DT::dataTableOutput("diffexptable_up")),
+                           tabPanel("Down-regulated proteins", DT::dataTableOutput("diffexptable_down")))
                     ))
                 ),
 
@@ -489,8 +489,8 @@ body <- dashboardBody(
                            ),
                     column(width = 9,
                            tabBox(width = NULL,
-                                  tabPanel("Enrichment of up-regulated genes", DT::dataTableOutput("upregulated_pathways_table")),
-                                  tabPanel("Enrichment of down-regulated genes", DT::dataTableOutput("downregulated_pathways_table")))
+                                  tabPanel("Enrichment of up-regulated proteins", DT::dataTableOutput("upregulated_pathways_table")),
+                                  tabPanel("Enrichment of down-regulated proteins", DT::dataTableOutput("downregulated_pathways_table")))
                            )
                 )
                 ,

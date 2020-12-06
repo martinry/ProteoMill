@@ -1,17 +1,10 @@
 ---
 title: "ProteoMill Report"
-description: | 
-  This report was automatically generated using the [ProteoMill](https://proteomill.com/) web tool.
 date: "`r format(Sys.time(), '%a %d %b, %Y')`"
 output: html_document
 ---
 
-<!--
-choices = list("Dataset options" = c("Data summary", "Missing values"),
-               "Inspect data" = c("PCA 2D", "PCA 3D", "UMAP", "Heatmap"),
-               "Differential analysis" = "Differential expression",
-               "Enrichment analysis" = c("Pathway enrichment", "Volcano plot", "Sankey diagram")),
--->
+This report was automatically generated using the [ProteoMill](https://proteomill.com/) web tool.
 
 
 ```{r violin1, echo = FALSE, out.width = '60%', out.height= '40%'}
