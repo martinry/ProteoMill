@@ -538,7 +538,7 @@ server <- function(session, input, output) {
         
         maindata$data_origin <- maindata$data_wide
         
-        assign("data_wide", maindata$data_wide, envir = .GlobalEnv)
+        #assign("data_wide", maindata$data_wide, envir = .GlobalEnv)
         
 
         setkey(maindata$data_wide, "UNIPROTID")
