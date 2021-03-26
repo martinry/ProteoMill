@@ -1,7 +1,7 @@
 # Load packages ----
 
 
-# Plotting
+# Plotting/UI
 require(pheatmap)
 require(ggplot2)
 require(ggrepel)
@@ -12,10 +12,13 @@ require(fitdistrplus)
 require(plotly)
 require(networkD3)
 require(igraph)
+library(shinycssloaders)
+library(shinyjs)
+library(shinyBS)
 
 # Annotation
 require(AnnotationDbi)
-require(EnsDb.Hsapiens.v86)
+# require(EnsDb.Hsapiens.v86)
 
 # Statistics
 require(limma)
@@ -380,40 +383,45 @@ server <- function(session, input, output) {
     
     
     # Filter NA ----
-    filter_na <- function(data_origin, threshold) {
-
-        # Which elements are NA?
-        allNA <- is.na(data_origin[, -..convertColumns])
-
-        # Summary of how many TRUEs there are in each row
-        NA_frequency <- table(rowSums(allNA))
-
-        # Subset to NA threshold ----
+    
+    # Remove rows where missing values per treatment is greater than set threshold
+    subset_by_na <- function(dataset, treatments, threshold = 1) {
         
-        subset_NA <- function(condition)
-        {
-            # Subset columns by condition
-            condition_subset <- data_origin[, grep(condition,names(data_origin)), with = F]
-            
-            # Determine if rows pass NA threshold
-            rows_to_keep <- rowSums(is.na(condition_subset)) <= threshold
-            
-            # Subset rownames
-            keep <- data_origin[rows_to_keep, UNIPROTID]
-            
-            return(keep)
-            
+        dataset <- copy(dataset)
+        
+        # Get "treatment" names
+        cols <- unique(treatments)
+        
+        # For each treatment, count missing values
+        for(i in seq_along(cols)) {
+            cn <- startsWith(names(dataset), as.character(cols[i]))
+            dataset[, paste0("NAcount", i) := Reduce(`+`, lapply(.SD, function(x) is.na(x))), .SDcols = cn]
         }
         
-        # Apply function to all regions
-        condition_sub <- lapply(names(sampleinfo$group), subset_NA)
+        # Columns that keep NA sums
+        NAsums <- dataset[, startsWith(names(dataset), "NAcount"), with = F]
         
-        # Reduce to shared proteins
-        condition_sub2 <- Reduce(intersect, condition_sub)
+        # Get treatment with greatest number of NAs
+        dataset$NAcountMax <- apply(NAsums, 1, max)
+            
+        # Keep only rows where treatment with max NA is <= 1
+        dataset <- dataset[NAcountMax <= threshold, -c(startsWith(names(dataset), "NAcount")), with = F]
         
-        d <- data_origin[UNIPROTID %in% condition_sub2,]
+        return(dataset)
         
-        return(d)
+    }
+    
+    subset_interactions <- function() {
+        
+        proteins <- maindata$data_wide[, "UNIPROTID"][[1]]
+        
+        interactions <- data.table::fread("lib/interactions5.txt.gz")
+        
+        pathways$ints <- interactions[(protein1 %in% proteins) & (protein2 %in% proteins)]
+        
+        # assign("proteins", proteins, envir = .GlobalEnv)
+        # assign("ints", pathways$ints, envir = .GlobalEnv)
+        
         
     }
     
@@ -452,8 +460,6 @@ server <- function(session, input, output) {
         
         
         # Peptide data input
-        
-        
         
         # Guess input ID based on successful conversions
         if(i == "auto") {
@@ -538,8 +544,7 @@ server <- function(session, input, output) {
         
         maindata$data_origin <- maindata$data_wide
         
-        #assign("data_wide", maindata$data_wide, envir = .GlobalEnv)
-        
+        pdesc <- data.table::fread("lib/protein_descriptions.txt.gz")
 
         setkey(maindata$data_wide, "UNIPROTID")
         setkey(pdesc, "UNIPROTID")
@@ -774,7 +779,10 @@ server <- function(session, input, output) {
         
         if(!is.null(data_wide)){
             data_origin <- maindata$data_origin
-            data_wide <- filter_na(data_origin, input$missingvalues)
+            data_wide <- subset_by_na(dataset = data_origin, treatment = sampleinfo$samples$condition, threshold = input$missingvalues)
+            
+            subset_interactions()
+            
             unlock_menus()
             renderNAfreq(data_wide)
             
@@ -795,8 +803,8 @@ server <- function(session, input, output) {
     
     plotPCA <- function(contribs, ellipse, type) {
         
-        dt <- dframe(filter_na(maindata$data_origin, 1), sampleinfo$sID)
-        
+        data_origin <- maindata$data_origin
+        dt <- dframe(subset_by_na(data_origin, treatment = sampleinfo$samples$condition, threshold = input$missingvalues), sampleinfo$sID)
         # Biplot extension displaying top contributing proteins currently only available for 2D plot.
         
         if(type == '2d') {
@@ -804,9 +812,11 @@ server <- function(session, input, output) {
             pca.data <- log2(dt)  # Log2 transform data
             pca.data[is.na(pca.data)] <- 0 # "Impute" missing values as 0
             
-            pca.data <- t(pca.data)        # Transpose dataset
+            pca.data <- IMIFA::pareto_scale(pca.data)
             
-            p.pca <- prcomp(pca.data, center = TRUE, scale. = TRUE)
+            #pca.data <- t(pca.data)        # Transpose dataset
+            
+            p.pca <- prcomp(t(pca.data), center = TRUE, scale. = F)
             
             plots$pcaplot2d <- factoextra::fviz_pca_biplot(p.pca, title = '', label = "var", habillage = sampleinfo$samples$condition,
                                                    addEllipses = TRUE, ellipse.level = ellipse,
@@ -816,7 +826,6 @@ server <- function(session, input, output) {
             
         } else if (type == '2dpaired') {
             
-            #assign("dt", dt, envir = .GlobalEnv)
             
             pca.data <- dt
             pca.data[is.na(pca.data)] <- .5 # "Impute" missing values as 0
@@ -847,9 +856,12 @@ server <- function(session, input, output) {
             pca.data <- log2(dt)  # Log2 transform data
             pca.data[is.na(pca.data)] <- 0 # "Impute" missing values as 0
             
-            pca.data <- t(pca.data)        # Transpose dataset
+            pca.data <- IMIFA::pareto_scale(pca.data)
             
-            p.pca <- prcomp(pca.data, center = TRUE, scale. = TRUE)
+            #pca.data <- t(pca.data)        # Transpose dataset
+            
+            p.pca <- prcomp(t(pca.data), center = TRUE, scale. = F)
+            
             
             plots$pcaplot3d <- plotly::plot_ly(x = p.pca$x[,1],
                                        y = p.pca$x[,2],
@@ -1157,7 +1169,7 @@ server <- function(session, input, output) {
             fit.cont <- eBayes(fit.cont, robust = T)
             
             # Generate data frame with results from linear model fit, with confidence intervals.
-            contrast <- toptable(fit.cont, number = Inf, coef = coeff, confint = TRUE)
+            contrast <- topTable(fit.cont, number = Inf, coef = coeff)
             
             # Confidence intervals used for plot, global var
             cint <- contrast
@@ -1173,7 +1185,7 @@ server <- function(session, input, output) {
             setkeyv(maindata$data_wide, sampleinfo$sID)
             contrast <- contrast[maindata$data_wide[,..convertColumns], nomatch = 0]
             names(contrast) <- c(sampleinfo$sID, names(contrast[, 2:ncol(contrast)]))
-            setcolorder(contrast, c(convertColumns, "logFC", "CI.L", "CI.R", "t", "P.Value", "adj.P.Val", "B"))
+            setcolorder(contrast, c(convertColumns, "logFC", "t", "P.Value", "adj.P.Val", "B"))
             
             # Reduce network load
             if(contrast[, .N] > 2000) {
@@ -1543,6 +1555,12 @@ server <- function(session, input, output) {
         
     })
     
+    # observeEvent(input$loadNetworkplots, {
+    #     
+    #     ints2 <- interactions[(protein1 %in% proteins) & (protein2 %in% proteins)]
+    #     
+    # })
+    
     output$interaction_network <- renderVisNetwork({
         
         contrast <- rcont$contrast
@@ -1562,7 +1580,7 @@ server <- function(session, input, output) {
         }
         
         
-        ints2 <- interactions[(protein1 %in% proteins) & (protein2 %in% proteins)]
+        ints2 <- pathways$ints[(protein1 %in% proteins) & (protein2 %in% proteins)]
         ints2 <- ints2[score > input$interactioncutoff]
         
 
@@ -1978,9 +1996,65 @@ server <- function(session, input, output) {
         }
     )
     
+    # Data import wizard ----
+    
+    observeEvent(input$ShowHide, {
+        shinyjs::toggle("myBox")
+    })
+    
+    # File input: Main data ----
+    
+    myData <- reactive({
+        inFile <- input$file1
+        if (is.null(inFile)) return(NULL)
+        data <- fread(inFile$datapath, header = T)
+        data
+    })
+
+    
+
+    observeEvent(input$file1, {
+        show("previewDTInfo")
+    })
+
+    
+    output$previewDT <- renderDT(
+        
+        datatable(
+            myData()[1:5, 1:5]
+        )
+    )
+    
+    
+    observeEvent(input$EndStep1, {
+        
+        shinyjs::show("Modal1Spinner")
+        
+        if(input$organism == "Homo sapiens") {
+            
+            library(EnsDb.Hsapiens.v86)
+            
+        } else if(input$organism == "Mus musculus") {
+            
+            library(EnsDb.Mmusculus.v79)
+            
+        } else if(input$organism == "Rattus norvegicus") {
+            
+            library(EnsDb.Rnorvegicus.v79)
+            
+        }
+        
+        
+        toggleModal(session, "ImportModal1", toggle = "toggle")
+        shinyjs::hide("Modal1Spinner")
+        toggleModal(session, "modalExample", toggle = "toggle")
+        
+        
+    })
+    
+    
 
     
     
 }
-
 

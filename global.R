@@ -18,12 +18,12 @@ assign("convertColumns", convertColumns, envir = .GlobalEnv)
 
 # Interaction data ----
 
-if(!exists("interactions")){
- 
- interactions <- data.table::fread("lib/interactions5.txt.gz")
- assign("interactions", interactions, envir = .GlobalEnv)
- 
- pdesc <- data.table::fread("lib/protein_descriptions.txt.gz")
- assign("pdesc", pdesc, envir = .GlobalEnv)
- 
-}
+# if(!exists("interactions")){
+#  
+#  # interactions <- data.table::fread("lib/interactions5.txt.gz")
+#  # assign("interactions", interactions, envir = .GlobalEnv)
+#  
+#  pdesc <- data.table::fread("lib/protein_descriptions.txt.gz")
+#  assign("pdesc", pdesc, envir = .GlobalEnv)
+#  
+# }

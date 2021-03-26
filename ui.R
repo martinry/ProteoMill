@@ -2,6 +2,8 @@
 require(shiny)
 require(shinydashboard)
 require(shinyWidgets)
+require(shinyjs)
+library(shinyBS)
 require(visNetwork)
 require(DT)
 
@@ -101,7 +103,8 @@ sidebar <- dashboardSidebar(
         #menuItem("About", tabName = "about", icon = icon("book")),
         menuItem("Settings", tabName = "settings", icon = icon("sliders-h"))
         
-    )
+    ),
+    useShinyjs()
 )
 
 
@@ -161,34 +164,144 @@ body <- dashboardBody(
                 fluidRow(
                     column(width = 5,
                     tabBox(width = NULL,
-                        tabPanel(
-                            title = "Dataset",
-                            
-                            p(helpText('Welcome! Click on',  tags$strong('Upload a dataset'), 'in the task menu ', shiny::icon("tasks"), ' or download one our demo datasets to learn about accepted file formats.')),
-                            
-                            selectInput("dataSep", label = 'Separator',
-                                         choices = list("Auto detect" = 1, "Comma" = 2, "Semicolon" = 3, "Tab" = 4),
-                                         selected = 1),
-                            selectInput("dataIdentiferType", "Identifier type", choices = list("Auto detect" = 1, "UniProtKB" = 2, "Entrez" = 3, "Gene Symbol" = 4)),
-                            fileInput("infile", "Select a file",
-                                      accept = c(
-                                          "text/csv",
-                                          "text/comma-separated-values,text/plain",
-                                          ".csv")),
-                            helpText('Accepted filetypes are csv, tsv and txt.')
-                        ),
-                        tabPanel(
-                            title = 'Annotation data',
-                            selectInput("annoSep", label = 'Separator',
-                                        choices = list("Auto detect" = 1, "Comma" = 2, "Semicolon" = 3, "Tab" = 4),
-                                        selected = 1),
-                            fileInput("anno_infile", "Select a file",
-                                      accept = c(
-                                          "text/csv",
-                                          "text/comma-separated-values,text/plain",
-                                          ".csv")),
-                            helpText('Accepted filetypes are csv, tsv and txt.')
-                        ),
+                           tabPanel(title = "Data import wizard",
+                                    p(
+                                        helpText(
+                                            'Welcome! Click on',
+                                            tags$strong('Upload a dataset'),
+                                            'in the task menu ',
+                                            shiny::icon("tasks"),
+                                            ' or download one our demo datasets to learn about accepted file formats.'
+                                        )
+                                    ), 
+                                    actionButton("ImportWizard", "Start import wizard..."),
+                                    
+                                    bsModal(id ="ImportModal1",
+                                            title = "Data import wizard", 
+                                            trigger = "ImportWizard",
+                                            size = "large",
+                                            
+                                            fluidRow(
+                                                column(width = 3,
+                                                       box(width = NULL,
+                                                           title = "Sample information",
+                                                           
+                                                           selectInput("organism",
+                                                                       "Select organism",
+                                                                       list("Homo sapiens",
+                                                                            "Mus musculus",
+                                                                            "Rattus norvegicus")),
+                                                           
+                                                           selectInput("DataType", "Type of data",
+                                                                       list("Proteins",
+                                                                            "Peptides")))
+                                                ),
+                                                
+                                                column(width = 6,
+                                                       box(width = NULL,
+                                                           title = "Data configuration",
+                                                           
+                                                           checkboxInput("LogTransformData", "Log₂-transform data", value = T),
+                                                           checkboxInput("NormalizeData", "Apply normalization")
+                                                           
+                                                       )),
+                                                
+                                                fluidRow(
+                                                    tags$head(tags$style("#Modal1Spinner {display:none}")),
+                                                    shinycssloaders::withSpinner(
+                                                        plotOutput("plot"), type = 6, color = "#e80032dd", id = "Modal1Spinner"
+                                                    )
+                                                )
+                                                
+                                            ),
+                                            
+                                            
+                                            
+                                            tags$p(tags$hr()),
+                                            modalButton("Cancel"),
+                                            actionButton("EndStep1", "Next"),
+                                            tags$head(tags$style("#ImportModal1 .modal-footer{ display:none}"))
+                                            
+                                            ),
+                                    
+                                    bsModal(id = "modalExample",
+                                            title = "Data import wizard",
+                                            trigger = "BeginStep2",
+                                            size = "large",
+                                            
+                                            tags$head(tags$style("#modalExample .modal-footer{ display:none}")),
+                                            
+                                            tags$p(tags$strong("A minimal example."), actionLink(inputId = "ShowHide", "Show/Hide")),
+                                            
+                                            fluidRow(
+                                                column(width = 12,
+                                                       box(id = "myBox",
+                                                           width = NULL,
+                                                           
+                                                           tags$p(img(src = "/img/yellow.png", width = "10px"), tags$strong("Protein IDs."), "In the first column, row two and onwards contains protein IDs (see accepted ID types below)."),
+                                                           
+                                                           tags$p(img(src = "/img/blue.png", width = "10px"), tags$strong("Sample names."), "In the first row, column two and onward contains the sample names, with treatments and replicates separated by an underscore character. Sample column order does not matter."),
+                                                           
+                                                           tags$p(img(src = "/img/green.png", width = "10px"), tags$strong("Quantitative values."), 'Only numeric values greater than or equal to 0, or NA. Period (.) should be used for decimal character.'),
+                                                           
+                                                           img(src = "/img/minimal_example.png", width = "75%")
+                                                       ))),
+
+                                            
+                                            fileInput(inputId = "file1",
+                                                      label = "Upload a dataset",
+                                                      multiple = F,
+                                                      accept = c(
+                                                          "text/csv",
+                                                          "text/comma-separated-values,text/plain",
+                                                          ".csv")),
+                                            
+                                            tags$head(tags$style(
+                                                HTML("#file1_progress {visibility:hidden}"),
+                                                HTML("#DataTables_Table_0_length {visibility:hidden}"),
+                                                HTML("#DataTables_Table_0_filter {visibility:hidden}"),
+                                                HTML("#DataTables_Table_0_info {visibility:hidden}"),
+                                                HTML("#DataTables_Table_0_paginate {visibility:hidden}")
+                                                
+                                                
+                                            )),
+                                            p(id = "previewDTInfo", paste("Here is a 5x5 slice of your data. Does it look OK?"),
+                                              style = "display:none"),
+                                            DTOutput("previewDT"))
+                                    
+                                    
+                                    
+                                    
+                                    
+                                    ),
+                        # tabPanel(
+                        #     title = "Dataset",
+                        #     
+                        #     #p(helpText('Welcome! Click on',  tags$strong('Upload a dataset'), 'in the task menu ', shiny::icon("tasks"), ' or download one our demo datasets to learn about accepted file formats.')),
+                        #     
+                        #     selectInput("dataSep", label = 'Separator',
+                        #                  choices = list("Auto detect" = 1, "Comma" = 2, "Semicolon" = 3, "Tab" = 4),
+                        #                  selected = 1),
+                        #     selectInput("dataIdentiferType", "Identifier type", choices = list("Auto detect" = 1, "UniProtKB" = 2, "Entrez" = 3, "Gene Symbol" = 4)),
+                        #     fileInput("infile", "Select a file",
+                        #               accept = c(
+                        #                   "text/csv",
+                        #                   "text/comma-separated-values,text/plain",
+                        #                   ".csv")),
+                        #     helpText('Accepted filetypes are csv, tsv and txt.')
+                        # ),
+                        # tabPanel(
+                        #     title = 'Annotation data',
+                        #     selectInput("annoSep", label = 'Separator',
+                        #                 choices = list("Auto detect" = 1, "Comma" = 2, "Semicolon" = 3, "Tab" = 4),
+                        #                 selected = 1),
+                        #     fileInput("anno_infile", "Select a file",
+                        #               accept = c(
+                        #                   "text/csv",
+                        #                   "text/comma-separated-values,text/plain",
+                        #                   ".csv")),
+                        #     helpText('Accepted filetypes are csv, tsv and txt.')
+                        # ),
                         tabPanel(
                             title = 'Demo data',
                             selectInput("selectDemoData", label = "Select a dataset",
@@ -529,6 +642,8 @@ body <- dashboardBody(
                     column(width = 3,
                            box(
                                title = "Network settings", width = NULL,
+                               
+                               actionButton("loadNetworkplots", "Load plots"),
 
                                radioButtons(
                                    "network_regulation",
