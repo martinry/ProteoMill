@@ -2,7 +2,7 @@
 
 
 # Plotting/UI
-require(pheatmap)
+library(heatmaply)
 require(ggplot2)
 require(ggrepel)
 require(RColorBrewer)
@@ -432,7 +432,9 @@ server <- function(session, input, output) {
         genes[!is.na(genes)]
     }
     
-    upload_data <- function(path, i = "auto"){
+    upload_data <- function(i = "auto"){
+        
+        data_wide <- maindata$data_wide
         
         # maindata$data_wide <- data.table::fread(
         #     path,
@@ -440,23 +442,23 @@ server <- function(session, input, output) {
         #     dec = ".",
         #     header = T)
         
-        maindata$data_wide <- maindata$data_wide[!duplicated(names(maindata$data_wide)[1])]
+        data_wide <- data_wide[!duplicated(names(data_wide)[1])]
         
         # Convert all values to numeric
-        for(j in seq_along(maindata$data_wide)){
-            set(maindata$data_wide, i = which(maindata$data_wide[[j]] == 0 & is.numeric(maindata$data_wide[[j]])), j = j, value = NA)
+        for(j in seq_along(data_wide)){
+            set(data_wide, i = which(data_wide[[j]] == 0 & is.numeric(data_wide[[j]])), j = j, value = NA)
         }
         
         # Remove completely empty rows
-        empty_rows <- apply(maindata$data_wide[,2:ncol(maindata$data_wide)], 1, function(x) all(is.na(x)))
-        maindata$data_wide <- maindata$data_wide[!empty_rows,]
+        empty_rows <- apply(data_wide[,2:ncol(data_wide)], 1, function(x) all(is.na(x)))
+        data_wide <- data_wide[!empty_rows,]
         
         # We keep this variable as the originally uploaded dataset.
         # Used later to enable reverting to original from subsetted dataset.
-        maindata$data_origin <- maindata$data_wide
+        maindata$data_origin <- data_wide
         
         # 10 first rows for converting IDs
-        keys <- maindata$data_wide[, as.character(.SD[[1L]])][1:10]
+        keys <- data_wide[, as.character(.SD[[1L]])][1:10]
         
         
         # Peptide data input
@@ -479,18 +481,17 @@ server <- function(session, input, output) {
             i <- convertColumns[which.max(lapply(lapply(trs, lengths), sum))]
             
             if(i == "UNIPROTID"){
-                
-                tr_all <- data.table(AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = maindata$data_wide[, as.character(.SD[[1L]])], columns = convertColumns, keytype = i))
+                tr_all <- data.table(AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = data_wide[, as.character(.SD[[1L]])], columns = convertColumns, keytype = i))
                 tr_all <- tr_all[!duplicated(UNIPROTID)]
                 
             } else {
-                tr <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = maindata$data_wide[, as.character(.SD[[1L]])], column = "UNIPROTID", keytype = i, multiVals = "first")
+                tr <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = data_wide[, as.character(.SD[[1L]])], column = "UNIPROTID", keytype = i, multiVals = "first")
                 tr <- tr[!is.na(tr)]
                 tr <- tr[!duplicated(tr)]
                 
                 tr <- data.table(i = names(tr), "UNIPROTID" = unname(tr))
                 
-                tr_all <- data.table(AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = maindata$data_wide[, as.character(.SD[[1L]])], columns = convertColumns, keytype = i))
+                tr_all <- data.table(AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = data_wide[, as.character(.SD[[1L]])], columns = convertColumns, keytype = i))
                 tr_all <- tr_all[UNIPROTID %in% tr$UNIPROTID]
                 tr_all <- tr_all[!duplicated(UNIPROTID)]
             }
@@ -502,47 +503,50 @@ server <- function(session, input, output) {
             
             if(i == "UNIPROTID"){
                 
-                tr_all <- data.table(AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = maindata$data_wide[, as.character(.SD[[1L]])], columns = convertColumns, keytype = i))
+                tr_all <- data.table(AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = data_wide[, as.character(.SD[[1L]])], columns = convertColumns, keytype = i))
                 tr_all <- tr_all[!duplicated(UNIPROTID)]
                 
             } else {
-                tr <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = maindata$data_wide[, as.character(.SD[[1L]])], column = "UNIPROTID", keytype = i, multiVals = "first")
+                tr <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = data_wide[, as.character(.SD[[1L]])], column = "UNIPROTID", keytype = i, multiVals = "first")
                 tr <- tr[!is.na(tr)]
                 tr <- tr[!duplicated(tr)]
                 
                 tr <- data.table(i = names(tr), "UNIPROTID" = unname(tr))
                 
-                tr_all <- data.table(AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = maindata$data_wide[, as.character(.SD[[1L]])], columns = convertColumns, keytype = i))
+                tr_all <- data.table(AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = data_wide[, as.character(.SD[[1L]])], columns = convertColumns, keytype = i))
                 tr_all <- tr_all[UNIPROTID %in% tr$UNIPROTID]
                 tr_all <- tr_all[!duplicated(UNIPROTID)]
             }
         }
         
-        names(maindata$data_wide)[1] <- i
+        names(data_wide)[1] <- i
         
         setkeyv(tr_all, i)
         
-        setkeyv(maindata$data_wide, i)
+        setkeyv(data_wide, i)
         
-        tr_all <- tr_all[maindata$data_wide[, ..i], on = i]
+        tr_all <- tr_all[data_wide[, ..i], on = i]
         
-        maindata$data_wide <- maindata$data_wide[tr_all, nomatch = 0]
+        data_wide <- data_wide[tr_all, nomatch = 0]
         
-        maindata$data_wide$ENTREZID <- as.character(maindata$data_wide$ENTREZID)
+        data_wide$ENTREZID <- as.character(data_wide$ENTREZID)
         
-        for(j in seq_along(maindata$data_wide)){
-            set(maindata$data_wide, i = which(duplicated(maindata$data_wide[[j]]) & is.character(maindata$data_wide[[j]])), j = j, value = NA)
+        for(j in seq_along(data_wide)){
+            data.table::set(data_wide, i = which(duplicated(data_wide[[j]]) & is.character(data_wide[[j]])), j = j, value = NA)
         }
         
-        maindata$data_wide[is.na(ENTREZID), ENTREZID := paste0("MISSING_", seq(1:length(is.na(ENTREZID))))]
-        maindata$data_wide[is.na(SYMBOL), SYMBOL := paste0("MISSING_", seq(1:length(is.na(SYMBOL))))]
-        maindata$data_wide[is.na(UNIPROTID), UNIPROTID := paste0("MISSING_", seq(1:length(is.na(UNIPROTID))))]
-        maindata$data_wide[is.na(GENEID), GENEID := paste0("MISSING_", seq(1:length(is.na(GENEID))))]
-        maindata$data_wide[is.na(PROTEINID), PROTEINID := paste0("MISSING_", seq(1:length(is.na(PROTEINID))))]
+        data_wide[is.na(ENTREZID), ENTREZID := paste0("MISSING_", seq(1:length(is.na(ENTREZID))))]
+        data_wide[is.na(SYMBOL), SYMBOL := paste0("MISSING_", seq(1:length(is.na(SYMBOL))))]
+        data_wide[is.na(UNIPROTID), UNIPROTID := paste0("MISSING_", seq(1:length(is.na(UNIPROTID))))]
+        data_wide[is.na(GENEID), GENEID := paste0("MISSING_", seq(1:length(is.na(GENEID))))]
+        data_wide[is.na(PROTEINID), PROTEINID := paste0("MISSING_", seq(1:length(is.na(PROTEINID))))]
         
-        setcolorder(maindata$data_wide, c(convertColumns, names(maindata$data_origin[,2:ncol(maindata$data_origin)])))
+        setcolorder(data_wide, c(convertColumns, names(maindata$data_origin[,2:ncol(maindata$data_origin)])))
         
-        maindata$data_origin <- maindata$data_wide
+        maindata$data_wide <- data_wide
+        maindata$data_origin <- data_wide
+        
+        assign("origin", maindata$data_origin, envir = .GlobalEnv)
         
         pdesc <- data.table::fread("lib/protein_descriptions.txt.gz")
 
@@ -557,19 +561,19 @@ server <- function(session, input, output) {
     }
     
     # File input: Main data ----
-    observeEvent(input$infile, {
-        
-        maindata$inFile <- input$infile
-        
-        if (is.null(maindata$inFile))
-            return(NULL)
-
-        upload_data(maindata$inFile$datapath, separator(input$dataSep), identifier(input$dataIdentiferType))
-
-        updateNotifications("Dataset uploaded.","check-circle", "success")
-        updateTasks(text = "Upload a dataset", value = 100, color = "green", i = 0001)
-        
-    })
+    # observeEvent(input$infile, {
+    #     
+    #     maindata$inFile <- input$infile
+    #     
+    #     if (is.null(maindata$inFile))
+    #         return(NULL)
+    # 
+    #     upload_data(maindata$inFile$datapath, separator(input$dataSep), identifier(input$dataIdentiferType))
+    # 
+    #     updateNotifications("Dataset uploaded.","check-circle", "success")
+    #     updateTasks(text = "Upload a dataset", value = 100, color = "green", i = 0001)
+    #     
+    # })
     
     # File input: Annotation ----
     observeEvent(input$anno_infile, {
@@ -678,6 +682,8 @@ server <- function(session, input, output) {
     
     output$identifierinfo <- renderTable({
         if(!is.null(maindata$data_wide)) {
+            assign("dw", maindata$data_wide, envir = .GlobalEnv)
+            
             missingids <- maindata$data_wide[, ..convertColumns]
             missingidspc <- apply(missingids, 2, FUN = function(x) paste0(round(((sum(!startsWith(x, "MISSING")) / missingids[, .N]) * 100), 2), "% (", sum(!startsWith(x, "MISSING")), ")") )
             as.data.frame(missingidspc)
@@ -773,7 +779,11 @@ server <- function(session, input, output) {
     
     observeEvent(input$setcutoff, {
         
+        
+        
         data_wide <- maindata$data_wide
+        
+        View(maindata$data_wide)
         
         subsample_data()
         
@@ -781,10 +791,13 @@ server <- function(session, input, output) {
             data_origin <- maindata$data_origin
             data_wide <- subset_by_na(dataset = data_origin, treatment = sampleinfo$samples$condition, threshold = input$missingvalues)
             
-            subset_interactions()
+            #subset_interactions()
             
             unlock_menus()
             renderNAfreq(data_wide)
+            
+            assign("sic", sampleinfo$samples$condition, envir = .GlobalEnv)
+            assign("sir", sampleinfo$samples$replicates, envir = .GlobalEnv)
             
             maindata$data_wide <- data_wide
             updateTasks(text = "Set a filter", value = 100, color = "green", i = 0003)
@@ -2004,25 +2017,32 @@ server <- function(session, input, output) {
     
     # File input: Main data ----
     
-    myData <- reactive({
-        inFile <- input$file1
-        if (is.null(inFile)) return(NULL)
-        maindata$data_wide <- fread(inFile$datapath, header = T)
-        
-        maindata$data_wide
-    })
+    # myData <- reactive({
+    #     inFile <- input$file1
+    #     if (is.null(inFile)) return(NULL)
+    #     maindata$data_wide <- fread(inFile$datapath, header = T)
+    #     
+    #     maindata$data_wide
+    # })
 
     
 
     observeEvent(input$file1, {
+        
+        inFile <- input$file1
+        if (is.null(inFile)) return(NULL)
+        maindata$data_wide <- fread(inFile$datapath, header = T)
+        
         shinyjs::show("previewDTInfo")
+        
+        maindata$data_wide
     })
 
     
     output$previewDT <- renderDT(
         
         datatable(
-            myData()[1:5, 1:5]
+            maindata$data_wide[1:5, 1:5]
         )
     )
     
@@ -2058,7 +2078,13 @@ server <- function(session, input, output) {
         
         shinyjs::show("Modal2Spinner")
         
-        upload_data()
+        #upload_data()
+        upload_data(i = "UNIPROTID")
+        
+        # View(maindata$data_origin)
+        # View(maindata$data_wide)
+        # 
+        assign("wide", maindata$data_wide, envir = .GlobalEnv)
         
         
         # check identifiers
@@ -2079,6 +2105,8 @@ server <- function(session, input, output) {
     
     observeEvent(input$EndStep3, {
         
+        subset_interactions()
+        
         toggleModal(session, "ImportModal3", toggle = "toggle")
         updateNotifications("Dataset uploaded.","check-circle", "success")
         updateTasks(text = "Upload a dataset", value = 100, color = "green", i = 0001)
@@ -2086,7 +2114,31 @@ server <- function(session, input, output) {
         
     })
     
+    # PCA Updated ----
     
+    observeEvent(input$pcaDims, {
+        
+        print(input$pcaDims)
+        
+        if( (input$pcaDims[2] - input$pcaDims[1] > 2) | (input$pcaDims[2] - input$pcaDims[1] < 1)) {
+            updateSliderInput(session = session, inputId = "pcaDims", value = c(input$pcaDims[1], (input$pcaDims[1] + 2)))
+        }
+        
+    })
+    
+    
+    observeEvent(input$PCA, {
+        
+        
+        
+        output$PCA_plots <- renderPlotly({
+            
+
+            
+        })
+        
+        
+    })
 
     
     

@@ -127,7 +127,7 @@ hr {
     background: #ff1049 !important;
 }
 
-.irs-single {
+.irs--shiny .irs-from, .irs--shiny .irs-to, .irs--shiny .irs-single {
     background: #ff0041 !important;
 }
 

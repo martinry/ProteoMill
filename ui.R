@@ -301,6 +301,7 @@ body <- dashboardBody(
                                         list(`Proteomics` = 
                                                  list("Sample dataset 1" = 1))),
                             actionButton("useDemoData", label = "Use demo data"),
+                            actionButton("tryMe", label = "Try me"),
                             downloadButton('downloadDemo',"Download")
                         )
                     )
@@ -478,46 +479,31 @@ body <- dashboardBody(
                            box(title = "PCA settings",
                                status = "warning",
                                width = NULL,
-                               sliderInput("contribs",
-                                           "Number of contributors:",
-                                           min = 1,  max = 50, value = 5),
-                               sliderInput("ellipse",
-                                           "Ellipse level:",
-                                           min = 0,  max = 1, value = .75),
-                               actionButton("loadPCAplots", "Load plots"),
+                               shiny::sliderInput("pcaDims", "Dimensions", min = 1, max = 10, value = c(1, 2)),
+
                                p(),
                                hr(),
                                helpText("Please review pairing mode under Settings")
                            )
                           ),
                     column(width = 9,
-                           tabBox(width = NULL,
-                               tabPanel("PCA 2D", plotOutput("pca2dplot", width = "600px", height = "550px")),
-                               tabPanel("PCA 3D", plotly::plotlyOutput("pca3dplot", width = "600px", height = "600px"))))
-                           )
-                    
-                ),
-                
-                
-        # tabItem(tabName = "UMAP",
-        #         fluidRow(
-        #             column(width = 3,
-        #                 box(width = NULL,
-        #                     status = "warning",
-        #                     actionButton("loadUMAP","Load plot")
-        #                 )),
-        #             column(width = 9,
-        #                 box(title = "UMAP",
-        #                     width = NULL,
-        #                     plotOutput("UMAPplot"))
-        #             )
-        #         )),
+                           box(title = "Plot area",
+                               plotlyOutput("PCA_plots"),
+                               width = NULL)
+                ))),
+
         tabItem(tabName = "samplecorr",
                 fluidRow(
                     column(width = 3,
                         box(title = "Heatmap settings",
                             width = NULL,
                             status = "warning",
+                            shiny::radioButtons("corMethod",
+                                                label = "Correlation method",
+                                                inline = T,
+                                                choices = list("Pearson", "Spearman", "Kendall")),
+                            shiny::checkboxInput("showGrid", "Show grid", value = F),
+                            
                             actionButton("generateheatmap","Load plot")
                         )),
                         
