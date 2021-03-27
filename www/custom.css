@@ -1,6 +1,10 @@
 
 /* force rewrite the skin min css */
 
+.modal-body {
+	background-color: #F7F7F7 !important;	
+}
+
 #loading-menus {
 	position: absolute;
 }

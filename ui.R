@@ -182,7 +182,7 @@ body <- dashboardBody(
                                             size = "large",
                                             
                                             fluidRow(
-                                                column(width = 3,
+                                                column(width = 6,
                                                        box(width = NULL,
                                                            title = "Sample information",
                                                            
@@ -204,18 +204,15 @@ body <- dashboardBody(
                                                            checkboxInput("LogTransformData", "Log₂-transform data", value = T),
                                                            checkboxInput("NormalizeData", "Apply normalization")
                                                            
-                                                       )),
-                                                
-                                                fluidRow(
-                                                    tags$head(tags$style("#Modal1Spinner {display:none}")),
-                                                    shinycssloaders::withSpinner(
-                                                        plotOutput("plot"), type = 6, color = "#e80032dd", id = "Modal1Spinner"
-                                                    )
-                                                )
+                                                       ))
                                                 
                                             ),
                                             
                                             
+                                            tags$head(tags$style("#Modal1Spinner {display:none}")),
+                                            shinycssloaders::withSpinner(
+                                                textOutput("plot"), type = 6, color = "#e80032dd", id = "Modal1Spinner", size = 0.4, proxy.height = "50px"
+                                            ),
                                             
                                             tags$p(tags$hr()),
                                             modalButton("Cancel"),
@@ -224,12 +221,13 @@ body <- dashboardBody(
                                             
                                             ),
                                     
-                                    bsModal(id = "modalExample",
+                                    bsModal(id = "ImportModal2",
                                             title = "Data import wizard",
                                             trigger = "BeginStep2",
                                             size = "large",
                                             
-                                            tags$head(tags$style("#modalExample .modal-footer{ display:none}")),
+                                            tags$head(tags$style("#ImportModal2 .modal-footer{ display:none}")),
+                                            tags$head(tags$style("#myBox {display:none}")),
                                             
                                             tags$p(tags$strong("A minimal example."), actionLink(inputId = "ShowHide", "Show/Hide")),
                                             
@@ -257,7 +255,6 @@ body <- dashboardBody(
                                                           ".csv")),
                                             
                                             tags$head(tags$style(
-                                                HTML("#file1_progress {visibility:hidden}"),
                                                 HTML("#DataTables_Table_0_length {visibility:hidden}"),
                                                 HTML("#DataTables_Table_0_filter {visibility:hidden}"),
                                                 HTML("#DataTables_Table_0_info {visibility:hidden}"),
@@ -267,41 +264,37 @@ body <- dashboardBody(
                                             )),
                                             p(id = "previewDTInfo", paste("Here is a 5x5 slice of your data. Does it look OK?"),
                                               style = "display:none"),
-                                            DTOutput("previewDT"))
+                                            DTOutput("previewDT"),
+                                            
+                                            tags$head(tags$style("#Modal2Spinner {display:none}")),
+                                            shinycssloaders::withSpinner(
+                                                textOutput("plot2"), type = 6, color = "#e80032dd", id = "Modal2Spinner", size = 0.4, proxy.height = "50px"
+                                            ),
+                                            
+                                            
+                                            tags$p(tags$hr()),
+                                            modalButton("Cancel"),
+                                            actionButton("EndStep2", "Next")
+                                            
+                                            ),
                                     
+                                    bsModal(id = "ImportModal3",
+                                            title = "Data import wizard",
+                                            trigger = "BeginStep3",
+                                            size = "large",
+                                            
+                                            DT::DTOutput("SamplePreview"),
+                                            
+                                            tags$head(tags$style("#ImportModal3 .modal-footer{ display:none}")),
+                                            
+                                            tags$p(tags$hr()),
+                                            modalButton("Cancel"),
+                                            actionButton("EndStep3", "Finish")
+                                                
+                                            )
                                     
-                                    
-                                    
-                                    
+
                                     ),
-                        # tabPanel(
-                        #     title = "Dataset",
-                        #     
-                        #     #p(helpText('Welcome! Click on',  tags$strong('Upload a dataset'), 'in the task menu ', shiny::icon("tasks"), ' or download one our demo datasets to learn about accepted file formats.')),
-                        #     
-                        #     selectInput("dataSep", label = 'Separator',
-                        #                  choices = list("Auto detect" = 1, "Comma" = 2, "Semicolon" = 3, "Tab" = 4),
-                        #                  selected = 1),
-                        #     selectInput("dataIdentiferType", "Identifier type", choices = list("Auto detect" = 1, "UniProtKB" = 2, "Entrez" = 3, "Gene Symbol" = 4)),
-                        #     fileInput("infile", "Select a file",
-                        #               accept = c(
-                        #                   "text/csv",
-                        #                   "text/comma-separated-values,text/plain",
-                        #                   ".csv")),
-                        #     helpText('Accepted filetypes are csv, tsv and txt.')
-                        # ),
-                        # tabPanel(
-                        #     title = 'Annotation data',
-                        #     selectInput("annoSep", label = 'Separator',
-                        #                 choices = list("Auto detect" = 1, "Comma" = 2, "Semicolon" = 3, "Tab" = 4),
-                        #                 selected = 1),
-                        #     fileInput("anno_infile", "Select a file",
-                        #               accept = c(
-                        #                   "text/csv",
-                        #                   "text/comma-separated-values,text/plain",
-                        #                   ".csv")),
-                        #     helpText('Accepted filetypes are csv, tsv and txt.')
-                        # ),
                         tabPanel(
                             title = 'Demo data',
                             selectInput("selectDemoData", label = "Select a dataset",

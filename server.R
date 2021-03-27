@@ -12,9 +12,9 @@ require(fitdistrplus)
 require(plotly)
 require(networkD3)
 require(igraph)
-library(shinycssloaders)
-library(shinyjs)
-library(shinyBS)
+require(shinycssloaders)
+require(shinyjs)
+require(shinyBS)
 
 # Annotation
 require(AnnotationDbi)
@@ -432,13 +432,13 @@ server <- function(session, input, output) {
         genes[!is.na(genes)]
     }
     
-    upload_data <- function(path, sep, i){
+    upload_data <- function(path, i = "auto"){
         
-        maindata$data_wide <- data.table::fread(
-            path,
-            sep = sep,
-            dec = ".",
-            header = T)
+        # maindata$data_wide <- data.table::fread(
+        #     path,
+        #     sep = sep,
+        #     dec = ".",
+        #     header = T)
         
         maindata$data_wide <- maindata$data_wide[!duplicated(names(maindata$data_wide)[1])]
         
@@ -2007,14 +2007,15 @@ server <- function(session, input, output) {
     myData <- reactive({
         inFile <- input$file1
         if (is.null(inFile)) return(NULL)
-        data <- fread(inFile$datapath, header = T)
-        data
+        maindata$data_wide <- fread(inFile$datapath, header = T)
+        
+        maindata$data_wide
     })
 
     
 
     observeEvent(input$file1, {
-        show("previewDTInfo")
+        shinyjs::show("previewDTInfo")
     })
 
     
@@ -2047,7 +2048,40 @@ server <- function(session, input, output) {
         
         toggleModal(session, "ImportModal1", toggle = "toggle")
         shinyjs::hide("Modal1Spinner")
-        toggleModal(session, "modalExample", toggle = "toggle")
+        toggleModal(session, "ImportModal2", toggle = "toggle")
+        
+        
+    })
+    
+    
+    observeEvent(input$EndStep2, {
+        
+        shinyjs::show("Modal2Spinner")
+        
+        upload_data()
+        
+        
+        # check identifiers
+        
+        
+        
+        # subset interactions
+        
+        
+        
+        
+        toggleModal(session, "ImportModal2", toggle = "toggle")
+        shinyjs::hide("Modal2Spinner")
+        toggleModal(session, "ImportModal3", toggle = "toggle")
+        
+        
+    })
+    
+    observeEvent(input$EndStep3, {
+        
+        toggleModal(session, "ImportModal3", toggle = "toggle")
+        updateNotifications("Dataset uploaded.","check-circle", "success")
+        updateTasks(text = "Upload a dataset", value = 100, color = "green", i = 0001)
         
         
     })
