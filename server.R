@@ -682,7 +682,7 @@ server <- function(session, input, output) {
     
     output$identifierinfo <- renderTable({
         if(!is.null(maindata$data_wide)) {
-            assign("dw", maindata$data_wide, envir = .GlobalEnv)
+            # assign("dw", maindata$data_wide, envir = .GlobalEnv)
             
             missingids <- maindata$data_wide[, ..convertColumns]
             missingidspc <- apply(missingids, 2, FUN = function(x) paste0(round(((sum(!startsWith(x, "MISSING")) / missingids[, .N]) * 100), 2), "% (", sum(!startsWith(x, "MISSING")), ")") )
@@ -783,8 +783,6 @@ server <- function(session, input, output) {
         
         data_wide <- maindata$data_wide
         
-        View(maindata$data_wide)
-        
         subsample_data()
         
         if(!is.null(data_wide)){
@@ -797,7 +795,8 @@ server <- function(session, input, output) {
             renderNAfreq(data_wide)
             
             assign("sic", sampleinfo$samples$condition, envir = .GlobalEnv)
-            assign("sir", sampleinfo$samples$replicates, envir = .GlobalEnv)
+            assign("sir", sampleinfo$samples$replicate, envir = .GlobalEnv)
+            
             
             maindata$data_wide <- data_wide
             updateTasks(text = "Set a filter", value = 100, color = "green", i = 0003)
@@ -2105,7 +2104,7 @@ server <- function(session, input, output) {
     
     observeEvent(input$EndStep3, {
         
-        subset_interactions()
+        # subset_interactions()
         
         toggleModal(session, "ImportModal3", toggle = "toggle")
         updateNotifications("Dataset uploaded.","check-circle", "success")
@@ -2115,6 +2114,95 @@ server <- function(session, input, output) {
     })
     
     # PCA Updated ----
+    
+    
+    observeEvent(input$PCA, {
+        
+        dw <- maindata$data_wide
+        si_condition <- sampleinfo$samples$condition
+        
+        pca.data <- log2(dw[, -..convertColumns])
+        pca.data[is.na(pca.data)] <- 0 # "Impute" missing values as 0
+        pca.data <- IMIFA::pareto_scale(pca.data)
+        
+        p.pca <- prcomp(t(pca.data), center = TRUE, scale. = F)
+        
+        
+        # if 2 dims
+        
+        if(input$pcaDims[2] - input$pcaDims[1] == 1) {
+            
+            mydf <- data.frame(pc1 = p.pca$x[, input$pcaDims[1]],
+                               pc2 = p.pca$x[, input$pcaDims[2]],
+                               si_condition)
+            
+            poly.df <- mydf %>% 
+                group_by(si_condition) %>%
+                do(.[chull(.$pc1, .$pc2),]) 
+            
+            if(input$showPolygons) {
+                ggplot(mydf, aes(pc1, pc2, colour = as.factor(si_condition))) +
+                    geom_polygon(data = poly.df, fill = "grey", alpha = .15) +
+                    geom_point(size = 5) +
+                    xlab(paste0("PC", input$pcaDims[1])) +
+                    ylab(paste0("PC", input$pcaDims[2])) +
+                    scale_color_brewer(palette = "Accent") +
+                    theme_light()  -> p
+            } else {
+                ggplot(mydf, aes(pc1, pc2, colour = as.factor(si_condition))) +
+                    geom_point(size = 5) +
+                    scale_color_brewer(palette = "Accent") +
+                    theme_light()  -> p
+            }
+            
+            
+            output$PCAplots <- renderPlotly({
+                
+                ggplotly(p)
+                
+            })
+            
+        } else if (input$pcaDims[2] - input$pcaDims[1] == 2) {
+            
+            p <- plotly::plot_ly(x = p.pca$x[,input$pcaDims[1]],
+                                 y = p.pca$x[,(input$pcaDims[2] - 1)],
+                                 z = p.pca$x[,input$pcaDims[2]],
+                                 text = rownames(p.pca$x),
+                                 hoverinfo = "text",
+                                 color = si_condition,
+                                 #colors = c("red","green","blue"),
+                                 colors = brewer.pal(length(unique(si_condition)), "Accent")
+            ) %>%
+                plotly::add_markers(marker=list(size = 15, line=list(width = 1, color = "black"))) %>%
+                plotly::layout(scene = list(xaxis = list(title = paste0("PC", input$pcaDims[1])),
+                                            yaxis = list(title = paste0("PC", (input$pcaDims[2] - 1))),
+                                            zaxis = list(title = paste0("PC", input$pcaDims[2]))))
+            
+            output$PCAplots <- renderPlotly({
+                p
+            })
+            
+        }
+        
+        
+        output$scree <- renderPlot({
+            
+            var_explained_df <- data.frame(PC = paste0("PC",1:length(sampleinfo$samples$samples)),
+                                           var_explained=(p.pca$sdev)^2/sum((p.pca$sdev)^2))
+            
+            var_explained_df$PC <- factor(var_explained_df$PC, levels = var_explained_df$PC)
+            
+            var_explained_df %>%
+                ggplot(aes(x = PC, y = var_explained))+
+                geom_col() +
+                labs(title="Scree plot: PCA on scaled data") +
+                ggthemes::theme_clean() +
+                theme(axis.text.x = element_text(vjust = 0.6), legend.position = "none") +
+                scale_color_grey()
+            
+        })
+        
+    })
     
     observeEvent(input$pcaDims, {
         
@@ -2127,18 +2215,7 @@ server <- function(session, input, output) {
     })
     
     
-    observeEvent(input$PCA, {
-        
-        
-        
-        output$PCA_plots <- renderPlotly({
-            
 
-            
-        })
-        
-        
-    })
 
     
     

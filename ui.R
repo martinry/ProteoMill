@@ -476,21 +476,20 @@ body <- dashboardBody(
         tabItem(tabName = "PCA",
                 fluidRow(
                     column(width = 3,
-                           box(title = "PCA settings",
-                               status = "warning",
-                               width = NULL,
-                               shiny::sliderInput("pcaDims", "Dimensions", min = 1, max = 10, value = c(1, 2)),
-
-                               p(),
-                               hr(),
-                               helpText("Please review pairing mode under Settings")
+                           shinydashboard::box(title = "PCA settings",
+                                               status = "warning",
+                                               width = NULL,
+                                               shiny::sliderInput("pcaDims", "Dimensions", min = 1, max = 10, value = c(1, 2)),
+                                               checkboxInput("showPolygons", "Show polygons", value = T),
+                                               actionButton("PCA", "Update plots")
                            )
-                          ),
+                    ),
                     column(width = 9,
-                           box(title = "Plot area",
-                               plotlyOutput("PCA_plots"),
-                               width = NULL)
-                ))),
+                           shinydashboard::box(
+                                               plotly::plotlyOutput("PCAplots", height = "500px"),
+                                               plotOutput("scree", height = "250px"),
+                                               width = NULL)
+                    ))),
 
         tabItem(tabName = "samplecorr",
                 fluidRow(
