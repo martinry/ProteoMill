@@ -1,6 +1,7 @@
 # Load packages ----
 
 
+
 # Plotting/UI
 library(heatmaply)
 require(ggplot2)
@@ -81,6 +82,8 @@ get_delim <- function(c){
 
 # Server ----
 server <- function(session, input, output) {
+    
+    options(shiny.maxRequestSize=30*1024^2) 
     
     # Remove text "Loading packages, please wait..."
     removeUI(selector = "#notifications-wrapper > span")
@@ -466,11 +469,11 @@ server <- function(session, input, output) {
         # Guess input ID based on successful conversions
         if(i == "auto") {
             
-            tr1 <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = keys, column = "SYMBOL", keytype = "UNIPROTID", multiVals = "first")
-            tr2 <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = keys, column = "UNIPROTID", keytype = "ENTREZID", multiVals = "first")
-            tr3 <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = keys, column = "UNIPROTID", keytype = "SYMBOL", multiVals = "first")
-            tr4 <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = keys, column = "UNIPROTID", keytype = "GENEID", multiVals = "first")
-            tr5 <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = keys, column = "UNIPROTID", keytype = "PROTEINID", multiVals = "first")
+            tr1 <- AnnotationDbi::mapIds(maindata$organism, keys = keys, column = "SYMBOL", keytype = "UNIPROTID", multiVals = "first")
+            tr2 <- AnnotationDbi::mapIds(maindata$organism, keys = keys, column = "UNIPROTID", keytype = "ENTREZID", multiVals = "first")
+            tr3 <- AnnotationDbi::mapIds(maindata$organism, keys = keys, column = "UNIPROTID", keytype = "SYMBOL", multiVals = "first")
+            tr4 <- AnnotationDbi::mapIds(maindata$organism, keys = keys, column = "UNIPROTID", keytype = "GENEID", multiVals = "first")
+            tr5 <- AnnotationDbi::mapIds(maindata$organism, keys = keys, column = "UNIPROTID", keytype = "PROTEINID", multiVals = "first")
             
             trs <- list(tr1[!is.na(tr1)],
                         tr2[!is.na(tr2)],
@@ -481,17 +484,17 @@ server <- function(session, input, output) {
             i <- convertColumns[which.max(lapply(lapply(trs, lengths), sum))]
             
             if(i == "UNIPROTID"){
-                tr_all <- data.table(AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = data_wide[, as.character(.SD[[1L]])], columns = convertColumns, keytype = i))
+                tr_all <- data.table(AnnotationDbi::select(maindata$organism, keys = data_wide[, as.character(.SD[[1L]])], columns = convertColumns, keytype = i))
                 tr_all <- tr_all[!duplicated(UNIPROTID)]
                 
             } else {
-                tr <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = data_wide[, as.character(.SD[[1L]])], column = "UNIPROTID", keytype = i, multiVals = "first")
+                tr <- AnnotationDbi::mapIds(maindata$organism, keys = data_wide[, as.character(.SD[[1L]])], column = "UNIPROTID", keytype = i, multiVals = "first")
                 tr <- tr[!is.na(tr)]
                 tr <- tr[!duplicated(tr)]
                 
                 tr <- data.table(i = names(tr), "UNIPROTID" = unname(tr))
                 
-                tr_all <- data.table(AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = data_wide[, as.character(.SD[[1L]])], columns = convertColumns, keytype = i))
+                tr_all <- data.table(AnnotationDbi::select(maindata$organism, keys = data_wide[, as.character(.SD[[1L]])], columns = convertColumns, keytype = i))
                 tr_all <- tr_all[UNIPROTID %in% tr$UNIPROTID]
                 tr_all <- tr_all[!duplicated(UNIPROTID)]
             }
@@ -503,17 +506,17 @@ server <- function(session, input, output) {
             
             if(i == "UNIPROTID"){
                 
-                tr_all <- data.table(AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = data_wide[, as.character(.SD[[1L]])], columns = convertColumns, keytype = i))
+                tr_all <- data.table(AnnotationDbi::select(maindata$organism, keys = data_wide[, as.character(.SD[[1L]])], columns = convertColumns, keytype = i))
                 tr_all <- tr_all[!duplicated(UNIPROTID)]
                 
             } else {
-                tr <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = data_wide[, as.character(.SD[[1L]])], column = "UNIPROTID", keytype = i, multiVals = "first")
+                tr <- AnnotationDbi::mapIds(maindata$organism, keys = data_wide[, as.character(.SD[[1L]])], column = "UNIPROTID", keytype = i, multiVals = "first")
                 tr <- tr[!is.na(tr)]
                 tr <- tr[!duplicated(tr)]
                 
                 tr <- data.table(i = names(tr), "UNIPROTID" = unname(tr))
                 
-                tr_all <- data.table(AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = data_wide[, as.character(.SD[[1L]])], columns = convertColumns, keytype = i))
+                tr_all <- data.table(AnnotationDbi::select(maindata$organism, keys = data_wide[, as.character(.SD[[1L]])], columns = convertColumns, keytype = i))
                 tr_all <- tr_all[UNIPROTID %in% tr$UNIPROTID]
                 tr_all <- tr_all[!duplicated(UNIPROTID)]
             }
@@ -601,15 +604,22 @@ server <- function(session, input, output) {
         # Sample 1
         
         sample_1_exp <- "data/donors.uniprot.csv"
-        sample_1_anno <- "data/donors.uniprot.annotation.tsv"
+        maindata$data_wide <- fread(sample_1_exp, header = T)
+        #sample_1_anno <- "data/donors.uniprot.annotation.tsv"
         
-        upload_data(path = sample_1_exp, sep = ";", i = "UNIPROTID")
+        updateNotifications(paste0("Loading human annotation library..."), "info-circle", "info")
+        library(EnsDb.Hsapiens.v86)
         
-        maindata$data_annotation <- data.table::fread(
-            sample_1_anno,
-            sep = "auto",
-            dec = ".",
-            header = T)
+        updateNotifications(paste0("Loading human interaction library..."), "info-circle", "info")
+        upload_data()
+        subset_interactions()
+        
+        
+        # maindata$data_annotation <- data.table::fread(
+        #     sample_1_anno,
+        #     sep = "auto",
+        #     dec = ".",
+        #     header = T)
         
         updateNotifications("Demo data uploaded.","check-circle", "success")
         updateTasks(text = "Upload a dataset", value = 100, color = "green", i = 0001)
@@ -682,7 +692,6 @@ server <- function(session, input, output) {
     
     output$identifierinfo <- renderTable({
         if(!is.null(maindata$data_wide)) {
-            # assign("dw", maindata$data_wide, envir = .GlobalEnv)
             
             missingids <- maindata$data_wide[, ..convertColumns]
             missingidspc <- apply(missingids, 2, FUN = function(x) paste0(round(((sum(!startsWith(x, "MISSING")) / missingids[, .N]) * 100), 2), "% (", sum(!startsWith(x, "MISSING")), ")") )
@@ -796,6 +805,9 @@ server <- function(session, input, output) {
             
             assign("sic", sampleinfo$samples$condition, envir = .GlobalEnv)
             assign("sir", sampleinfo$samples$replicate, envir = .GlobalEnv)
+            assign("sis", sampleinfo$samples, envir = .GlobalEnv)
+            assign("siSID", sampleinfo$sID, envir = .GlobalEnv)
+            assign("sgroup", sampleinfo$group, envir = .GlobalEnv)
             
             
             maindata$data_wide <- data_wide
@@ -1088,8 +1100,6 @@ server <- function(session, input, output) {
     # Differential expression: DEA function ----
     
     diff_exp <- function(coeff, pairing) {
-        
-        best_fit = 'normal'
         
         dw <- maindata$data_wide
         sinf <- sampleinfo$samples
@@ -1828,11 +1838,11 @@ server <- function(session, input, output) {
             
             keys <- strsplit(gsub("[^[:alnum:] ]", " ", keys), " +")[[1]]
             
-            tr1 <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = keys, column = "SYMBOL", keytype = "UNIPROTID", multiVals = "first")
-            tr2 <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = keys, column = "UNIPROTID", keytype = "ENTREZID", multiVals = "first")
-            tr3 <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = keys, column = "UNIPROTID", keytype = "SYMBOL", multiVals = "first")
-            tr4 <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = keys, column = "UNIPROTID", keytype = "GENEID", multiVals = "first")
-            tr5 <- AnnotationDbi::mapIds(EnsDb.Hsapiens.v86, keys = keys, column = "UNIPROTID", keytype = "PROTEINID", multiVals = "first")
+            tr1 <- AnnotationDbi::mapIds(maindata$organism, keys = keys, column = "SYMBOL", keytype = "UNIPROTID", multiVals = "first")
+            tr2 <- AnnotationDbi::mapIds(maindata$organism, keys = keys, column = "UNIPROTID", keytype = "ENTREZID", multiVals = "first")
+            tr3 <- AnnotationDbi::mapIds(maindata$organism, keys = keys, column = "UNIPROTID", keytype = "SYMBOL", multiVals = "first")
+            tr4 <- AnnotationDbi::mapIds(maindata$organism, keys = keys, column = "UNIPROTID", keytype = "GENEID", multiVals = "first")
+            tr5 <- AnnotationDbi::mapIds(maindata$organism, keys = keys, column = "UNIPROTID", keytype = "PROTEINID", multiVals = "first")
             
             trs <- list(tr1[!is.na(tr1)],
                         tr2[!is.na(tr2)],
@@ -1842,7 +1852,7 @@ server <- function(session, input, output) {
             
             i <- convertColumns[which.max(lapply(lapply(trs, lengths), sum))]
             
-            tr_all <- data.table(AnnotationDbi::select(EnsDb.Hsapiens.v86, keys = keys, columns = convertColumns, keytype = i))
+            tr_all <- data.table(AnnotationDbi::select(maindata$organism, keys = keys, columns = convertColumns, keytype = i))
             
             output$convertedids <- DT::renderDT({
                 tr_all
@@ -2054,13 +2064,19 @@ server <- function(session, input, output) {
             
             library(EnsDb.Hsapiens.v86)
             
+            maindata$organism <- EnsDb.Hsapiens.v86
+            
         } else if(input$organism == "Mus musculus") {
             
             library(EnsDb.Mmusculus.v79)
             
+            maindata$organism <- EnsDb.Mmusculus.v79
+            
         } else if(input$organism == "Rattus norvegicus") {
             
             library(EnsDb.Rnorvegicus.v79)
+            
+            maindata$organism <- EnsDb.Rnorvegicus.v79
             
         }
         
@@ -2075,15 +2091,32 @@ server <- function(session, input, output) {
     
     observeEvent(input$EndStep2, {
         
-        shinyjs::show("Modal2Spinner")
+        
         
         #upload_data()
-        upload_data(i = "UNIPROTID")
+        
+        
+        if(is.null(maindata$data_wide)) {
+            createAlert(session, "alert", "exampleAlert",
+                        content = "Please select a file.", append = FALSE,
+                        style = "danger")
+        }
+        else {
+            
+            shinyjs::show("Modal2Spinner")
+            
+            upload_data(i = "auto")
+            
+            toggleModal(session, "ImportModal2", toggle = "toggle")
+            shinyjs::hide("Modal2Spinner")
+            toggleModal(session, "ImportModal3", toggle = "toggle")
+            
+        }
+        
         
         # View(maindata$data_origin)
         # View(maindata$data_wide)
         # 
-        assign("wide", maindata$data_wide, envir = .GlobalEnv)
         
         
         # check identifiers
@@ -2094,10 +2127,7 @@ server <- function(session, input, output) {
         
         
         
-        
-        toggleModal(session, "ImportModal2", toggle = "toggle")
-        shinyjs::hide("Modal2Spinner")
-        toggleModal(session, "ImportModal3", toggle = "toggle")
+
         
         
     })
@@ -2110,6 +2140,37 @@ server <- function(session, input, output) {
         updateNotifications("Dataset uploaded.","check-circle", "success")
         updateTasks(text = "Upload a dataset", value = 100, color = "green", i = 0001)
         
+        
+    })
+    
+    # Heatmap Updated ----
+    
+    observeEvent(input$renderHeatmap, {
+        
+        dw <- maindata$data_wide
+        
+        dw_cor <- log2(dw[, -..convertColumns])
+        dw_cor[is.na(dw_cor)] <- 0 # Impute
+        dw_cor <- round(cor(dw_cor, method = input$corMethod), 2)
+        
+        output$heatmap <- renderPlotly({
+            
+            if(input$showGrid) gg = 0.75
+            else gg = 0
+            
+            heatmaply_cor(dw_cor,
+                          limits = c(min(dw_cor), 1),
+                          col = viridis(n = 100),
+                          fontsize_row = 8,
+                          fontsize_col = 8,
+                          grid_gap = gg,
+                          plot_method = "plotly",
+                          column_text_angle = 270,
+                          show_dendrogram = c(T, F),
+                          row_dend_left = T
+            )
+            
+        })
         
     })
     
@@ -2214,6 +2275,29 @@ server <- function(session, input, output) {
         
     })
     
+    observeEvent(input$checkMemory, {
+        
+        print(mem_used())
+        
+        
+        
+        #print(ls())
+        
+        #updateNotifications(as.numeric(mem_used() / 1000000),"info-circle", "info")
+        
+        env <- environment()
+        
+        print(ls(env))
+        
+        data.frame(
+            object = ls(env),
+            size = unlist(lapply(ls(env), function(x) {
+                object.size(get(x, envir = env, inherits = FALSE))
+            }))
+        )
+        
+        
+    })
     
 
 

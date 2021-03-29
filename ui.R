@@ -6,7 +6,7 @@ require(shinyjs)
 library(shinyBS)
 require(visNetwork)
 require(DT)
-
+require(plotly)
 
 
 # Notification menus ----
@@ -16,7 +16,7 @@ notifications <- shinydashboard::dropdownMenuOutput("notifMenu")
 
 header <- dashboardHeader(help,
                           notifications,
-                          title = list(tags$img(id = "mill", class = "normal", src = "mill.png"), "PROTEOMILL"),
+                          title = list(tags$img(id = "mill", class = "normal", src = "mill.png"), "ProteoMill"),
                           tags$li(class = "dropdown",
                                   id = "notifications-wrapper",
                                   tags$div(id = 'load-process', style = 'display: none; position: absolute; margin-left: 6px',
@@ -32,7 +32,7 @@ header <- dashboardHeader(help,
                                              )
                                    )
                                  ),
-                          tags$li(class = "dropdown", id = "test-button")
+                          tags$li(class = "dropdown", id = "test-button", actionButton("checkMemory", "Check memory"))
                           )
 
 # Sidebar menu ----
@@ -192,9 +192,15 @@ body <- dashboardBody(
                                                                             "Mus musculus",
                                                                             "Rattus norvegicus")),
                                                            
+                                                           bsTooltip("organism", "In order to use correct annotation databases, we need to know the species your data is derived from.",
+                                                                     "right", options = list(container = "body")),
+                                                           
                                                            selectInput("DataType", "Type of data",
                                                                        list("Proteins",
-                                                                            "Peptides")))
+                                                                            "Peptides")),
+                                                           bsTooltip("DataType", "ProteoMill supports peptide-level and protein-level data.",
+                                                                     "right", options = list(container = "body"))
+                                                           )
                                                 ),
                                                 
                                                 column(width = 6,
@@ -202,7 +208,11 @@ body <- dashboardBody(
                                                            title = "Data configuration",
                                                            
                                                            checkboxInput("LogTransformData", "Log₂-transform data", value = T),
-                                                           checkboxInput("NormalizeData", "Apply normalization")
+                                                           bsTooltip("LogTransformData", "Throughout the analysis, log-transformed data will be used. If your data is already log₂-transformed, uncheck this box.",
+                                                                     "right", options = list(container = "body")),
+                                                           checkboxInput("NormalizeData", "Apply normalization"),
+                                                           bsTooltip("NormalizeData", "If your data needs preprocessing in the form of normalization, check this box.",
+                                                                     "right", options = list(container = "body")),
                                                            
                                                        ))
                                                 
@@ -229,6 +239,8 @@ body <- dashboardBody(
                                             tags$head(tags$style("#ImportModal2 .modal-footer{ display:none}")),
                                             tags$head(tags$style("#myBox {display:none}")),
                                             
+                                            bsAlert("alert"),
+                                            
                                             tags$p(tags$strong("A minimal example."), actionLink(inputId = "ShowHide", "Show/Hide")),
                                             
                                             fluidRow(
@@ -245,7 +257,6 @@ body <- dashboardBody(
                                                            img(src = "/img/minimal_example.png", width = "75%")
                                                        ))),
 
-                                            
                                             fileInput(inputId = "file1",
                                                       label = "Upload a dataset",
                                                       multiple = F,
@@ -253,6 +264,9 @@ body <- dashboardBody(
                                                           "text/csv",
                                                           "text/comma-separated-values,text/plain",
                                                           ".csv")),
+                                            
+                                            bsTooltip("file1", "Upload a dataset of filetyp .csv, .tsv, or .txt.",
+                                                      "right", options = list(container = "bsModal")),
                                             
                                             tags$head(tags$style(
                                                 HTML("#DataTables_Table_0_length {visibility:hidden}"),
@@ -297,11 +311,11 @@ body <- dashboardBody(
                                     ),
                         tabPanel(
                             title = 'Demo data',
+                            p("Explore ProteoMill with a demo datasets. You can also download a dataset to learn how to properly format your own datasets for use in ProteoMill."),
                             selectInput("selectDemoData", label = "Select a dataset",
                                         list(`Proteomics` = 
                                                  list("Sample dataset 1" = 1))),
                             actionButton("useDemoData", label = "Use demo data"),
-                            actionButton("tryMe", label = "Try me"),
                             downloadButton('downloadDemo',"Download")
                         )
                     )
@@ -497,18 +511,18 @@ body <- dashboardBody(
                         box(title = "Heatmap settings",
                             width = NULL,
                             status = "warning",
-                            shiny::radioButtons("corMethod",
-                                                label = "Correlation method",
-                                                inline = T,
-                                                choices = list("Pearson", "Spearman", "Kendall")),
-                            shiny::checkboxInput("showGrid", "Show grid", value = F),
+                            selectInput("corMethod", "Corr. method", choices = list("Pearson" = "pearson",
+                                                                                    "Spearman" = "spearman",
+                                                                                    "Kendall" = "kendall"),
+                                        selected = "pearson"),
+                            shiny::checkboxInput("showGrid", "Show grid", value = T),
                             
-                            actionButton("generateheatmap","Load plot")
+                            actionButton("renderHeatmap","Load plot")
                         )),
                         
                     column(width = 9,
-                        box(title = "Sample correlation", width = NULL,
-                            plotOutput("samplecorrheatmap", width = "700px", height = "600px"))
+                        box(title = "Sample-sample correlation heatmap", width = NULL,
+                            plotlyOutput("heatmap", height = "600px"))
                     ))
 
         ),
@@ -735,7 +749,7 @@ body <- dashboardBody(
                 )
     ),
     div(class = "footer_wrapper",
-        div(class = "sticky_footer", span("© 2020 · ProteoMill | Martin Rydén", style = "line-height: 35px; float: right; margin-right: 20px;")))
+        div(class = "sticky_footer", span("© 2021 · ProteoMill | Martin Rydén", style = "line-height: 35px; float: right; margin-right: 20px;")))
 )
 
 # Load dashboard page ----
