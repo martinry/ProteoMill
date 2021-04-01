@@ -1,6 +1,96 @@
 
 /* force rewrite the skin min css */
 
+
+/* social icons */
+
+
+.fa-at:hover {
+    color: #ea4c89;
+    -o-transition:.1s;
+    -ms-transition:.1s;
+    -moz-transition:.1s;
+    -webkit-transition:.1s;
+    transition:.1s;
+}
+
+.fa-at{
+    -o-transition:.1s;
+    -ms-transition:.1s;
+    -moz-transition:.1s;
+    -webkit-transition:.1s;
+    transition:.1s;
+}
+
+.fa-linkedin:hover {
+    color: #0976B4;
+    -o-transition:.1s;
+    -ms-transition:.1s;
+    -moz-transition:.1s;
+    -webkit-transition:.1s;
+    transition:.1s;
+}
+
+.fa-linkedin{
+    -o-transition:.1s;
+    -ms-transition:.1s;
+    -moz-transition:.1s;
+    -webkit-transition:.1s;
+    transition:.1s;
+}
+
+.fa-youtube:hover {
+    color: #CC181E;
+    -o-transition:.1s;
+    -ms-transition:.1s;
+    -moz-transition:.1s;
+    -webkit-transition:.1s;
+    transition:.1s;
+}
+
+.fa-youtube{
+    -o-transition:.1s;
+    -ms-transition:.1s;
+    -moz-transition:.1s;
+    -webkit-transition:.1s;
+    transition:.1s;
+}
+
+.fa-twitter:hover {
+    color: #55ACEE;
+    -o-transition:.1s;
+    -ms-transition:.1s;
+    -moz-transition:.1s;
+    -webkit-transition:.1s;
+    transition:.1s;
+}
+
+.fa-twitter{
+    -o-transition:.1s;
+    -ms-transition:.1s;
+    -moz-transition:.1s;
+    -webkit-transition:.1s;
+    transition:.1s;
+}
+
+.fa-github:hover {
+    color: #8aba56;
+    -o-transition:.1s;
+    -ms-transition:.1s;
+    -moz-transition:.1s;
+    -webkit-transition:.1s;
+    transition:.1s;
+}
+
+.fa-github{
+    -o-transition:.1s;
+    -ms-transition:.1s;
+    -moz-transition:.1s;
+    -webkit-transition:.1s;
+    transition:.1s;
+}
+
+
 .tooltip.tooltip-top,
 .tooltip.tooltip-bottom,
 .tooltip.tooltip-left,
@@ -79,7 +169,7 @@ body {
 }
 
 .footer_wrapper{
-	height:35px;
+	height:50px;
     position:absolute;
     display:inline-block;
     bottom: 0;
@@ -91,8 +181,12 @@ body {
 }
 
 .sticky_footer {
-
-    
+	display: flex;
+    text-align: center;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    padding-right: 1.8%;
+    float: right;
 }
 
 

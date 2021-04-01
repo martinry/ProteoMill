@@ -31,8 +31,8 @@ header <- dashboardHeader(help,
                                              tags$span(class = "letters2")
                                              )
                                    )
-                                 ),
-                          tags$li(class = "dropdown", id = "test-button", actionButton("checkMemory", "Check memory"))
+                                 )
+                          #tags$li(class = "dropdown", id = "test-button", actionButton("checkMemory", "Check memory"))
                           )
 
 # Sidebar menu ----
@@ -116,6 +116,7 @@ body <- dashboardBody(
     tags$head(
         tags$meta(name="google-site-verification", content="JC0Ph8rzlXWiAL6lWXnusIUEOhJSqf8u2yVzK5g2P04"),
         tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"),
+        tags$link(rel = "stylesheet", type = "text/css", href = "https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"),
         tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Quicksand"),
         tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Patrick+Hand"),
         tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Spectral+SC"),
@@ -237,15 +238,21 @@ body <- dashboardBody(
                                             size = "large",
                                             
                                             tags$head(tags$style("#ImportModal2 .modal-footer{ display:none}")),
-                                            tags$head(tags$style("#myBox {display:none}")),
+                                            tags$head(tags$style("#showHideBox1,#showHideBox2 {display:none}")),
                                             
-                                            bsAlert("alert"),
+                                            bsAlert("selectAFile"),
+                                            bsAlert("fileHasError"),
+                                            bsAlert("fileHasWarning"),
+                                            bsAlert("fileFormattingError"),
+                                            bsAlert("checkRequirements"),
                                             
-                                            tags$p(tags$strong("A minimal example."), actionLink(inputId = "ShowHide", "Show/Hide")),
+                                            
+                                            
                                             
                                             fluidRow(
                                                 column(width = 12,
-                                                       box(id = "myBox",
+                                                       tags$p(tags$strong("A minimal example."), actionLink(inputId = "ShowHide1", "Show/Hide")),
+                                                       box(id = "showHideBox1",
                                                            width = NULL,
                                                            
                                                            tags$p(img(src = "/img/yellow.png", width = "10px"), tags$strong("Protein IDs."), "In the first column, row two and onwards contains protein IDs (see accepted ID types below)."),
@@ -255,7 +262,23 @@ body <- dashboardBody(
                                                            tags$p(img(src = "/img/green.png", width = "10px"), tags$strong("Quantitative values."), 'Only numeric values greater than or equal to 0, or NA. Period (.) should be used for decimal character.'),
                                                            
                                                            img(src = "/img/minimal_example.png", width = "75%")
-                                                       ))),
+                                                           ),
+                                                       tags$p(tags$strong("Dataset checklist."), actionLink(inputId = "ShowHide2", "Show/Hide")),
+                                                       box(id = "showHideBox2",
+                                                           width = NULL,
+                                                           
+                                                           tags$ul(
+                                                               tags$li("Experiment must contain at least two groups/treatments"),
+                                                               tags$li("Each treatment must contain at least two replicates"),
+                                                               tags$li("File must have a header row"),
+                                                               tags$li("First column should contain protein IDs"),
+                                                               tags$li("Column two and onwards should contain sample names"),
+                                                               tags$li("Sample names should be in the form treatment_replicate")
+                                                           )
+                                                           
+                                                           )
+                                                       )
+                                                ),
 
                                             fileInput(inputId = "file1",
                                                       label = "Upload a dataset",
@@ -276,9 +299,16 @@ body <- dashboardBody(
                                                 
                                                 
                                             )),
-                                            p(id = "previewDTInfo", paste("Here is a 5x5 slice of your data. Does it look OK?"),
-                                              style = "display:none"),
-                                            DTOutput("previewDT"),
+                                            # div(id = "previewDTInfo", tags$h4("Data preview"),
+                                            #   style = "display:none"),
+                                            div(id = "previewDTInfo", style = "display:none",
+                                                box(
+                                                    width = NULL,
+                                                    title = "Data preview",
+                                                    tags$div(DTOutput("previewDT"), style = "font-size: 58%; margin-top: -35px; max-width: 100%")
+                                                    )
+                                                ),
+                                            
                                             
                                             tags$head(tags$style("#Modal2Spinner {display:none}")),
                                             shinycssloaders::withSpinner(
@@ -687,18 +717,12 @@ body <- dashboardBody(
                 )
         ),
         
-        tabItem(tabName = "contact",
-                fluidRow(
-                    column(width = 5,
-                           box(title = "Contact", width = NULL,
-                               helpText("Found a bug? Use this form to contact me about anything: errors, feature requests, ideas or other comments."),
-                               textInput("cname", "Name", placeholder = "Anonymous"),
-                               textInput("email", "Email", placeholder = "Anonymous"),
-                               textAreaInput("suggestion", "Comment"),
-                               actionButton("sendcomment", "Send", icon = icon("paper-plane"))
-                           )
-                    )
-                )
+        tabItem(tabName = "contact"
+                # TBA social icons. Here or footer?
+                
+                
+                
+                
         ),
         
         
@@ -749,7 +773,14 @@ body <- dashboardBody(
                 )
     ),
     div(class = "footer_wrapper",
-        div(class = "sticky_footer", span("© 2021 · ProteoMill | Martin Rydén", style = "line-height: 35px; float: right; margin-right: 20px;")))
+        div(class = "sticky_footer",
+            div(span(shiny::icon("github", style = "padding: 5px;"),
+                     shiny::icon("twitter", style = "padding: 5px;"),
+                     shiny::icon("linkedin", style = "padding: 5px;"),
+                     shiny::icon("youtube", style = "padding: 5px;"),
+                     shiny::icon("at", style = "padding: 5px;"),
+                     style = "font-size: 25px; line-height: 50px;")),
+            div(span("© 2021 · ProteoMill | Martin Rydén", style = "font-size: 12pt; line-height: 50px; padding-left: 25px;"))))
 )
 
 # Load dashboard page ----

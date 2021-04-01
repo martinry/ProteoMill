@@ -1,15 +1,26 @@
 # Load packages ----
 
-
+# Annotation
+library(parallel)
+library(BiocGenerics)
+library(Biobase)
+library(stats4)
+library(IRanges)
+library(S4Vectors)
+library(AnnotationDbi)
+library(GenomeInfoDb)
+library(GenomicRanges)
+# library(GenomicFeatures)
+# library(AnnotationFilter)
+# library(ensembldb)
 
 # Plotting/UI
 library(heatmaply)
 require(ggplot2)
 require(ggrepel)
 require(RColorBrewer)
-require(umap)
 require(factoextra)
-require(fitdistrplus)
+# require(fitdistrplus)
 require(plotly)
 require(networkD3)
 require(igraph)
@@ -17,14 +28,10 @@ require(shinycssloaders)
 require(shinyjs)
 require(shinyBS)
 
-# Annotation
-require(AnnotationDbi)
-# require(EnsDb.Hsapiens.v86)
-
 # Statistics
 require(limma)
 require(DESeq2)
-require(mixOmics)
+#require(mixOmics)
 
 # Parsing and reshaping
 require(stringr)
@@ -34,7 +41,7 @@ require(XML)
 require(rmarkdown)
 require(R.utils)
 require(knitr)
-require(Biobase)
+
 
 
 # Generic functions ----
@@ -358,16 +365,16 @@ server <- function(session, input, output) {
     
     sample_data <- function(data) {
         samples <- names(data[, -..convertColumns])
-        condition <- as.factor(gsub('_.*', '', samples))
+        treatment <- as.factor(gsub('_.*', '', samples))
         replicate <- as.factor(gsub('.*_', '', samples))
-        samples <- data.frame(samples, condition, replicate)
+        samples <- data.frame(samples, treatment, replicate)
         rownames(samples) <- samples$samples
         
-        group <- sapply(as.character(unique(condition)), function(x) paste("condition", x, sep = ''))
+        group <- sapply(as.character(unique(treatment)), function(x) paste("treatment", x, sep = ''))
         
         sampleinfo$samples <- samples
-        sampleinfo$condition <- condition
-        sampleinfo$replicate <- replicate
+        # sampleinfo$treatment <- treatment
+        # sampleinfo$replicate <- replicate
         
         sampleinfo$group <- group
 
@@ -378,9 +385,9 @@ server <- function(session, input, output) {
     
     subsample_data <- function(){
         samples <- sampleinfo$samples
-        condition <- samples$condition
+        treatment <- samples$treatment
         
-        group <- sapply(as.character(unique(condition)), function(x) paste("condition", x, sep = ''))
+        group <- sapply(as.character(unique(treatment)), function(x) paste("treatment", x, sep = ''))
         sampleinfo$group <- group
     }
     
@@ -549,8 +556,6 @@ server <- function(session, input, output) {
         maindata$data_wide <- data_wide
         maindata$data_origin <- data_wide
         
-        assign("origin", maindata$data_origin, envir = .GlobalEnv)
-        
         pdesc <- data.table::fread("lib/protein_descriptions.txt.gz")
 
         setkey(maindata$data_wide, "UNIPROTID")
@@ -642,7 +647,7 @@ server <- function(session, input, output) {
     })
     
     output$conditioninfoBox <- renderInfoBox({
-        if(!is.null(sampleinfo$samples)) infoBox("Treatments", length(unique(sampleinfo$samples$condition)))
+        if(!is.null(sampleinfo$samples)) infoBox("Treatments", length(unique(sampleinfo$samples$treatment)))
         else infoBox("Treatments", 0)
     })
     
@@ -669,7 +674,7 @@ server <- function(session, input, output) {
         # Check that we still have at least two conditions
         
         if(!is.null(input$includesamples)) {
-            if(sum(sapply(levels(sampleinfo$samples$condition), FUN = function(x) any(startsWith(input$includesamples, x)))) >= 2) {
+            if(sum(sapply(levels(sampleinfo$samples$treatment), FUN = function(x) any(startsWith(input$includesamples, x)))) >= 2) {
                 maindata$data_wide <- maindata$data_wide[, c(convertColumns, as.character(input$includesamples)), with = F]
                 maindata$data_wide <- maindata$data_wide[apply(maindata$data_wide[, -convertColumns, with = F], 1, FUN = function(x) !all(is.na(x))),]
                 
@@ -796,18 +801,18 @@ server <- function(session, input, output) {
         
         if(!is.null(data_wide)){
             data_origin <- maindata$data_origin
-            data_wide <- subset_by_na(dataset = data_origin, treatment = sampleinfo$samples$condition, threshold = input$missingvalues)
+            data_wide <- subset_by_na(dataset = data_origin, treatment = sampleinfo$samples$treatment, threshold = input$missingvalues)
             
             #subset_interactions()
             
             unlock_menus()
             renderNAfreq(data_wide)
             
-            assign("sic", sampleinfo$samples$condition, envir = .GlobalEnv)
-            assign("sir", sampleinfo$samples$replicate, envir = .GlobalEnv)
-            assign("sis", sampleinfo$samples, envir = .GlobalEnv)
-            assign("siSID", sampleinfo$sID, envir = .GlobalEnv)
-            assign("sgroup", sampleinfo$group, envir = .GlobalEnv)
+            # assign("sic", sampleinfo$samples$treatment, envir = .GlobalEnv)
+            # assign("sir", sampleinfo$samples$replicate, envir = .GlobalEnv)
+            # assign("sis", sampleinfo$samples, envir = .GlobalEnv)
+            # assign("siSID", sampleinfo$sID, envir = .GlobalEnv)
+            # assign("sgroup", sampleinfo$group, envir = .GlobalEnv)
             
             
             maindata$data_wide <- data_wide
@@ -828,7 +833,7 @@ server <- function(session, input, output) {
     plotPCA <- function(contribs, ellipse, type) {
         
         data_origin <- maindata$data_origin
-        dt <- dframe(subset_by_na(data_origin, treatment = sampleinfo$samples$condition, threshold = input$missingvalues), sampleinfo$sID)
+        dt <- dframe(subset_by_na(data_origin, treatment = sampleinfo$samples$treatment, threshold = input$missingvalues), sampleinfo$sID)
         # Biplot extension displaying top contributing proteins currently only available for 2D plot.
         
         if(type == '2d') {
@@ -842,7 +847,7 @@ server <- function(session, input, output) {
             
             p.pca <- prcomp(t(pca.data), center = TRUE, scale. = F)
             
-            plots$pcaplot2d <- factoextra::fviz_pca_biplot(p.pca, title = '', label = "var", habillage = sampleinfo$samples$condition,
+            plots$pcaplot2d <- factoextra::fviz_pca_biplot(p.pca, title = '', label = "var", habillage = sampleinfo$samples$treatment,
                                                    addEllipses = TRUE, ellipse.level = ellipse,
                                                    select.var = list(contrib = contribs), repel = TRUE) + theme_light()
             
@@ -864,7 +869,7 @@ server <- function(session, input, output) {
             plots$pcaplot2d <- plotIndiv(
                 pca.res,
                 ind.names = sampleinfo$samples$replicate,
-                group = sampleinfo$samples$condition,
+                group = sampleinfo$samples$treatment,
                 title = "Multilevel PCA",
                 legend = T,
                 style = "ggplot2",
@@ -892,7 +897,7 @@ server <- function(session, input, output) {
                                        z = p.pca$x[,3],
                                        text = rownames(p.pca$x),
                                        hoverinfo = "text",
-                                       color = sampleinfo$samples$condition,
+                                       color = sampleinfo$samples$treatment,
                                        colors = c("red","green","blue"),
                                        sizes = c(100, 150)) %>%
                 plotly::add_markers() %>%
@@ -919,7 +924,7 @@ server <- function(session, input, output) {
                                        z = pca.res$x[,3],
                                        text = rownames(pca.res$x),
                                        hoverinfo = "text",
-                                       color = sampleinfo$samples$condition,
+                                       color = sampleinfo$samples$treatment,
                                        colors = c("red","green","blue"),
                                        sizes = c(100, 150)) %>%
                 plotly::add_markers() %>%
@@ -929,30 +934,7 @@ server <- function(session, input, output) {
 
             return(plots$pcaplot3d)
             
-        } else if (type == 'UMAP') {
-            
-            pca.data <- log2(dt)  # Log2 transform data
-            pca.data[is.na(pca.data)] <- 0 # "Impute" missing values as 0
-            
-            pca.data <- t(pca.data)        # Transpose dataset
-
-            um <- umap::umap(pca.data, n_neighbors = ncol(dt))
-            
-            df <- data.frame(x = um$layout[,1],
-                             y = um$layout[,2],
-                             Sample <- sampleinfo$samples$condition)
-            
-            Condition <- sampleinfo$samples$condition
-            
-            plots$umap <- ggplot(df, aes(x, y, color = Condition, shape = sampleinfo$samples$condition)) +
-                geom_point(size = 4) + guides(shape = "none") + theme_light()
-            
-            plots$umap
-            
-            
-            
-            
-        } else { return (FALSE) }
+        }  else { return (FALSE) }
         
     }
     
@@ -1118,18 +1100,18 @@ server <- function(session, input, output) {
                 
                 design <- DESeqDataSetFromMatrix(countData  = round(dframe(dw, sampleinfo$sID)),
                                                  colData    = sinf,
-                                                 design     = ~ 0 + condition + replicate)
+                                                 design     = ~ 0 + sampleinfo$samples$treatment + sampleinfo$samples$replicate)
                 
             } else {
                 # Unpaired
                 design <- DESeqDataSetFromMatrix(countData  = round(dframe(dw, sampleinfo$sID)),
                                                    colData    = sinf,
-                                                   design     = ~ 0 + condition)
+                                                   design     = ~ 0 + sampleinfo$samples$treatment)
             }
 
             dds <- DESeq(design)
             
-            contrast <- results(dds, contrast=c("condition", sub("condition", "", input$contrast1), sub("condition", "", input$contrast2)))
+            contrast <- results(dds, contrast=c("treatment", sub("treatment", "", input$contrast1), sub("treatment", "", input$contrast2)))
             
             colnames(contrast) <- c("baseMean", "logFC", "logFC.SE", "stat", "P.Value", "adj.P.Val")
             
@@ -1163,11 +1145,11 @@ server <- function(session, input, output) {
             phenoData <- new("AnnotatedDataFrame", data = sampleinfo$samples)
             exampleSet <- ExpressionSet(assayData = as.matrix(log2(dframe(maindata$data_wide, sampleinfo$sID))), phenoData = phenoData)
             
-            condition <- sampleinfo$condition
-            replicate <- sampleinfo$replicate
+            treatment <- sampleinfo$samples$treatment
+            repl <- sampleinfo$samples$replicate
             
-            unpaired <- model.matrix( ~ 0 + condition )
-            paired <- model.matrix( ~ 0 + condition + replicate )
+            unpaired <- model.matrix( ~ 0 + treatment )
+            paired <- model.matrix( ~ 0 + treatment + repl )
             
             if(pairing == 1) {
                 design <- paired
@@ -1182,7 +1164,7 @@ server <- function(session, input, output) {
             c <- expand.grid(sampleinfo$group, sampleinfo$group)
             cc <- factor(ifelse(c$Var1 != c$Var2, paste(c$Var1, c$Var2, sep = '-'), NA ))
             cc <- cc[!is.na(cc)]
-            names(cc) <- gsub('-','', gsub('condition','',cc))
+            names(cc) <- gsub('-','', gsub('treatment','',cc))
             
             cont.matrix <- makeContrasts(contrasts = cc, levels = design) # All possible contrasts
             
@@ -1961,8 +1943,8 @@ server <- function(session, input, output) {
     
     output$download <- downloadHandler(
         filename = function(){
-            if(!is.null(maindata$inFile$name)) paste(gsub("condition", "", rcont$contrasts), gsub(".csv", "", maindata$inFile$name), "csv", sep = ".")
-            else paste0(gsub("condition", "", rcont$contrasts), ".csv")
+            if(!is.null(maindata$inFile$name)) paste(gsub("treatment", "", rcont$contrasts), gsub(".csv", "", maindata$inFile$name), "csv", sep = ".")
+            else paste0(gsub("treatment", "", rcont$contrasts), ".csv")
         }, 
         content = function(fname){
             fwrite(rcont$contrast, fname, sep = ";")
@@ -2020,8 +2002,12 @@ server <- function(session, input, output) {
     
     # Data import wizard ----
     
-    observeEvent(input$ShowHide, {
-        shinyjs::toggle("myBox")
+    observeEvent(input$ShowHide1, {
+        shinyjs::toggle("showHideBox1")
+    })
+    
+    observeEvent(input$ShowHide2, {
+        shinyjs::toggle("showHideBox2")
     })
     
     # File input: Main data ----
@@ -2039,21 +2025,73 @@ server <- function(session, input, output) {
     observeEvent(input$file1, {
         
         inFile <- input$file1
+
         if (is.null(inFile)) return(NULL)
-        maindata$data_wide <- fread(inFile$datapath, header = T)
+        #maindata$data_wide <- fread(inFile$datapath, header = T)
         
-        shinyjs::show("previewDTInfo")
+        dw <- tryCatch({fread(input=inFile$datapath);},
+                        error = function(err){return(err)} ,
+                        warning = function(war){return(war)} ,silent=F)
         
-        maindata$data_wide
+        # dw <- tryCatch({fread(input="files/E-PROT-45-query-results.tsv");},
+        #                error = function(err){return(err)} ,
+        #                warning = function(war){return(war)} ,silent=F)
+        
+        
+        if("error" %in% class(dw)) {
+            
+            createAlert(session, "fileHasError", "exampleAlert",
+                        content = dw$message, append = FALSE,
+                        style = "danger")
+            
+            rm(dw)
+            
+        } else if ("warning" %in% class(dw)) {
+                
+            createAlert(session, "fileHasWarning", "exampleAlert",
+                        content = dw$message, append = FALSE,
+                        style = "warning")
+            
+        } else {
+            
+            maindata$data_wide <- dw
+            
+            shinyjs::show("previewDTInfo")
+            
+            maindata$isValid <- validate_data_format(dw)
+            
+        }
+        
+
     })
 
     
-    output$previewDT <- renderDT(
+    output$previewDT <- renderDT({
         
-        datatable(
-            maindata$data_wide[1:5, 1:5]
-        )
-    )
+        if(!is.null(maindata$data_wide)){
+            
+            dt <- maindata$data_wide
+            
+            dw <- tryCatch({
+                
+                if(ncol(dt) >= 20) {
+                    datatable(dt[1:10, 1:20], options = list(autoWidth = T, scrollX = T))
+                } else if (ncol(dt) < 20) {
+                    datatable(dt[1:10, 1:ncol(dt)], options = list(autoWidth = T, scrollX = T))
+                }
+                
+                ;},
+                error = function(err){return(err)},
+                warning = function(war){return(war)}, silent = F)
+            
+            if("error" %in% class(dw)) NULL
+            else dw
+
+        }
+        
+        
+        
+    })
     
     
     observeEvent(input$EndStep1, {
@@ -2093,23 +2131,32 @@ server <- function(session, input, output) {
         
         
         
-        #upload_data()
-        
-        
         if(is.null(maindata$data_wide)) {
-            createAlert(session, "alert", "exampleAlert",
+            createAlert(session, "selectAFile", "exampleAlert",
                         content = "Please select a file.", append = FALSE,
                         style = "danger")
         }
         else {
             
-            shinyjs::show("Modal2Spinner")
+            if(maindata$isValid) {
+                
+                shinyjs::show("Modal2Spinner")
+                
+                upload_data(i = "auto")
+                
+                toggleModal(session, "ImportModal2", toggle = "toggle")
+                shinyjs::hide("Modal2Spinner")
+                toggleModal(session, "ImportModal3", toggle = "toggle")
+                
+            } else {
+                
+                createAlert(session, "checkRequirements", "exampleAlert1",
+                            content = "File format is not valid. Please make sure dataset fulfills checklist requirements.", append = F,
+                            style = "info")
+                
+            }
             
-            upload_data(i = "auto")
-            
-            toggleModal(session, "ImportModal2", toggle = "toggle")
-            shinyjs::hide("Modal2Spinner")
-            toggleModal(session, "ImportModal3", toggle = "toggle")
+
             
         }
         
@@ -2180,7 +2227,7 @@ server <- function(session, input, output) {
     observeEvent(input$PCA, {
         
         dw <- maindata$data_wide
-        si_condition <- sampleinfo$samples$condition
+        si_condition <- sampleinfo$samples$treatment
         
         pca.data <- log2(dw[, -..convertColumns])
         pca.data[is.na(pca.data)] <- 0 # "Impute" missing values as 0
@@ -2230,9 +2277,9 @@ server <- function(session, input, output) {
                                  z = p.pca$x[,input$pcaDims[2]],
                                  text = rownames(p.pca$x),
                                  hoverinfo = "text",
-                                 color = si_condition,
+                                 color = sampleinfo$samples$treatment,
                                  #colors = c("red","green","blue"),
-                                 colors = brewer.pal(length(unique(si_condition)), "Accent")
+                                 colors = brewer.pal(length(unique(sampleinfo$samples$treatment)), "Accent")
             ) %>%
                 plotly::add_markers(marker=list(size = 15, line=list(width = 1, color = "black"))) %>%
                 plotly::layout(scene = list(xaxis = list(title = paste0("PC", input$pcaDims[1])),
@@ -2277,7 +2324,7 @@ server <- function(session, input, output) {
     
     observeEvent(input$checkMemory, {
         
-        print(mem_used())
+        print(ls())
         
         
         
@@ -2285,23 +2332,94 @@ server <- function(session, input, output) {
         
         #updateNotifications(as.numeric(mem_used() / 1000000),"info-circle", "info")
         
-        env <- environment()
-        
-        print(ls(env))
-        
-        data.frame(
-            object = ls(env),
-            size = unlist(lapply(ls(env), function(x) {
-                object.size(get(x, envir = env, inherits = FALSE))
-            }))
-        )
+        # env <- environment()
+        # 
+        # print(ls(env))
+        # 
+        # data.frame(
+        #     object = ls(env),
+        #     size = unlist(lapply(ls(env), function(x) {
+        #         object.size(get(x, envir = env, inherits = FALSE))
+        #     }))
+        # )
         
         
     })
+    
+    
+    # Data validation ----
+    
+    validate_data_format <- function(dt) {
+        
+        cnames <- names(dt)[2:ncol(dt)]
+        
+        # Throw error if any false
+        
+        # Columns check
+        test_col <- ncol(dt) >= 5
+        test_row <- dt[, .N] >= 5
+        test_uniq_cols <- all(duplicated(cnames) == F)
+        test_col_sep <- all(grepl('_', cnames))
+        test_starts_with <- all(grepl("^([[:alnum:]])", cnames))
+        test_ends_with <- all(grepl("([[:alnum:]]$)", cnames))
+        
+        treatment <- as.factor(gsub('_.*', '', cnames))
+        test_mult_treat <- length(unique(treatment)) >= 2
+        test_mult_reps <- all(summary(treatment) >= 2 )
+        
+        test_res <- data.table(
+            Test = c(
+                "Number of columns",
+                "Number of rows",
+                "Duplicate columns",
+                "Has separator",
+                "Starts alpha-numeric",
+                "Ends alpha-numeric",
+                "Multiple treatments exist",
+                "Multiple replicates exist"
+            ),
+            ErrMsg = c(
+                "The dataset has too few (<5) or too many (>150) columns for ProteoMill's capacity.",
+                "The dataset has too few (<5) or too many (>50.000) rows for ProteoMill's capacity.",
+                "Duplicate column names is not allowed.",
+                "Missing '_'-separator between treatment and replicate in column names.",
+                "First character in column names must be alpha-numeric",
+                "Last character in column names must be alpha-numeric",
+                "Multiple treatments/groups required for differential analysis.",
+                "Multiple replicates needed to estimate variance."
+                
+            ),
+            Passed = c(
+                test_col,
+                test_row,
+                test_uniq_cols,
+                test_col_sep,
+                test_starts_with,
+                test_ends_with,
+                test_mult_treat,
+                test_mult_reps
+            )
+        )
+        
+        if(any(test_res$Passed == F)) {
+            createAlert(session, "fileFormattingError", "exampleAlert",
+                        content = test_res[Passed==F, ErrMsg][1], append = FALSE,
+                        style = "danger")
+            
+            return(F)
+        } else {
+            return(T)
+        }
+        
+    }
+    
     
 
 
     
     
 }
+
+
+
 
