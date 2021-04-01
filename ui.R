@@ -525,12 +525,13 @@ body <- dashboardBody(
                                                width = NULL,
                                                shiny::sliderInput("pcaDims", "Dimensions", min = 1, max = 10, value = c(1, 2)),
                                                checkboxInput("showPolygons", "Show polygons", value = T),
+                                               checkboxInput("multilevelPCA", "Multilevel", value = F),
                                                actionButton("PCA", "Update plots")
                            )
                     ),
                     column(width = 9,
                            shinydashboard::box(
-                                               plotly::plotlyOutput("PCAplots", height = "500px"),
+                                               plotly::plotlyOutput("PCAplots", width = "95%", height = "500px"),
                                                plotOutput("scree", height = "250px"),
                                                width = NULL)
                     ))),

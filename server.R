@@ -31,7 +31,7 @@ require(shinyBS)
 # Statistics
 require(limma)
 require(DESeq2)
-#require(mixOmics)
+require(mixOmics)
 
 # Parsing and reshaping
 require(stringr)
@@ -112,7 +112,7 @@ server <- function(session, input, output) {
     # Initialize as empty list
     # Populate with updateNotifications() function
     notification_list <- list() 
-
+    
     tasksdf <- data.table(
         text = c("Upload a dataset",
                  "Upload annotation data",
@@ -127,10 +127,10 @@ server <- function(session, input, output) {
     )
     
     tasks$tasks <- tasksdf
-
+    
     # Make notification_list global var
     notifications$notification_list <- notification_list
-
+    
     
     # Initialize notification menu
     output$notifMenu <- renderMenu({
@@ -160,7 +160,7 @@ server <- function(session, input, output) {
             tasks$tasks <- rbindlist(list(tasks$tasks, l))
             
         }
-
+        
         tasks$task_list <- list()
         
         tmp <- tasks$tasks[value == 0]
@@ -185,7 +185,7 @@ server <- function(session, input, output) {
             
             tasks$task_list <- append(item, tasks$task_list)
         }
-
+        
         # Render the menu with appended notification list
         output$helpMenu <- renderMenu({
             
@@ -229,7 +229,7 @@ server <- function(session, input, output) {
         item <- list(item)
         
         notifications$notification_list <- append(item, notifications$notification_list)
-
+        
         # Render the menu with appended notification list
         output$notifMenu <- renderMenu({
             
@@ -267,12 +267,12 @@ server <- function(session, input, output) {
         if(input$sidebarmenu == "news"){
             showModal(
                 modalDialog(size = "l",
-                    renderUI({
-                        tags$iframe(
-                            src = paste0("doc/News.html"),
-                            width = "100%",
-                            height = "600px",
-                            frameborder = "0")})))
+                            renderUI({
+                                tags$iframe(
+                                    src = paste0("doc/News.html"),
+                                    width = "100%",
+                                    height = "600px",
+                                    frameborder = "0")})))
         }
         
         
@@ -284,7 +284,7 @@ server <- function(session, input, output) {
                 updateTasks(text = "Run network analysis", value = 100, color = "green", i = 0007)
             }
         }
-
+        
     })
     
     # Clicked notification item
@@ -353,7 +353,7 @@ server <- function(session, input, output) {
         i <- identifier(input$displayIdentifier)
         
         sampleinfo$sID <- i
-
+        
         updateNotifications(paste0("Default ID set to ", i),"info-circle", "info")
         
     })
@@ -377,7 +377,7 @@ server <- function(session, input, output) {
         # sampleinfo$replicate <- replicate
         
         sampleinfo$group <- group
-
+        
         updateContrasts()
         
         return (FALSE)
@@ -413,7 +413,7 @@ server <- function(session, input, output) {
         
         # Get treatment with greatest number of NAs
         dataset$NAcountMax <- apply(NAsums, 1, max)
-            
+        
         # Keep only rows where treatment with max NA is <= 1
         dataset <- dataset[NAcountMax <= threshold, -c(startsWith(names(dataset), "NAcount")), with = F]
         
@@ -557,7 +557,7 @@ server <- function(session, input, output) {
         maindata$data_origin <- data_wide
         
         pdesc <- data.table::fread("lib/protein_descriptions.txt.gz")
-
+        
         setkey(maindata$data_wide, "UNIPROTID")
         setkey(pdesc, "UNIPROTID")
         
@@ -596,7 +596,7 @@ server <- function(session, input, output) {
             dec = ".",
             header = T)
         
-
+        
         updateNotifications("Annotations uploaded.","check-circle", "success")
         updateTasks(text = "Upload annotation data", value = 100, color = "green", i = 0002)
         
@@ -605,7 +605,7 @@ server <- function(session, input, output) {
     
     # File input: Demo data ----
     observeEvent(input$useDemoData, {
-
+        
         # Sample 1
         
         sample_1_exp <- "data/donors.uniprot.csv"
@@ -652,7 +652,7 @@ server <- function(session, input, output) {
     })
     
     observe({
-
+        
         samples <- sampleinfo$samples$samples
         
         if(!is.null(samples)) {
@@ -690,7 +690,7 @@ server <- function(session, input, output) {
             updateNotifications("At least two groups needed for comparison.","exclamation-triangle", "danger")
         }
         
-
+        
         
     })
     
@@ -706,7 +706,7 @@ server <- function(session, input, output) {
     
     
     output$violinplot <- renderPlot({
-
+        
         if(!is.null(maindata$data_wide) & !is.null(sampleinfo$samples)){
             dat <- stack(as.data.frame(maindata$data_wide[, 6:ncol(maindata$data_wide)]))
             dat <- dat[!is.na(dat$values), ]
@@ -717,7 +717,7 @@ server <- function(session, input, output) {
             if(input$violintype == 1) {
                 
                 plots$violin1 <- ggplot(dat, 
-                       aes(x = sample, y = values, fill = sample)) + 
+                                        aes(x = sample, y = values, fill = sample)) + 
                     geom_violin(trim = FALSE, scale = "width") +
                     geom_boxplot(width=0.1, fill="white") +
                     ggthemes::theme_clean() +
@@ -730,7 +730,7 @@ server <- function(session, input, output) {
             } else {
                 
                 plots$violin2 <- ggplot(dat, 
-                       aes(x = ind, y = values, fill = sample)) + 
+                                        aes(x = ind, y = values, fill = sample)) + 
                     geom_violin(trim = FALSE, scale = "width") +
                     geom_boxplot(width=0.1, fill="white") +
                     ggthemes::theme_clean() +
@@ -742,11 +742,11 @@ server <- function(session, input, output) {
                 
             }
             
-
-
-        }
-
             
+            
+        }
+        
+        
         
         
     })
@@ -755,7 +755,7 @@ server <- function(session, input, output) {
     
     renderNAfreq <- function(data_wide){
         output$nafreq <- renderPlot({
-
+            
             # Which elements are NA?
             allNA <- is.na(data_wide)
             
@@ -808,11 +808,12 @@ server <- function(session, input, output) {
             unlock_menus()
             renderNAfreq(data_wide)
             
-            # assign("sic", sampleinfo$samples$treatment, envir = .GlobalEnv)
-            # assign("sir", sampleinfo$samples$replicate, envir = .GlobalEnv)
-            # assign("sis", sampleinfo$samples, envir = .GlobalEnv)
-            # assign("siSID", sampleinfo$sID, envir = .GlobalEnv)
-            # assign("sgroup", sampleinfo$group, envir = .GlobalEnv)
+            assign("ddw", maindata$data_wide, envir = .GlobalEnv)
+            assign("sic", sampleinfo$samples$treatment, envir = .GlobalEnv)
+            assign("sir", sampleinfo$samples$replicate, envir = .GlobalEnv)
+            assign("sis", sampleinfo$samples, envir = .GlobalEnv)
+            assign("siSID", sampleinfo$sID, envir = .GlobalEnv)
+            assign("sgroup", sampleinfo$group, envir = .GlobalEnv)
             
             
             maindata$data_wide <- data_wide
@@ -848,8 +849,8 @@ server <- function(session, input, output) {
             p.pca <- prcomp(t(pca.data), center = TRUE, scale. = F)
             
             plots$pcaplot2d <- factoextra::fviz_pca_biplot(p.pca, title = '', label = "var", habillage = sampleinfo$samples$treatment,
-                                                   addEllipses = TRUE, ellipse.level = ellipse,
-                                                   select.var = list(contrib = contribs), repel = TRUE) + theme_light()
+                                                           addEllipses = TRUE, ellipse.level = ellipse,
+                                                           select.var = list(contrib = contribs), repel = TRUE) + theme_light()
             
             return (plots$pcaplot2d)
             
@@ -858,7 +859,7 @@ server <- function(session, input, output) {
             
             pca.data <- dt
             pca.data[is.na(pca.data)] <- .5 # "Impute" missing values as 0
-
+            
             pca.data <- pca.data[rowSums(pca.data) != .5,]
             
             pca.data <- t(pca.data)        # Transpose dataset
@@ -893,13 +894,13 @@ server <- function(session, input, output) {
             
             
             plots$pcaplot3d <- plotly::plot_ly(x = p.pca$x[,1],
-                                       y = p.pca$x[,2],
-                                       z = p.pca$x[,3],
-                                       text = rownames(p.pca$x),
-                                       hoverinfo = "text",
-                                       color = sampleinfo$samples$treatment,
-                                       colors = c("red","green","blue"),
-                                       sizes = c(100, 150)) %>%
+                                               y = p.pca$x[,2],
+                                               z = p.pca$x[,3],
+                                               text = rownames(p.pca$x),
+                                               hoverinfo = "text",
+                                               color = sampleinfo$samples$treatment,
+                                               colors = c("red","green","blue"),
+                                               sizes = c(100, 150)) %>%
                 plotly::add_markers() %>%
                 plotly::layout(scene = list(xaxis = list(title = 'PC1'),
                                             yaxis = list(title = 'PC2'),
@@ -920,18 +921,18 @@ server <- function(session, input, output) {
                           multilevel = sampleinfo$samples$replicate, logratio = 'CLR')
             
             plots$pcaplot3d <- plotly::plot_ly(x = pca.res$x[,1],
-                                       y = pca.res$x[,2],
-                                       z = pca.res$x[,3],
-                                       text = rownames(pca.res$x),
-                                       hoverinfo = "text",
-                                       color = sampleinfo$samples$treatment,
-                                       colors = c("red","green","blue"),
-                                       sizes = c(100, 150)) %>%
+                                               y = pca.res$x[,2],
+                                               z = pca.res$x[,3],
+                                               text = rownames(pca.res$x),
+                                               hoverinfo = "text",
+                                               color = sampleinfo$samples$treatment,
+                                               colors = c("red","green","blue"),
+                                               sizes = c(100, 150)) %>%
                 plotly::add_markers() %>%
                 plotly::layout(scene = list(xaxis = list(title = 'PC1'),
                                             yaxis = list(title = 'PC2'),
                                             zaxis = list(title = 'PC3')))
-
+            
             return(plots$pcaplot3d)
             
         }  else { return (FALSE) }
@@ -950,10 +951,10 @@ server <- function(session, input, output) {
         } else if(input$diffexppairing == 1) {
             output$pca2dplot <- renderPlot({
                 plotPCA(0, input$ellipse, '2dpaired')
-
+                
             })
         }
-
+        
         # If unpaired
         if(input$diffexppairing == 2){
             output$pca3dplot <- plotly::renderPlotly({
@@ -965,11 +966,11 @@ server <- function(session, input, output) {
                 
             })
         }
-
+        
         updateTasks(text = "Inspect data", value = (tasks$tasks[id == "0004", value] + 100/3), color = "green", i = 0004)
     })
     
-
+    
     
     # Render UMAP
     observeEvent(input$loadUMAP, {
@@ -979,7 +980,7 @@ server <- function(session, input, output) {
         updateTasks(text = "Inspect data", value = (tasks$tasks[id == "0004", value] + 100/3), color = "green", i = 0004)
     })
     
-
+    
     # Render heatmap
     
     observeEvent(input$generateheatmap, {
@@ -1012,12 +1013,12 @@ server <- function(session, input, output) {
         
         output$samplecorrheatmap = renderPlot({
             plots$hmap
-            })
+        })
         
         updateTasks(text = "Inspect data", value = (tasks$tasks[id == "0004", value] + 100/3), color = "green", i = 0004)
         
     })
-
+    
     # Differential expression: set contrasts ----
     observeEvent(input$contrast1, {
         subsample_data()
@@ -1025,7 +1026,7 @@ server <- function(session, input, output) {
     })
     
     updateContrasts <- function(){
-
+        
         group <- sampleinfo$group
         
         if (is.null(group)){
@@ -1044,7 +1045,7 @@ server <- function(session, input, output) {
         }
         
     }
-
+    
     observeEvent(input$setContrast, {
         output$enrichment <- renderMenu({
             menuItem("Enrichment analysis", icon = icon("flask"), href = NULL,
@@ -1065,9 +1066,9 @@ server <- function(session, input, output) {
         
         
         contrasts <- paste(input$contrast1,input$contrast2, sep = '-')
-
+        
         contrast <- diff_exp(contrasts, pairing)
-
+        
         rcont$contrasts <- contrasts
         rcont$contrast <- contrast
         
@@ -1085,7 +1086,7 @@ server <- function(session, input, output) {
         
         dw <- maindata$data_wide
         sinf <- sampleinfo$samples
-
+        
         if(input$setDEengine == 2) {
             
             dw <- maindata$data_wide
@@ -1105,10 +1106,10 @@ server <- function(session, input, output) {
             } else {
                 # Unpaired
                 design <- DESeqDataSetFromMatrix(countData  = round(dframe(dw, sampleinfo$sID)),
-                                                   colData    = sinf,
-                                                   design     = ~ 0 + sampleinfo$samples$treatment)
+                                                 colData    = sinf,
+                                                 design     = ~ 0 + sampleinfo$samples$treatment)
             }
-
+            
             dds <- DESeq(design)
             
             contrast <- results(dds, contrast=c("treatment", sub("treatment", "", input$contrast1), sub("treatment", "", input$contrast2)))
@@ -1137,7 +1138,7 @@ server <- function(session, input, output) {
                 # x <- round(x[5] - x[4])
                 updateNumericInput(session = session, "fccutoff", value = 2)
             }
-
+            
         } else if(input$setDEengine == 1) {
             
             
@@ -1224,7 +1225,7 @@ server <- function(session, input, output) {
                              min(contrast[logFC <= 0, logFC]),
                              max(contrast[logFC >= 0, logFC]),
                              max(contrast[logFC <= 0, logFC])
-                             )
+            )
             
             df <- t(df)
             
@@ -1247,7 +1248,7 @@ server <- function(session, input, output) {
         
     }, rownames = T, colnames = F)
     
-
+    
     output$diffexptable_up <- DT::renderDataTable({
         
         contrast <- rcont$contrast
@@ -1257,14 +1258,14 @@ server <- function(session, input, output) {
             contrast <- contrast[adj.P.Val < input$diffexp_limit_pval]
             contrast <- contrast[order(logFC, decreasing = T)]
             maindata$diffexptable_up <- DT::datatable(dframe(contrast, sampleinfo$sID),
-                                options = list(order = list(1, 'desc'))) %>% 
+                                                      options = list(order = list(1, 'desc'))) %>% 
                 formatRound(columns=1:(ncol(contrast) - length(convertColumns)), digits=4)
             
             maindata$diffexptable_up
             
             
         }
-
+        
     })
     
     output$diffexptable_down <- DT::renderDataTable({
@@ -1307,24 +1308,24 @@ server <- function(session, input, output) {
                     axis.text.y = element_text(size = 7, family = "Helvetica")
                 )
         }
-
+        
     })
     
     
     # Pathways ----
     
     observeEvent(input$min_fc, {
-      
-      output$number_of_genes <- renderUI({
         
-        contrast <- rcont$contrast
-          
-        up <- paste("Up-regulated:", contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval, .N], "proteins", sep = " ")
-        down <- paste("Down-regulated:", contrast[logFC < (input$min_fc * -1) & adj.P.Val < input$min_pval, .N], "proteins", sep = " ")
-        
-        HTML(paste(up, down, '<br/>', sep = '<br/>'))
-        
-      })
+        output$number_of_genes <- renderUI({
+            
+            contrast <- rcont$contrast
+            
+            up <- paste("Up-regulated:", contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval, .N], "proteins", sep = " ")
+            down <- paste("Down-regulated:", contrast[logFC < (input$min_fc * -1) & adj.P.Val < input$min_pval, .N], "proteins", sep = " ")
+            
+            HTML(paste(up, down, '<br/>', sep = '<br/>'))
+            
+        })
     })
     
     show_selected <- function(p, g){
@@ -1386,13 +1387,13 @@ server <- function(session, input, output) {
             output$upregulated_pathways_table <- DT::renderDT(
                 
                 pathways$upregulated_pathways_table <- DT::datatable(UPREGULATED_pathways[, -c("genes", "background")],
-                              selection = 'single',
-                              options = list(autoWidth = TRUE,
-                                             scrollX=TRUE,
-                                             columnDefs = list(
-                                                 list(width = '100px', targets = c(1, 3)),
-                                                 list(width = '60px', targets = c(6, 7))
-                                             )))
+                                                                     selection = 'single',
+                                                                     options = list(autoWidth = TRUE,
+                                                                                    scrollX=TRUE,
+                                                                                    columnDefs = list(
+                                                                                        list(width = '100px', targets = c(1, 3)),
+                                                                                        list(width = '60px', targets = c(6, 7))
+                                                                                    )))
             )
             
             pathways$upregulated_pathways_table
@@ -1413,9 +1414,9 @@ server <- function(session, input, output) {
             updateTasks(text = "Run pathway enrichment", value = 100, color = "green", i = 0006)
             updateNotifications("Pathway analysis complete.","check-circle", "success")
         }
-
         
-      
+        
+        
     })
     
     # Volcano plot
@@ -1424,7 +1425,7 @@ server <- function(session, input, output) {
         
         UPREGULATED_pathways <- pathways$UPREGULATED_pathways
         DOWNREGULATED_pathways <- pathways$DOWNREGULATED_pathways
-
+        
         if(!exists("UPREGULATED_pathways")){
             updateNotifications("Run pathway analysis first.","exclamation-triangle", "danger")
         } else {
@@ -1462,19 +1463,19 @@ server <- function(session, input, output) {
                     
                     names(res) <- c("UNIPROTID", c("ReactomeID", "Pathway_name", "TopReactomeName", "P.Adj", "logFC", "P.Value"), convertColumns[-1])
                     setcolorder(res, c(convertColumns, c("ReactomeID", "Pathway_name", "TopReactomeName", "P.Adj", "logFC", "P.Value")))
-
+                    
                     res$Pathway_name <- stringr::str_wrap(res$Pathway_name, 50)
-
+                    
                     pathways$v <- volcano(res, "Lowest", sID)
                     
-
+                    
                     plots$volcano <- plotly::ggplotly(pathways$v$volcano_plot) %>%
                         layout(dragmode = "select")
                     
                     plots$volcano
-
+                    
                 })
-
+            
             
             output$volcano_plot2 <- renderPlotly(
                 {
@@ -1487,7 +1488,7 @@ server <- function(session, input, output) {
                 })
             
         }
-
+        
         
         
         
@@ -1522,14 +1523,14 @@ server <- function(session, input, output) {
                 paste(paste(tags$strong("Name:"), name, sep = " "),
                       paste(tags$strong("Description:"), description, sep = " "),
                       sep = "<br/>")
-                 )
+            )
             
         }
     })
     
     output$sankey <- renderSankeyNetwork({
         res <- pathways$v$res
-
+        
         df <- pathways$v$res[Pathway_name != "[No significant over-representation]"]
         
         UPREGULATED_genes <- df[logFC >= 0 & P.Value <= 0.05]
@@ -1543,19 +1544,19 @@ server <- function(session, input, output) {
         
         links <- setDT(df)[, .N, by = c(names(df))]
         colnames(links) <- c("target", "source", "value")
-
+        
         nodes <- data.frame(name=unique(c(links$source, links$target)))
-
+        
         links$source <- match(links$source, nodes$name) - 1
         links$target <- match(links$target, nodes$name) - 1
-
+        
         plots$sankey <- sankeyNetwork(Links = links, Nodes = nodes, Source = "source",
-                      Target = "target", Value = "value", NodeID = "name",
-                      fontFamily = "sans-serif",
-                      fontSize = 10, nodeWidth = 60, sinksRight = F)
+                                      Target = "target", Value = "value", NodeID = "name",
+                                      fontFamily = "sans-serif",
+                                      fontSize = 10, nodeWidth = 60, sinksRight = F)
         
         plots$sankey
-
+        
         
     })
     
@@ -1572,7 +1573,7 @@ server <- function(session, input, output) {
         sID <- sampleinfo$sID
         
         dir <- input$network_regulation
-
+        
         if(dir == 1){
             proteins <- contrast[(abs(logFC) >= input$fccutoff) &
                                      (logFC > 0)]$UNIPROTID
@@ -1587,11 +1588,11 @@ server <- function(session, input, output) {
         ints2 <- pathways$ints[(protein1 %in% proteins) & (protein2 %in% proteins)]
         ints2 <- ints2[score > input$interactioncutoff]
         
-
+        
         mynodes <- unlist(event_data("plotly_selected")$key)
         
         mynodes <- contrast[get(sID) %in% mynodes, "UNIPROTID"][[1]]
-
+        
         
         # TBA: all interactions option
         
@@ -1617,24 +1618,24 @@ server <- function(session, input, output) {
         
         nodes <- data.table(id = unique(c(ints2$protein1, ints2$protein2)))
         nodes$label <- nodes$id
-
+        
         
         edges <-
             data.table(
                 from = ints2$protein1,
                 to = ints2$protein2
             )
-
+        
         g <- igraph::graph_from_data_frame(edges, directed = F, vertices = nodes)
         
         r <- res[V(g)$label, on = "UNIPROTID", ]
- 
+        
         
         g <- set.vertex.attribute(g, name = "name",  value = as.vector (r[, ..sID][[1]]))
         g <- set.vertex.attribute(g, name = "color", value = r$col)
         g <- set.vertex.attribute(g, name = "group", value = r$TopReactomeName)
         
-
+        
         layoutf <- function(type) {
             switch(type,
                    "1" = "layout_nicely",
@@ -1644,14 +1645,14 @@ server <- function(session, input, output) {
                    "5" = "layout_randomly",
                    "6" = "layout_DH")
         }
-
+        
         if(exists("g")){
             V(g)$name <- res[V(g)$name, on = sID, ..sID][[1]]
         } else {
             names(V(g)) <- res[V(g)$name, on = "UNIPROTID", "UNIPROTID"][[1]]
         }
         
-            
+        
         visNetwork::visIgraph(g) %>%
             visInteraction(hover = TRUE) %>%
             visIgraphLayout(layout = layoutf(1), randomSeed = 1) %>%
@@ -1668,11 +1669,11 @@ server <- function(session, input, output) {
             )
         
         
-        })
-        
+    })
+    
     
     observeEvent(input$highlight_nodes, {
-
+        
         if(nchar(input$network_proteins) > 0){
             
             if(get_delim(input$network_proteins) != "None") {
@@ -1680,7 +1681,7 @@ server <- function(session, input, output) {
                 # Multiple items
                 
                 selection <- unlist(strsplit(input$network_proteins, get_delim(input$network_proteins)))
-
+                
                 visNetworkProxy("interaction_network") %>%
                     visUnselectAll() %>%
                     visSelectNodes(id = selection)
@@ -1690,7 +1691,7 @@ server <- function(session, input, output) {
             else {
                 # Single item
                 selection <- as.character(input$network_proteins)
-
+                
                 visNetworkProxy("interaction_network") %>%
                     visUnselectAll() %>%
                     visFocus(id = selection)
@@ -1701,10 +1702,10 @@ server <- function(session, input, output) {
             updateNotifications("Please enter a valid identifier.","exclamation-triangle", "danger")
             
         }
-
-
+        
+        
     })
-
+    
     #### ADDITIONAL TOOLS ####
     # Goodness-of-fit ----
     observeEvent(input$generatedistributions, {
@@ -1850,10 +1851,10 @@ server <- function(session, input, output) {
     observeEvent(input$sendcomment, {
         
         envelope <- paste(sep = "\n",
-            paste("Date:", date()),
-            paste("Name:", input$cname),
-            paste("Email:", input$email),
-            paste("Comment:", input$suggestion))
+                          paste("Date:", date()),
+                          paste("Name:", input$cname),
+                          paste("Email:", input$email),
+                          paste("Comment:", input$suggestion))
         
         if(nchar(envelope) > 5000){
             updateNotifications(paste0("Too many characters."), "exclamation-triangle", "danger")
@@ -1935,10 +1936,10 @@ server <- function(session, input, output) {
     #     data.table("Upregulated" = contrast[logFC <= 0 & adj.P.Val < 0.05, .N], "Downregulated" = contrast[logFC > 0 & adj.P.Val < 0.05, .N])
     #     
     # })
-
-
     
-
+    
+    
+    
     
     
     output$download <- downloadHandler(
@@ -2019,19 +2020,19 @@ server <- function(session, input, output) {
     #     
     #     maindata$data_wide
     # })
-
     
-
+    
+    
     observeEvent(input$file1, {
         
         inFile <- input$file1
-
+        
         if (is.null(inFile)) return(NULL)
         #maindata$data_wide <- fread(inFile$datapath, header = T)
         
         dw <- tryCatch({fread(input=inFile$datapath);},
-                        error = function(err){return(err)} ,
-                        warning = function(war){return(war)} ,silent=F)
+                       error = function(err){return(err)} ,
+                       warning = function(war){return(war)} ,silent=F)
         
         # dw <- tryCatch({fread(input="files/E-PROT-45-query-results.tsv");},
         #                error = function(err){return(err)} ,
@@ -2047,7 +2048,7 @@ server <- function(session, input, output) {
             rm(dw)
             
         } else if ("warning" %in% class(dw)) {
-                
+            
             createAlert(session, "fileHasWarning", "exampleAlert",
                         content = dw$message, append = FALSE,
                         style = "warning")
@@ -2062,9 +2063,9 @@ server <- function(session, input, output) {
             
         }
         
-
+        
     })
-
+    
     
     output$previewDT <- renderDT({
         
@@ -2086,7 +2087,7 @@ server <- function(session, input, output) {
             
             if("error" %in% class(dw)) NULL
             else dw
-
+            
         }
         
         
@@ -2156,7 +2157,7 @@ server <- function(session, input, output) {
                 
             }
             
-
+            
             
         }
         
@@ -2174,7 +2175,7 @@ server <- function(session, input, output) {
         
         
         
-
+        
         
         
     })
@@ -2223,17 +2224,44 @@ server <- function(session, input, output) {
     
     # PCA Updated ----
     
+    observeEvent(input$multilevelPCA, {
+        
+        # Multilevel analysis can only be performed when at least one sample is repeated.
+        sinfo <- sampleinfo$samples
+        sinfo <- setDT(sinfo)
+        
+        if(length(Reduce(setdiff, sinfo[, .(list(unique(replicate))), treatment]$V1)) > 0){
+            
+            updateCheckboxInput(session = session, inputId = "multilevelPCA", value = F)
+            
+            updateNotifications("Multilevel analysis can only be performed when at least one sample is repeated.","exclamation-triangle", "danger")
+        }
+        
+        
+    }, ignoreInit = T)
     
     observeEvent(input$PCA, {
         
         dw <- maindata$data_wide
-        si_condition <- sampleinfo$samples$treatment
+        si_treatment <- sampleinfo$samples$treatment
+        si_replicate <- sampleinfo$samples$replicate
         
         pca.data <- log2(dw[, -..convertColumns])
         pca.data[is.na(pca.data)] <- 0 # "Impute" missing values as 0
         pca.data <- IMIFA::pareto_scale(pca.data)
         
-        p.pca <- prcomp(t(pca.data), center = TRUE, scale. = F)
+        if(input$multilevelPCA == T) {
+            
+            ndim <- input$pcaDims[2] - input$pcaDims[1] + 1
+            p.pca = mixOmics::pca(X = t(pca.data), ncomp = NULL, multilevel = si_replicate, logratio = 'none', scale = F, center = T)
+            
+        } else {
+            
+            p.pca <- prcomp(t(pca.data), center = TRUE, scale. = F)
+            
+        }
+        
+        
         
         
         # if 2 dims
@@ -2242,32 +2270,33 @@ server <- function(session, input, output) {
             
             mydf <- data.frame(pc1 = p.pca$x[, input$pcaDims[1]],
                                pc2 = p.pca$x[, input$pcaDims[2]],
-                               si_condition)
+                               si_treatment)
             
             poly.df <- mydf %>% 
-                group_by(si_condition) %>%
+                group_by(si_treatment) %>%
                 do(.[chull(.$pc1, .$pc2),]) 
             
             if(input$showPolygons) {
-                ggplot(mydf, aes(pc1, pc2, colour = as.factor(si_condition))) +
+                ggplot(mydf, aes(pc1, pc2, colour = as.factor(si_treatment))) +
                     geom_polygon(data = poly.df, fill = "grey", alpha = .15) +
-                    geom_point(size = 5) +
+                    geom_point(size = 5, aes(text = rownames(mydf))) +
                     xlab(paste0("PC", input$pcaDims[1])) +
                     ylab(paste0("PC", input$pcaDims[2])) +
                     scale_color_brewer(palette = "Accent") +
-                    theme_light()  -> p
+                    theme_light() + theme(legend.title = element_blank()) -> p
             } else {
-                ggplot(mydf, aes(pc1, pc2, colour = as.factor(si_condition))) +
-                    geom_point(size = 5) +
+                ggplot(mydf, aes(pc1, pc2, colour = as.factor(si_treatment))) +
+                    geom_point(size = 5, aes(text = rownames(mydf))) +
+                    xlab(paste0("PC", input$pcaDims[1])) +
+                    ylab(paste0("PC", input$pcaDims[2])) +
                     scale_color_brewer(palette = "Accent") +
-                    theme_light()  -> p
+                    theme_light() + theme(legend.title = element_blank()) -> p
             }
             
             
             output$PCAplots <- renderPlotly({
                 
-                ggplotly(p)
-                
+                ggplotly(p, tooltip = "text") %>% layout(legend = list(title=list(text='<b> Treatment </b>')))
             })
             
         } else if (input$pcaDims[2] - input$pcaDims[1] == 2) {
@@ -2284,7 +2313,8 @@ server <- function(session, input, output) {
                 plotly::add_markers(marker=list(size = 15, line=list(width = 1, color = "black"))) %>%
                 plotly::layout(scene = list(xaxis = list(title = paste0("PC", input$pcaDims[1])),
                                             yaxis = list(title = paste0("PC", (input$pcaDims[2] - 1))),
-                                            zaxis = list(title = paste0("PC", input$pcaDims[2]))))
+                                            zaxis = list(title = paste0("PC", input$pcaDims[2]))),
+                               legend = list(title=list(text='<b> Treatment </b>')))
             
             output$PCAplots <- renderPlotly({
                 p
@@ -2414,8 +2444,8 @@ server <- function(session, input, output) {
     }
     
     
-
-
+    
+    
     
     
 }
