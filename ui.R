@@ -14,9 +14,10 @@ require(plotly)
 help <- shinydashboard::dropdownMenuOutput("helpMenu")
 notifications <- shinydashboard::dropdownMenuOutput("notifMenu")
 
-header <- dashboardHeader(help,
+header <- dashboardHeader(
+                          help,
                           notifications,
-                          title = list(tags$img(id = "mill", class = "normal", src = "mill.png"), "ProteoMill"),
+                          title = list(span(class = "no-touch", tags$a(href = "https://proteomill.com/", tags$img(id = "mill", class = "normal", src = "mill.png"), "ProteoMill"))),
                           tags$li(class = "dropdown",
                                   id = "notifications-wrapper",
                                   tags$div(id = 'load-process', style = 'display: none; position: absolute; margin-left: 6px',
@@ -83,8 +84,8 @@ sidebar <- dashboardSidebar(
     sidebarMenu(id = "sidebarmenu",
         menuItem("Identifier tools", tabName = "validateIDs", icon = icon("font")),
         menuItem("Goodness-of-fit", tabName = "goodnessOfFit", icon = icon("chart-bar")),
-        menuItem("BLAST", tabName = "blast", icon = icon("dna")),
-        menuItem("Protein structures", tabName = "structures", icon = icon("fingerprint")),
+        #menuItem("BLAST", tabName = "blast", icon = icon("dna")),
+        #menuItem("Protein structures", tabName = "structures", icon = icon("fingerprint")),
         menuItem("Generate report", tabName = "file-export", icon = icon("file-download"))
     ),
     tags$br(),
@@ -279,17 +280,33 @@ body <- dashboardBody(
                                                            )
                                                        )
                                                 ),
-
-                                            fileInput(inputId = "file1",
-                                                      label = "Upload a dataset",
-                                                      multiple = F,
-                                                      accept = c(
-                                                          "text/csv",
-                                                          "text/comma-separated-values,text/plain",
-                                                          ".csv")),
                                             
-                                            bsTooltip("file1", "Upload a dataset of filetyp .csv, .tsv, or .txt.",
-                                                      "right", options = list(container = "bsModal")),
+                                            fluidRow(
+                                                column(width = 4,
+                                                       box(width = NULL,
+                                                           fileInput(inputId = "file1",
+                                                                     label = "Upload a dataset",
+                                                                     multiple = F,
+                                                                     accept = c(
+                                                                         "text/csv",
+                                                                         "text/comma-separated-values,text/plain",
+                                                                         ".csv")),
+                                                           
+                                                           bsTooltip("file1", "Upload a dataset of filetyp .csv, .tsv, or .txt.",
+                                                                     "right", options = list(container = "bsModal"))
+                                                           
+                                                           )
+                                                       ),
+                                                column(width = 8,
+                                                       tags$div(id = "dataDetailsWrapper", style = "display: none;",
+                                                       box(width = NULL,
+                                                           height = 119,
+                                                           title = "Dataset details",
+                                                           htmlOutput("dataDetails")
+                                                           )
+                                                       )
+                                                )
+                                                ),
                                             
                                             tags$head(tags$style(
                                                 HTML("#DataTables_Table_0_length {visibility:hidden}"),
@@ -301,7 +318,7 @@ body <- dashboardBody(
                                             )),
                                             # div(id = "previewDTInfo", tags$h4("Data preview"),
                                             #   style = "display:none"),
-                                            div(id = "previewDTInfo", style = "display:none",
+                                            div(id = "previewDTInfo", style = "display:none;",
                                                 box(
                                                     width = NULL,
                                                     title = "Data preview",
@@ -359,7 +376,9 @@ body <- dashboardBody(
                     column(width = 5,
                            box(title = "Mapped IDs",
                                width = NULL,
-                               tableOutput("identifierinfo")
+                               tableOutput("identifierinfo"),
+                               bsTooltip("identifierinfo", "The number of protein IDs in your dataset that matches the database. I.e. - for how many proteins we can obtain annotation data. Proteins for which no match is found will still be included in differential expression analysis.",
+                                         "right", options = list(container = "body"))
                            ),
                            box(title = "Include/exclude samples",
                                width = NULL,
@@ -383,7 +402,7 @@ body <- dashboardBody(
                            ),
                            box(title = "Expression levels",
                                width = NULL,
-                               plotOutput("violinplot"),
+                               shinycssloaders::withSpinner(plotOutput("violinplot"), type = 5, color = "#e80032dd", id = "ViolinSpinner", size = 1),
                                radioButtons("violintype", "", choices = list("By condition" = 1, "By sample" = 2), inline = T)
                            ))
                     )),
@@ -396,9 +415,9 @@ body <- dashboardBody(
                            box(
                                width = NULL,
                                title = "Missing values cutoff", status = "primary", solidHeader = F,
-                               helpText("Set maximum number allowed missing values for each condition."),
+                               helpText("Set maximum number allowed missing values for each treatment"),
                                br(),
-                               helpText("To proceed without removing any proteins with missing values, set the cutoff to a value higher than the number of samples / conditions"),
+                               helpText("To proceed without removing any proteins with missing values, set the cutoff to a value higher than the number of samples / treatments"),
                                br(),
                                numericInput("missingvalues", label = "",
                                             min = 0, max = 9999, value = 1), # max = number of samples / conditions
@@ -525,7 +544,7 @@ body <- dashboardBody(
                                                width = NULL,
                                                shiny::sliderInput("pcaDims", "Dimensions", min = 1, max = 10, value = c(1, 2)),
                                                checkboxInput("showPolygons", "Show polygons", value = T),
-                                               checkboxInput("multilevelPCA", "Multilevel", value = F),
+                                               checkboxInput("multilevelPCA", "Multi-level", value = F),
                                                actionButton("PCA", "Update plots")
                            )
                     ),
@@ -546,6 +565,8 @@ body <- dashboardBody(
                                                                                     "Spearman" = "spearman",
                                                                                     "Kendall" = "kendall"),
                                         selected = "pearson"),
+                            bsTooltip("corMethod", "if method is 'kendall' or 'spearman', Kendall's tau or Spearman's rho statistic is used to estimate a rank-based measure of association. These are more robust and have been recommended if the data do not necessarily come from a bivariate normal distribution.",
+                                      placement = "bottom", trigger = "hover", options = list(container = "body")),
                             shiny::checkboxInput("showGrid", "Show grid", value = T),
                             
                             actionButton("renderHeatmap","Load plot")
@@ -780,8 +801,8 @@ body <- dashboardBody(
                      shiny::icon("linkedin", style = "padding: 5px;"),
                      shiny::icon("youtube", style = "padding: 5px;"),
                      shiny::icon("at", style = "padding: 5px;"),
-                     style = "font-size: 25px; line-height: 50px;")),
-            div(span("© 2021 · ProteoMill | Martin Rydén", style = "font-size: 12pt; line-height: 50px; padding-left: 25px;"))))
+                     style = "font-size: 14pt; line-height: 50px;")),
+            div(class = "gradient no-touch", span("© 2021 · ProteoMill | Martin Rydén", style = "font-size: 12pt; line-height: 50px; padding-left: 25px;"))))
 )
 
 # Load dashboard page ----

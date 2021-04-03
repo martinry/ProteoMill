@@ -30,6 +30,29 @@ $('.begindiv').click(function(){
     });
 });
 
+
+
+$(document).ready(function() {
+  var colors = ["#28313b", "#485461"];
+  bg1 = "linear-gradient(180deg," + colors[1] + "," + colors[1] + ")";
+  $(".gradient").css("background-image", bg1);
+
+  $(".gradient").mousemove(function(event) {
+    var w = $(this).width(),
+      pct = 360 * (+event.pageX) / w,
+      bg2 = "linear-gradient(" + pct + "deg," + colors[0] + "," + colors[1] + ")";
+    $(".gradient").css("background-image", bg2);
+  });
+  
+  
+  $(".gradient").mouseleave(function(event) {
+    $(".gradient").css("background-image", bg1);
+  });
+  
+  
+});
+
+
 //current = document.querySelector('#notifMenu > a > span').innerHTML;
 
 //if (current !== document.querySelector('#notifMenu > a > span').innerHTML) {

@@ -101,6 +101,7 @@ server <- function(session, input, output) {
     tasks <- reactiveValues()
     sampleinfo <- reactiveValues()
     maindata <- reactiveValues()
+    app_meta <- reactiveValues(palette = "Accent")
     rcont <- reactiveValues()
     pathways <- reactiveValues()
     plots <- reactiveValues()
@@ -635,6 +636,26 @@ server <- function(session, input, output) {
     
     
     # Data summary plot ----
+    
+    nproteins <- reactive({
+        if(!is.null(maindata$data_wide)) maindata$data_wide[, .N]
+    })
+
+    nsamples <- reactive({
+        if(!is.null(maindata$data_wide)) (ncol(maindata$data_wide) - 1)
+    })
+    
+    ntreatments <- reactive({
+        if(!is.null(maindata$data_wide)) names(maindata$data_wide)[2:ncol(maindata$data_wide)] %>% sub('_.*', '', .) %>% uniqueN()
+    })
+    
+    output$dataDetails <- renderUI({
+        n_proteins <- paste(strong("Proteins:"), nproteins())
+        n_samples <- paste(strong("Samples:"), nsamples())
+        n_treatments <- paste(strong("Treatments:"), ntreatments())
+        HTML(paste(n_proteins, n_samples, n_treatments, sep = "&nbsp;&nbsp;&nbsp;&nbsp;"))
+    })
+
     
     output$datainfoBox <- renderInfoBox({
         if(!is.null(sampleinfo$samples)) infoBox("Proteins", maindata$data_wide[, .N])
@@ -2055,9 +2076,12 @@ server <- function(session, input, output) {
             
         } else {
             
+            names(dw) <- make.names(names = names(dw), unique = T)
+            
             maindata$data_wide <- dw
             
             shinyjs::show("previewDTInfo")
+            shinyjs::show("dataDetailsWrapper")
             
             maindata$isValid <- validate_data_format(dw)
             
@@ -2145,6 +2169,12 @@ server <- function(session, input, output) {
                 
                 upload_data(i = "auto")
                 
+                if(uniqueN(sampleinfo$samples$treatment) > 8) {
+                    app_meta$palette <- colorRampPalette(brewer.pal(8, "Accent"))(uniqueN(sampleinfo$samples$treatment))
+                } else if (uniqueN(sampleinfo$samples$treatment) <= 8) {
+                    app_meta$palette <- brewer.pal(uniqueN(sampleinfo$samples$treatment), "Accent")
+                }
+                
                 toggleModal(session, "ImportModal2", toggle = "toggle")
                 shinyjs::hide("Modal2Spinner")
                 toggleModal(session, "ImportModal3", toggle = "toggle")
@@ -2160,24 +2190,7 @@ server <- function(session, input, output) {
             
             
         }
-        
-        
-        # View(maindata$data_origin)
-        # View(maindata$data_wide)
-        # 
-        
-        
-        # check identifiers
-        
-        
-        
-        # subset interactions
-        
-        
-        
-        
-        
-        
+
     })
     
     observeEvent(input$EndStep3, {
@@ -2282,14 +2295,14 @@ server <- function(session, input, output) {
                     geom_point(size = 5, aes(text = rownames(mydf))) +
                     xlab(paste0("PC", input$pcaDims[1])) +
                     ylab(paste0("PC", input$pcaDims[2])) +
-                    scale_color_brewer(palette = "Accent") +
+                    scale_color_manual(values = app_meta$palette) +
                     theme_light() + theme(legend.title = element_blank()) -> p
             } else {
                 ggplot(mydf, aes(pc1, pc2, colour = as.factor(si_treatment))) +
                     geom_point(size = 5, aes(text = rownames(mydf))) +
                     xlab(paste0("PC", input$pcaDims[1])) +
                     ylab(paste0("PC", input$pcaDims[2])) +
-                    scale_color_brewer(palette = "Accent") +
+                    scale_color_manual(values = app_meta$palette) +
                     theme_light() + theme(legend.title = element_blank()) -> p
             }
             
