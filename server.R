@@ -85,6 +85,21 @@ get_delim <- function(c){
     }
 }
 
+org_lib <- function(s) {
+    switch(s,
+           "Homo sapiens|HSA|9606" = EnsDb("lib/9606/Homo_sapiens.GRCh38.103.sqlite"),
+           "Bos taurus|BTA|9913" = EnsDb("lib/9913/Bos_taurus_hybrid.UOA_Angus_1.103.sqlite"),
+           "Caenorhabditis elegans|CEL|6239" = EnsDb("lib/6239/Caenorhabditis_elegans.WBcel235.103.sqlite"),
+           "Danio rerio|DRE|7955" = EnsDb("lib/7955/Danio_rerio.GRCz11.103.sqlite"),
+           "Drosophila melanogaster|DME|7227" = EnsDb("lib/7227/Drosophila_melanogaster.BDGP6.32.103.sqlite"),
+           "Gallus gallus|GGA|9031" = EnsDb("lib/9031/Gallus_gallus.GRCg6a.103.sqlite"),
+           "Mus musculus|MMU|10090" = EnsDb("lib/10090/Mus_musculus_wsbeij.WSB_EiJ_v1.103.sqlite"),
+           "Rattus norvegicus|RNO|10116" = EnsDb("lib/10116/Rattus_norvegicus.Rnor_6.0.103.sqlite"),
+           "Saccharomyces cerevisiae|SCE|4932" = EnsDb("lib/4932/Saccharomyces_cerevisiae.R64-1-1.103.sqlite"),
+           "Sus scrofa|SSC|9823" = EnsDb("lib/9823/Sus_scrofa_wuzhishan.minipig_v1.0.103.sqlite"),
+           "Xenopus tropicalis|XTR|8364" = EnsDb("lib/8364/Xenopus_tropicalis.Xenopus_tropicalis_v9.1.103.sqlite")
+    )
+}
 
 
 # Server ----
@@ -426,12 +441,13 @@ server <- function(session, input, output) {
         
         proteins <- maindata$data_wide[, "UNIPROTID"][[1]]
         
-        interactions <- data.table::fread("lib/interactions5.txt.gz")
+        #interactions <- data.table::fread("lib/interactions5.txt.gz")
+        interactions <- data.table::fread("lib/reactome.9606.interactions.txt.gz")
         
-        pathways$ints <- interactions[(protein1 %in% proteins) & (protein2 %in% proteins)]
+        pathways$ints <- interactions[(Interactor1 %in% proteins) & (Interactor2 %in% proteins)]
         
         # assign("proteins", proteins, envir = .GlobalEnv)
-        # assign("ints", pathways$ints, envir = .GlobalEnv)
+        assign("ints", pathways$ints, envir = .GlobalEnv)
         
         
     }
@@ -640,7 +656,7 @@ server <- function(session, input, output) {
     nproteins <- reactive({
         if(!is.null(maindata$data_wide)) maindata$data_wide[, .N]
     })
-
+    
     nsamples <- reactive({
         if(!is.null(maindata$data_wide)) (ncol(maindata$data_wide) - 1)
     })
@@ -655,7 +671,7 @@ server <- function(session, input, output) {
         n_treatments <- paste(strong("Treatments:"), ntreatments())
         HTML(paste(n_proteins, n_samples, n_treatments, sep = "&nbsp;&nbsp;&nbsp;&nbsp;"))
     })
-
+    
     
     output$datainfoBox <- renderInfoBox({
         if(!is.null(sampleinfo$samples)) infoBox("Proteins", maindata$data_wide[, .N])
@@ -824,12 +840,13 @@ server <- function(session, input, output) {
             data_origin <- maindata$data_origin
             data_wide <- subset_by_na(dataset = data_origin, treatment = sampleinfo$samples$treatment, threshold = input$missingvalues)
             
-            #subset_interactions()
+            subset_interactions()
             
             unlock_menus()
             renderNAfreq(data_wide)
             
             assign("ddw", maindata$data_wide, envir = .GlobalEnv)
+            assign("origin", maindata$data_origin, envir = .GlobalEnv)
             assign("sic", sampleinfo$samples$treatment, envir = .GlobalEnv)
             assign("sir", sampleinfo$samples$replicate, envir = .GlobalEnv)
             assign("sis", sampleinfo$samples, envir = .GlobalEnv)
@@ -1606,8 +1623,8 @@ server <- function(session, input, output) {
         }
         
         
-        ints2 <- pathways$ints[(protein1 %in% proteins) & (protein2 %in% proteins)]
-        ints2 <- ints2[score > input$interactioncutoff]
+        ints2 <- pathways$ints[(Interactor1 %in% proteins) & (Interactor2 %in% proteins)]
+        #ints2 <- ints2[score > input$interactioncutoff]
         
         
         mynodes <- unlist(event_data("plotly_selected")$key)
@@ -1618,33 +1635,33 @@ server <- function(session, input, output) {
         # TBA: all interactions option
         
         interacts <- function(i){
-            return(ints2[(protein1 == i & protein2 %in% mynodes) | (protein2 == i & protein1 %in% mynodes), .N])
+            return(ints2[(Interactor1 == i & Interactor2 %in% mynodes) | (Interactor2 == i & Interactor1 %in% mynodes), .N])
         }
         
         if(input$interaction_behaviour == 1){
             
             if(!is.null(mynodes)) {
                 if(sum(unlist(lapply(mynodes, interacts))) > 0){
-                    ints2 <- ints2[protein1 %in% mynodes & protein2 %in% mynodes]
+                    ints2 <- ints2[Interactor1 %in% mynodes & Interactor2 %in% mynodes]
                 }
             }
             
         } else if(input$interaction_behaviour == 2){
             
-            if(any(mynodes %in% ints2$protein1 & mynodes %in% ints2$protein2)){
-                ints2 <- ints2[protein1 %in% mynodes | protein2 %in% mynodes]
+            if(any(mynodes %in% ints2$Interactor1 & mynodes %in% ints2$Interactor2)){
+                ints2 <- ints2[Interactor1 %in% mynodes | Interactor2 %in% mynodes]
             }
             
         }
         
-        nodes <- data.table(id = unique(c(ints2$protein1, ints2$protein2)))
+        nodes <- data.table(id = unique(c(ints2$Interactor1, ints2$Interactor2)))
         nodes$label <- nodes$id
         
         
         edges <-
             data.table(
-                from = ints2$protein1,
-                to = ints2$protein2
+                from = ints2$Interactor1,
+                to = ints2$Interactor2
             )
         
         g <- igraph::graph_from_data_frame(edges, directed = F, vertices = nodes)
@@ -2123,19 +2140,22 @@ server <- function(session, input, output) {
         
         shinyjs::show("Modal1Spinner")
         
-        if(input$organism == "Homo sapiens") {
+        #maindata$organism <- org_lib(input$organism)
+        
+        
+        if(input$organism == "Homo sapiens|HSA|9606") {
             
             library(EnsDb.Hsapiens.v86)
             
             maindata$organism <- EnsDb.Hsapiens.v86
             
-        } else if(input$organism == "Mus musculus") {
+        } else if(input$organism == "Mus musculus|MMU|10090") {
             
             library(EnsDb.Mmusculus.v79)
             
             maindata$organism <- EnsDb.Mmusculus.v79
             
-        } else if(input$organism == "Rattus norvegicus") {
+        } else if(input$organism == "Rattus norvegicus|RNO|10116") {
             
             library(EnsDb.Rnorvegicus.v79)
             
@@ -2177,7 +2197,10 @@ server <- function(session, input, output) {
                 
                 toggleModal(session, "ImportModal2", toggle = "toggle")
                 shinyjs::hide("Modal2Spinner")
-                toggleModal(session, "ImportModal3", toggle = "toggle")
+                #toggleModal(session, "ImportModal3", toggle = "toggle")
+                
+                updateNotifications("Dataset uploaded.","check-circle", "success")
+                updateTasks(text = "Upload a dataset", value = 100, color = "green", i = 0001)
                 
             } else {
                 
@@ -2190,19 +2213,19 @@ server <- function(session, input, output) {
             
             
         }
-
+        
     })
     
-    observeEvent(input$EndStep3, {
-        
-        # subset_interactions()
-        
-        toggleModal(session, "ImportModal3", toggle = "toggle")
-        updateNotifications("Dataset uploaded.","check-circle", "success")
-        updateTasks(text = "Upload a dataset", value = 100, color = "green", i = 0001)
-        
-        
-    })
+    # observeEvent(input$EndStep3, {
+    #     
+    #     # subset_interactions()
+    #     
+    #     toggleModal(session, "ImportModal3", toggle = "toggle")
+    #     updateNotifications("Dataset uploaded.","check-circle", "success")
+    #     updateTasks(text = "Upload a dataset", value = 100, color = "green", i = 0001)
+    #     
+    #     
+    # })
     
     # Heatmap Updated ----
     
@@ -2388,6 +2411,60 @@ server <- function(session, input, output) {
         
         
     })
+    
+    # Differential expression volcano plot ----
+    
+    diffv <- reactive({
+        if(!is.null(rcont$contrast)) {
+            
+            contrast <- rcont$contrast
+            
+            setDT(contrast, keep.rownames = T)
+            
+            assign("contrast", contrast, envir = .GlobalEnv)
+            
+            diff_df <- contrast[, c(1, 6, 9)]
+            colnames(diff_df) <- c("external_gene_name", "Fold", "FDR")
+            
+            
+            
+            diff_df$group <- "NotSignificant"
+            
+            diff_df[FDR < 0.05 & abs(Fold) < 1.5, "group"] <- "Sign."
+            
+            diff_df[FDR >= 0.05 & abs(Fold) > 1.5, "group"] <- "FC"
+            
+            diff_df[FDR < 0.05 & abs(Fold) > 1.5, "group"] <- "Sign&FC"
+            
+            as.data.frame(diff_df)
+        }
+    })
+    
+    output$dea_volcano <- renderPlotly({
+        
+        diff_df <- diffv()
+        
+        p <- plot_ly(data = diff_df,
+                     type = "scatter",
+                     x = ~Fold,
+                     y = ~(-log10(FDR)),
+                     text = ~external_gene_name,
+                     mode = "markers",
+                     color = ~group,
+                     colors = brewer.pal(uniqueN(sic), "Accent")) %>%
+            layout(yaxis = list(type = "log", showgrid=T,  ticks="outside", autorange=TRUE))
+        p
+    })
+    
+    # output$dea_boxplot <- renderPlotly({
+    #     
+    #     diff_df <- diffv()
+    #     
+    #     
+    #     
+    #     
+    # })
+    
     
     
     # Data validation ----
