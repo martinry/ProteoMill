@@ -85,21 +85,25 @@ get_delim <- function(c){
     }
 }
 
-org_lib <- function(s) {
-    switch(s,
-           "Homo sapiens|HSA|9606" = EnsDb("lib/9606/Homo_sapiens.GRCh38.103.sqlite"),
-           "Bos taurus|BTA|9913" = EnsDb("lib/9913/Bos_taurus_hybrid.UOA_Angus_1.103.sqlite"),
-           "Caenorhabditis elegans|CEL|6239" = EnsDb("lib/6239/Caenorhabditis_elegans.WBcel235.103.sqlite"),
-           "Danio rerio|DRE|7955" = EnsDb("lib/7955/Danio_rerio.GRCz11.103.sqlite"),
-           "Drosophila melanogaster|DME|7227" = EnsDb("lib/7227/Drosophila_melanogaster.BDGP6.32.103.sqlite"),
-           "Gallus gallus|GGA|9031" = EnsDb("lib/9031/Gallus_gallus.GRCg6a.103.sqlite"),
-           "Mus musculus|MMU|10090" = EnsDb("lib/10090/Mus_musculus_wsbeij.WSB_EiJ_v1.103.sqlite"),
-           "Rattus norvegicus|RNO|10116" = EnsDb("lib/10116/Rattus_norvegicus.Rnor_6.0.103.sqlite"),
-           "Saccharomyces cerevisiae|SCE|4932" = EnsDb("lib/4932/Saccharomyces_cerevisiae.R64-1-1.103.sqlite"),
-           "Sus scrofa|SSC|9823" = EnsDb("lib/9823/Sus_scrofa_wuzhishan.minipig_v1.0.103.sqlite"),
-           "Xenopus tropicalis|XTR|8364" = EnsDb("lib/8364/Xenopus_tropicalis.Xenopus_tropicalis_v9.1.103.sqlite")
-    )
-}
+# org_lib <- function(s) {
+#     switch(s,
+#            "Homo sapiens|HSA|9606" = EnsDb("lib/9606/Homo_sapiens.GRCh38.103.sqlite"),
+#            "Bos taurus|BTA|9913" = EnsDb("lib/9913/Bos_taurus_hybrid.UOA_Angus_1.103.sqlite"),
+#            "Caenorhabditis elegans|CEL|6239" = EnsDb("lib/6239/Caenorhabditis_elegans.WBcel235.103.sqlite"),
+#            "Danio rerio|DRE|7955" = EnsDb("lib/7955/Danio_rerio.GRCz11.103.sqlite"),
+#            "Drosophila melanogaster|DME|7227" = EnsDb("lib/7227/Drosophila_melanogaster.BDGP6.32.103.sqlite"),
+#            "Gallus gallus|GGA|9031" = EnsDb("lib/9031/Gallus_gallus.GRCg6a.103.sqlite"),
+#            "Mus musculus|MMU|10090" = EnsDb("lib/10090/Mus_musculus_wsbeij.WSB_EiJ_v1.103.sqlite"),
+#            "Rattus norvegicus|RNO|10116" = EnsDb("lib/10116/Rattus_norvegicus.Rnor_6.0.103.sqlite"),
+#            "Saccharomyces cerevisiae|SCE|4932" = EnsDb("lib/4932/Saccharomyces_cerevisiae.R64-1-1.103.sqlite"),
+#            "Sus scrofa|SSC|9823" = EnsDb("lib/9823/Sus_scrofa_wuzhishan.minipig_v1.0.103.sqlite"),
+#            "Xenopus tropicalis|XTR|8364" = EnsDb("lib/8364/Xenopus_tropicalis.Xenopus_tropicalis_v9.1.103.sqlite")
+#     )
+# }
+
+# Keep only in global.R?
+convertColumns <- c("UNIPROTID", "ENTREZID", "SYMBOL", "GENEID", "PROTEINID")
+assign("convertColumns", convertColumns, envir = .GlobalEnv)
 
 
 # Server ----
@@ -379,10 +383,12 @@ server <- function(session, input, output) {
     
     # Build sample info ----
     
-    sample_data <- function(data) {
-        samples <- names(data[, -..convertColumns])
+    sample_data <- function(d) {
+        samples <- names(d)
         treatment <- as.factor(gsub('_.*', '', samples))
         replicate <- as.factor(gsub('.*_', '', samples))
+        
+        # We use data.frame instead of data.table here because Biobase requires it
         samples <- data.frame(samples, treatment, replicate)
         rownames(samples) <- samples$samples
         
@@ -455,19 +461,34 @@ server <- function(session, input, output) {
     
     # File input: upload data function ----
     
-    undup <- function(genes){
+    undup <- function(genes) {
         genes[!is.na(genes)]
     }
     
-    upload_data <- function(i = "auto"){
+    infer_id <- function(d, k) {
         
-        data_wide <- maindata$data_wide
+        # Guess input ID based on successful conversions on small sample
         
-        # maindata$data_wide <- data.table::fread(
-        #     path,
-        #     sep = sep,
-        #     dec = ".",
-        #     header = T)
+        tr1 <- AnnotationDbi::mapIds(d, keys = k, column = "SYMBOL", keytype = "UNIPROTID", multiVals = "first")
+        tr2 <- AnnotationDbi::mapIds(d, keys = k, column = "UNIPROTID", keytype = "ENTREZID", multiVals = "first")
+        tr3 <- AnnotationDbi::mapIds(d, keys = k, column = "UNIPROTID", keytype = "SYMBOL", multiVals = "first")
+        tr4 <- AnnotationDbi::mapIds(d, keys = k, column = "UNIPROTID", keytype = "GENEID", multiVals = "first")
+        tr5 <- AnnotationDbi::mapIds(d, keys = k, column = "UNIPROTID", keytype = "PROTEINID", multiVals = "first")
+        
+        trs <- list(tr1[!is.na(tr1)],
+                    tr2[!is.na(tr2)],
+                    tr3[!is.na(tr3)],
+                    tr4[!is.na(tr4)],
+                    tr5[!is.na(tr5)])
+        
+        # Our guess is whichever id type has the highest success rate
+        i <- convertColumns[which.max(lapply(lapply(trs, lengths), sum))]
+        
+    }
+    
+    upload_data <- function(i = "auto") {
+        
+        data_wide <- maindata$data_wide_tmp
         
         data_wide <- data_wide[!duplicated(names(data_wide)[1])]
         
@@ -484,30 +505,17 @@ server <- function(session, input, output) {
         # Used later to enable reverting to original from subsetted dataset.
         maindata$data_origin <- data_wide
         
-        # 10 first rows for converting IDs
-        keys <- data_wide[, as.character(.SD[[1L]])][1:10]
+        assign("ddw", data_wide, envir = .GlobalEnv)
         
+        if(input$LogTransformData) data_wide[, 2:ncol(data_wide)] <- log2(data_wide[, 2:ncol(data_wide)])
         
-        # Peptide data input
-        
-        # Guess input ID based on successful conversions
-        if(i == "auto") {
+        if(input$organism != "other") {
+            # 10 first rows for converting IDs
+            keys <- data_wide[, as.character(.SD[[1L]])][1:10]
             
-            tr1 <- AnnotationDbi::mapIds(maindata$organism, keys = keys, column = "SYMBOL", keytype = "UNIPROTID", multiVals = "first")
-            tr2 <- AnnotationDbi::mapIds(maindata$organism, keys = keys, column = "UNIPROTID", keytype = "ENTREZID", multiVals = "first")
-            tr3 <- AnnotationDbi::mapIds(maindata$organism, keys = keys, column = "UNIPROTID", keytype = "SYMBOL", multiVals = "first")
-            tr4 <- AnnotationDbi::mapIds(maindata$organism, keys = keys, column = "UNIPROTID", keytype = "GENEID", multiVals = "first")
-            tr5 <- AnnotationDbi::mapIds(maindata$organism, keys = keys, column = "UNIPROTID", keytype = "PROTEINID", multiVals = "first")
+            i <- infer_id(d = maindata$organism, k = keys)
             
-            trs <- list(tr1[!is.na(tr1)],
-                        tr2[!is.na(tr2)],
-                        tr3[!is.na(tr3)],
-                        tr4[!is.na(tr4)],
-                        tr5[!is.na(tr5)])
-            
-            i <- convertColumns[which.max(lapply(lapply(trs, lengths), sum))]
-            
-            if(i == "UNIPROTID"){
+            if(i == "UNIPROTID") {
                 tr_all <- data.table(AnnotationDbi::select(maindata$organism, keys = data_wide[, as.character(.SD[[1L]])], columns = convertColumns, keytype = i))
                 tr_all <- tr_all[!duplicated(UNIPROTID)]
                 
@@ -523,65 +531,71 @@ server <- function(session, input, output) {
                 tr_all <- tr_all[!duplicated(UNIPROTID)]
             }
             
+            names(data_wide)[1] <- i
             
+            pdesc <- data.table::fread("lib/protein_descriptions.txt.gz")
             
+            setkey(data_wide, "UNIPROTID")
+            setkey(pdesc, "UNIPROTID")
             
-        } else {
+            pdesc <- pdesc[maindata$data_wide[,1:5]]
+            maindata$pdesc <- pdesc
             
-            if(i == "UNIPROTID"){
-                
-                tr_all <- data.table(AnnotationDbi::select(maindata$organism, keys = data_wide[, as.character(.SD[[1L]])], columns = convertColumns, keytype = i))
-                tr_all <- tr_all[!duplicated(UNIPROTID)]
-                
-            } else {
-                tr <- AnnotationDbi::mapIds(maindata$organism, keys = data_wide[, as.character(.SD[[1L]])], column = "UNIPROTID", keytype = i, multiVals = "first")
-                tr <- tr[!is.na(tr)]
-                tr <- tr[!duplicated(tr)]
-                
-                tr <- data.table(i = names(tr), "UNIPROTID" = unname(tr))
-                
-                tr_all <- data.table(AnnotationDbi::select(maindata$organism, keys = data_wide[, as.character(.SD[[1L]])], columns = convertColumns, keytype = i))
-                tr_all <- tr_all[UNIPROTID %in% tr$UNIPROTID]
-                tr_all <- tr_all[!duplicated(UNIPROTID)]
-            }
         }
+            
+       setkeyv(tr_all, i)
+       
+       setkeyv(data_wide, i)
+       
+       tr_all <- tr_all[data_wide[, ..i], on = i]
+       
+       tr_all$ENTREZID <- as.character(tr_all$ENTREZID)
+       
+       tr_all[is.na(ENTREZID), ENTREZID := paste0("MISSING_", seq(1:length(is.na(ENTREZID))))]
+       tr_all[is.na(SYMBOL), SYMBOL := paste0("MISSING_", seq(1:length(is.na(SYMBOL))))]
+       tr_all[is.na(UNIPROTID), UNIPROTID := paste0("MISSING_", seq(1:length(is.na(UNIPROTID))))]
+       tr_all[is.na(GENEID), GENEID := paste0("MISSING_", seq(1:length(is.na(GENEID))))]
+       tr_all[is.na(PROTEINID), PROTEINID := paste0("MISSING_", seq(1:length(is.na(PROTEINID))))]
+       
+       assign("tr_all", tr_all, envir = .GlobalEnv)
+            
+        #     data_wide <- data_wide[tr_all, nomatch = 0]
+        #     
+        #     data_wide$ENTREZID <- as.character(data_wide$ENTREZID)
+        #     
+        #     for(j in seq_along(data_wide)){
+        #         data.table::set(data_wide, i = which(duplicated(data_wide[[j]]) & is.character(data_wide[[j]])), j = j, value = NA)
+        #     }
+        #     
+        #     data_wide[is.na(ENTREZID), ENTREZID := paste0("MISSING_", seq(1:length(is.na(ENTREZID))))]
+        #     data_wide[is.na(SYMBOL), SYMBOL := paste0("MISSING_", seq(1:length(is.na(SYMBOL))))]
+        #     data_wide[is.na(UNIPROTID), UNIPROTID := paste0("MISSING_", seq(1:length(is.na(UNIPROTID))))]
+        #     data_wide[is.na(GENEID), GENEID := paste0("MISSING_", seq(1:length(is.na(GENEID))))]
+        #     data_wide[is.na(PROTEINID), PROTEINID := paste0("MISSING_", seq(1:length(is.na(PROTEINID))))]
+        #     
+        #     setcolorder(data_wide, c(convertColumns, names(maindata$data_origin[,2:ncol(maindata$data_origin)])))
+        # }
         
-        names(data_wide)[1] <- i
+        # maindata$data_wide <- data_wide
+        # maindata$data_origin <- data_wide
         
-        setkeyv(tr_all, i)
+
         
-        setkeyv(data_wide, i)
+        udat <- new("userdata",
+                   raw            = data_wide[, 2:ncol(data_wide)],
+                   main           = data_wide[, 2:ncol(data_wide)],
+                   rawidentifiers = tr_all,
+                   identifiers    = tr_all,
+                   descriptions   = pdesc,
+                   deoutput       = data.table())
         
-        tr_all <- tr_all[data_wide[, ..i], on = i]
         
-        data_wide <- data_wide[tr_all, nomatch = 0]
         
-        data_wide$ENTREZID <- as.character(data_wide$ENTREZID)
+        assign("udat", udat, envir = .GlobalEnv)
         
-        for(j in seq_along(data_wide)){
-            data.table::set(data_wide, i = which(duplicated(data_wide[[j]]) & is.character(data_wide[[j]])), j = j, value = NA)
-        }
+        maindata$udat <- udat
         
-        data_wide[is.na(ENTREZID), ENTREZID := paste0("MISSING_", seq(1:length(is.na(ENTREZID))))]
-        data_wide[is.na(SYMBOL), SYMBOL := paste0("MISSING_", seq(1:length(is.na(SYMBOL))))]
-        data_wide[is.na(UNIPROTID), UNIPROTID := paste0("MISSING_", seq(1:length(is.na(UNIPROTID))))]
-        data_wide[is.na(GENEID), GENEID := paste0("MISSING_", seq(1:length(is.na(GENEID))))]
-        data_wide[is.na(PROTEINID), PROTEINID := paste0("MISSING_", seq(1:length(is.na(PROTEINID))))]
-        
-        setcolorder(data_wide, c(convertColumns, names(maindata$data_origin[,2:ncol(maindata$data_origin)])))
-        
-        maindata$data_wide <- data_wide
-        maindata$data_origin <- data_wide
-        
-        pdesc <- data.table::fread("lib/protein_descriptions.txt.gz")
-        
-        setkey(maindata$data_wide, "UNIPROTID")
-        setkey(pdesc, "UNIPROTID")
-        
-        pdesc <- pdesc[maindata$data_wide[,1:5]]
-        maindata$pdesc <- pdesc
-        
-        sample_data(maindata$data_wide)
+        sample_data(udat@main)
         
     }
     
@@ -654,15 +668,15 @@ server <- function(session, input, output) {
     # Data summary plot ----
     
     nproteins <- reactive({
-        if(!is.null(maindata$data_wide)) maindata$data_wide[, .N]
+        if(!is.null(maindata$data_wide_tmp)) maindata$data_wide_tmp[, .N]
     })
     
     nsamples <- reactive({
-        if(!is.null(maindata$data_wide)) (ncol(maindata$data_wide) - 1)
+        if(!is.null(maindata$data_wide_tmp)) (ncol(maindata$data_wide_tmp) - 1)
     })
     
     ntreatments <- reactive({
-        if(!is.null(maindata$data_wide)) names(maindata$data_wide)[2:ncol(maindata$data_wide)] %>% sub('_.*', '', .) %>% uniqueN()
+        if(!is.null(maindata$data_wide_tmp)) names(maindata$data_wide_tmp)[2:ncol(maindata$data_wide_tmp)] %>% sub('_.*', '', .) %>% uniqueN()
     })
     
     output$dataDetails <- renderUI({
@@ -674,7 +688,7 @@ server <- function(session, input, output) {
     
     
     output$datainfoBox <- renderInfoBox({
-        if(!is.null(sampleinfo$samples)) infoBox("Proteins", maindata$data_wide[, .N])
+        if(!is.null(sampleinfo$samples)) infoBox("Proteins", maindata$udat@main[, .N])
         else infoBox("Proteins", 0)
     })
     
@@ -733,23 +747,24 @@ server <- function(session, input, output) {
     
     
     output$identifierinfo <- renderTable({
-        if(!is.null(maindata$data_wide)) {
+        if(!is.null(maindata$udat@identifiers)) {
             
-            missingids <- maindata$data_wide[, ..convertColumns]
+            missingids <- maindata$udat@identifiers
             missingidspc <- apply(missingids, 2, FUN = function(x) paste0(round(((sum(!startsWith(x, "MISSING")) / missingids[, .N]) * 100), 2), "% (", sum(!startsWith(x, "MISSING")), ")") )
             as.data.frame(missingidspc)
         }
     }, rownames = T, colnames = F)
     
     
+    # Remake reactive
     output$violinplot <- renderPlot({
         
-        if(!is.null(maindata$data_wide) & !is.null(sampleinfo$samples)){
-            dat <- stack(as.data.frame(maindata$data_wide[, 6:ncol(maindata$data_wide)]))
+        if(!is.null(maindata$udat@main) & !is.null(sampleinfo$samples)){
+            dat <- stack(as.data.frame(maindata$udat@main))
             dat <- dat[!is.na(dat$values), ]
             dat$sample <- sub("_.*", "", dat$ind)
             dat$ind <- factor(dat$ind, levels = levels(dat$ind)[order(levels(dat$ind))])
-            dat$values <- log2(dat$values)
+            dat$values <- dat$values
             
             if(input$violintype == 1) {
                 
@@ -790,9 +805,11 @@ server <- function(session, input, output) {
     
     # Missing values: frequency plot ----
     
-    renderNAfreq <- function(data_wide){
-        output$nafreq <- renderPlot({
-            
+    nafrequencies <- reactive({
+        
+        data_wide <- maindata$udat@main
+        
+        if(!is.null(data_wide)){
             # Which elements are NA?
             allNA <- is.na(data_wide)
             
@@ -800,61 +817,68 @@ server <- function(session, input, output) {
             NA_frequency <- table(rowSums(allNA))
             
             naf <- as.data.frame(NA_frequency)
-            
-            
-            # Draw plot
-            plots$mv <- ggplot(naf, aes(x = Var1, y = Freq, color = Var1)) +
-                geom_bar(stat = "identity", width = .9, fill = "white") +
-                labs(x = "Number of missing values in at least one sample", y = "Number of proteins") +
-                ggthemes::theme_clean() +
-                theme(axis.text.x = element_text(vjust = 0.6), legend.position = "none") +
-                scale_color_grey()
-            
-            plots$mv
-            
-        })
-    }
-    
-    
-    
-    observeEvent(input$loadfilterplot, {
-        
-        data_wide <- maindata$data_wide
-        
-        if(!is.null(data_wide)){
-            renderNAfreq(data_wide)
-        } else {
-            updateNotifications("Upload a dataset first.","exclamation-triangle", "danger")
         }
+        
     })
+    
+    output$nafreq <- renderPlot({
+        
+        naf <- nafrequencies()
+        
+        # Draw plot
+        plots$mv <- ggplot(naf, aes(x = Var1, y = Freq, color = Var1)) +
+            geom_bar(stat = "identity", width = .9, fill = "white") +
+            labs(x = "Number of missing values in at least one sample", y = "Number of proteins") +
+            ggthemes::theme_clean() +
+            theme(axis.text.x = element_text(vjust = 0.6), legend.position = "none") +
+            scale_color_grey()
+        
+        plots$mv
+        
+    })
+    
+    
+    
+    # observeEvent(input$loadfilterplot, {
+    #     
+    #     data_wide <- maindata$udat@main
+    #     
+    #     if(!is.null(data_wide)){
+    #         renderNAfreq(data_wide)
+    #     } else {
+    #         updateNotifications("Upload a dataset first.","exclamation-triangle", "danger")
+    #     }
+    # })
     
     observeEvent(input$setcutoff, {
         
-        
-        
-        data_wide <- maindata$data_wide
+        data_wide <- maindata$udat@main
         
         subsample_data()
         
-        if(!is.null(data_wide)){
-            data_origin <- maindata$data_origin
-            data_wide <- subset_by_na(dataset = data_origin, treatment = sampleinfo$samples$treatment, threshold = input$missingvalues)
+        if(!is.null(data_wide)) {
+            d <- cbind(maindata$udat@rawidentifiers, maindata$udat@raw)
+            data_wide <- subset_by_na(dataset = d, treatment = sampleinfo$samples$treatment, threshold = input$missingvalues)
             
-            subset_interactions()
+            ids <- data_wide[, 1:5]
+            data_wide <- data_wide[, 6:ncol(data_wide)]
+            
+            #subset_interactions()
             
             unlock_menus()
-            renderNAfreq(data_wide)
             
-            assign("ddw", maindata$data_wide, envir = .GlobalEnv)
-            assign("origin", maindata$data_origin, envir = .GlobalEnv)
+            
+            maindata$udat@main <- data_wide
+            maindata$udat@identifiers <- ids
+            
+            assign("udat", maindata$udat, envir = .GlobalEnv)
             assign("sic", sampleinfo$samples$treatment, envir = .GlobalEnv)
             assign("sir", sampleinfo$samples$replicate, envir = .GlobalEnv)
             assign("sis", sampleinfo$samples, envir = .GlobalEnv)
             assign("siSID", sampleinfo$sID, envir = .GlobalEnv)
             assign("sgroup", sampleinfo$group, envir = .GlobalEnv)
             
-            
-            maindata$data_wide <- data_wide
+
             updateTasks(text = "Set a filter", value = 100, color = "green", i = 0003)
             updateNotifications(paste0("NA cutoff set to ", input$missingvalues, ".") ,"check-circle", "success")
         } else {
@@ -864,198 +888,6 @@ server <- function(session, input, output) {
     })
     
     
-    
-    # Quality control ----
-    
-    # Plot PCA function ----
-    
-    plotPCA <- function(contribs, ellipse, type) {
-        
-        data_origin <- maindata$data_origin
-        dt <- dframe(subset_by_na(data_origin, treatment = sampleinfo$samples$treatment, threshold = input$missingvalues), sampleinfo$sID)
-        # Biplot extension displaying top contributing proteins currently only available for 2D plot.
-        
-        if(type == '2d') {
-            
-            pca.data <- log2(dt)  # Log2 transform data
-            pca.data[is.na(pca.data)] <- 0 # "Impute" missing values as 0
-            
-            pca.data <- IMIFA::pareto_scale(pca.data)
-            
-            #pca.data <- t(pca.data)        # Transpose dataset
-            
-            p.pca <- prcomp(t(pca.data), center = TRUE, scale. = F)
-            
-            plots$pcaplot2d <- factoextra::fviz_pca_biplot(p.pca, title = '', label = "var", habillage = sampleinfo$samples$treatment,
-                                                           addEllipses = TRUE, ellipse.level = ellipse,
-                                                           select.var = list(contrib = contribs), repel = TRUE) + theme_light()
-            
-            return (plots$pcaplot2d)
-            
-        } else if (type == '2dpaired') {
-            
-            
-            pca.data <- dt
-            pca.data[is.na(pca.data)] <- .5 # "Impute" missing values as 0
-            
-            pca.data <- pca.data[rowSums(pca.data) != .5,]
-            
-            pca.data <- t(pca.data)        # Transpose dataset
-            
-            pca.res = pca(X = pca.data,
-                          multilevel = sampleinfo$samples$replicate, logratio = 'CLR')
-            
-            plots$pcaplot2d <- plotIndiv(
-                pca.res,
-                ind.names = sampleinfo$samples$replicate,
-                group = sampleinfo$samples$treatment,
-                title = "Multilevel PCA",
-                legend = T,
-                style = "ggplot2",
-                ellipse = FALSE,
-                ellipse.level = .9
-            )
-            return(plots$pcaplot2d)
-            
-            
-            
-        } else if (type == '3d') {
-            
-            pca.data <- log2(dt)  # Log2 transform data
-            pca.data[is.na(pca.data)] <- 0 # "Impute" missing values as 0
-            
-            pca.data <- IMIFA::pareto_scale(pca.data)
-            
-            #pca.data <- t(pca.data)        # Transpose dataset
-            
-            p.pca <- prcomp(t(pca.data), center = TRUE, scale. = F)
-            
-            
-            plots$pcaplot3d <- plotly::plot_ly(x = p.pca$x[,1],
-                                               y = p.pca$x[,2],
-                                               z = p.pca$x[,3],
-                                               text = rownames(p.pca$x),
-                                               hoverinfo = "text",
-                                               color = sampleinfo$samples$treatment,
-                                               colors = c("red","green","blue"),
-                                               sizes = c(100, 150)) %>%
-                plotly::add_markers() %>%
-                plotly::layout(scene = list(xaxis = list(title = 'PC1'),
-                                            yaxis = list(title = 'PC2'),
-                                            zaxis = list(title = 'PC3')))
-            
-            return (plots$pcaplot3d)
-        } else if (type == '3dpaired') {
-            
-            pca.data <- dt
-            pca.data[is.na(pca.data)] <- .5 # "Impute" missing values as 0.5
-            
-            pca.data <- pca.data[rowSums(pca.data) != .5,]
-            
-            pca.data <- t(pca.data)        # Transpose dataset
-            
-            pca.res = pca(X = pca.data,
-                          ncomp = 3,
-                          multilevel = sampleinfo$samples$replicate, logratio = 'CLR')
-            
-            plots$pcaplot3d <- plotly::plot_ly(x = pca.res$x[,1],
-                                               y = pca.res$x[,2],
-                                               z = pca.res$x[,3],
-                                               text = rownames(pca.res$x),
-                                               hoverinfo = "text",
-                                               color = sampleinfo$samples$treatment,
-                                               colors = c("red","green","blue"),
-                                               sizes = c(100, 150)) %>%
-                plotly::add_markers() %>%
-                plotly::layout(scene = list(xaxis = list(title = 'PC1'),
-                                            yaxis = list(title = 'PC2'),
-                                            zaxis = list(title = 'PC3')))
-            
-            return(plots$pcaplot3d)
-            
-        }  else { return (FALSE) }
-        
-    }
-    
-    # Render PCA plots
-    
-    observeEvent(input$loadPCAplots, {
-        
-        # If unpaired
-        if(input$diffexppairing == 2){
-            output$pca2dplot <- renderPlot({
-                plotPCA(input$contribs, input$ellipse, '2d')
-            })
-        } else if(input$diffexppairing == 1) {
-            output$pca2dplot <- renderPlot({
-                plotPCA(0, input$ellipse, '2dpaired')
-                
-            })
-        }
-        
-        # If unpaired
-        if(input$diffexppairing == 2){
-            output$pca3dplot <- plotly::renderPlotly({
-                plotPCA(0,0, '3d')
-            })
-        } else if(input$diffexppairing == 1) {
-            output$pca3dplot <- plotly::renderPlotly({
-                plotPCA(0, 0, '3dpaired')
-                
-            })
-        }
-        
-        updateTasks(text = "Inspect data", value = (tasks$tasks[id == "0004", value] + 100/3), color = "green", i = 0004)
-    })
-    
-    
-    
-    # Render UMAP
-    observeEvent(input$loadUMAP, {
-        output$UMAPplot <- renderPlot({
-            plotPCA(0,0, 'UMAP')
-        })
-        updateTasks(text = "Inspect data", value = (tasks$tasks[id == "0004", value] + 100/3), color = "green", i = 0004)
-    })
-    
-    
-    # Render heatmap
-    
-    observeEvent(input$generateheatmap, {
-        cor_mat_raw_logged <- log2(maindata$data_origin[,-..convertColumns])
-        cor_mat_raw_logged[is.na(cor_mat_raw_logged)] <- 0
-        cor_mat_raw_logged <- cor(cor_mat_raw_logged)
-        
-        #annotation_col = data.frame(tmp)
-        
-        data_annotation <- maindata$data_annotation
-        
-        if(!is.null(data_annotation)){
-            if(all(data_annotation[, as.character(.SD[[1L]])] %in% names(maindata$data_origin[,-..convertColumns]))){
-                plots$hmap <- pheatmap::pheatmap(
-                    annotation_col = dframe(data_annotation, "V1")[2:4],
-                    cor_mat_raw_logged,
-                    legend_breaks = c(min(cor_mat_raw_logged), 1),
-                    legend_labels = c(0, 1),
-                    silent = T
-                )
-            }
-        } else {
-            plots$hmap <- pheatmap::pheatmap(
-                cor_mat_raw_logged,
-                legend_breaks = c(min(cor_mat_raw_logged), 1),
-                legend_labels = c(0, 1),
-                silent = T
-            )
-        }
-        
-        output$samplecorrheatmap = renderPlot({
-            plots$hmap
-        })
-        
-        updateTasks(text = "Inspect data", value = (tasks$tasks[id == "0004", value] + 100/3), color = "green", i = 0004)
-        
-    })
     
     # Differential expression: set contrasts ----
     observeEvent(input$contrast1, {
@@ -1122,7 +954,7 @@ server <- function(session, input, output) {
     
     diff_exp <- function(coeff, pairing) {
         
-        dw <- maindata$data_wide
+        dw <- maindata$udat@main
         sinf <- sampleinfo$samples
         
         if(input$setDEengine == 2) {
@@ -1179,10 +1011,17 @@ server <- function(session, input, output) {
             
         } else if(input$setDEengine == 1) {
             
+            dw <- as.matrix(dw)
+            
+            sid <- sampleinfo$sID
+            
+            rn <- as.character(maindata$udat@identifiers[, ..sid][[1]])
+            
+            rownames(dw) <- rn
             
             # Create Annotation data and expression set (Biobase)
             phenoData <- new("AnnotatedDataFrame", data = sampleinfo$samples)
-            exampleSet <- ExpressionSet(assayData = as.matrix(log2(dframe(maindata$data_wide, sampleinfo$sID))), phenoData = phenoData)
+            exampleSet <- ExpressionSet(assayData = dw, phenoData = phenoData)
             
             treatment <- sampleinfo$samples$treatment
             repl <- sampleinfo$samples$replicate
@@ -1198,7 +1037,7 @@ server <- function(session, input, output) {
             
             # Fit the linear model
             fit <- lmFit(exampleSet, design)
-            
+
             # Decide possible contrasts
             c <- expand.grid(sampleinfo$group, sampleinfo$group)
             cc <- factor(ifelse(c$Var1 != c$Var2, paste(c$Var1, c$Var2, sep = '-'), NA ))
@@ -1214,6 +1053,8 @@ server <- function(session, input, output) {
             # Generate data frame with results from linear model fit, with confidence intervals.
             contrast <- topTable(fit.cont, number = Inf, coef = coeff)
             
+            assign("contrast", contrast, envir = .GlobalEnv)
+            
             # Confidence intervals used for plot, global var
             cint <- contrast
             cint$protein <- rownames(cint)
@@ -1223,12 +1064,21 @@ server <- function(session, input, output) {
             
             contrast <- contrast[order(contrast$P.Value, decreasing = F),]
             contrast <- data.table::as.data.table(contrast, keep.rownames = T)
-            
-            setkeyv(contrast, "rn")
-            setkeyv(maindata$data_wide, sampleinfo$sID)
-            contrast <- contrast[maindata$data_wide[,..convertColumns], nomatch = 0]
             names(contrast) <- c(sampleinfo$sID, names(contrast[, 2:ncol(contrast)]))
-            setcolorder(contrast, c(convertColumns, "logFC", "t", "P.Value", "adj.P.Val", "B"))
+            
+            maindata$udat@deoutput <- contrast
+            
+            assign("udat", maindata$udat, envir = .GlobalEnv)
+            
+            # assign("contrast2", contrast, envir = .GlobalEnv)
+            # 
+            # data_wide <- cbind(maindata$udat@identifiers, maindata$udat@main)
+            
+            # setkeyv(contrast, "rn")
+            # setkeyv(data_wide, sampleinfo$sID)
+            # contrast <- contrast[data_wide, nomatch = 0]
+            # names(contrast) <- c(sampleinfo$sID, names(contrast[, 2:ncol(contrast)]))
+            # setcolorder(contrast, c(convertColumns, "logFC", "t", "P.Value", "adj.P.Val", "B"))
             
             # Reduce network load
             if(contrast[, .N] > 2000) {
@@ -1246,9 +1096,9 @@ server <- function(session, input, output) {
     }
     
     output$diffexptable_summary <- renderTable({
-        contrast <- rcont$contrast
+        contrast <- maindata$udat@deoutput
         
-        if(!is.null(contrast)){
+        if(maindata$udat@deoutput[, .N] > 0){
             contrast <- contrast[abs(logFC) >= input$diffexp_limit_fc]
             contrast <- contrast[adj.P.Val < input$diffexp_limit_pval]
             contrast <- contrast[!is.na(logFC)]
@@ -1289,15 +1139,15 @@ server <- function(session, input, output) {
     
     output$diffexptable_up <- DT::renderDataTable({
         
-        contrast <- rcont$contrast
+        contrast <- maindata$udat@deoutput[, -c("t", "B")]
         
-        if(!is.null(contrast)){
+        if(maindata$udat@deoutput[, .N] > 0){
             contrast <- contrast[abs(logFC) >= input$diffexp_limit_fc]
             contrast <- contrast[adj.P.Val < input$diffexp_limit_pval]
             contrast <- contrast[order(logFC, decreasing = T)]
-            maindata$diffexptable_up <- DT::datatable(dframe(contrast, sampleinfo$sID),
-                                                      options = list(order = list(1, 'desc'))) %>% 
-                formatRound(columns=1:(ncol(contrast) - length(convertColumns)), digits=4)
+            maindata$diffexptable_up <- DT::datatable(contrast,
+                                                      options = list(order = list(2, 'desc'))) %>% 
+                formatRound(columns=2:(ncol(contrast)), digits=4)
             
             maindata$diffexptable_up
             
@@ -1308,43 +1158,16 @@ server <- function(session, input, output) {
     
     output$diffexptable_down <- DT::renderDataTable({
         
-        contrast <- rcont$contrast
+        contrast <- maindata$udat@deoutput[, -c("t", "B")]
         
-        if(!is.null(contrast)){
+        if(maindata$udat@deoutput[, .N] > 0){
             contrast <- contrast[abs(logFC) >= input$diffexp_limit_fc]
             contrast <- contrast[adj.P.Val < input$diffexp_limit_pval]
             contrast <- contrast[order(logFC, decreasing = F)]
-            df <- DT::datatable(dframe(contrast, sampleinfo$sID),
-                                options = list(order = list(1, 'asc'))) %>% 
-                formatRound(columns=1:(ncol(contrast) - length(convertColumns)), digits=4)
-            # df %>% DT::formatSignif('logFC', digits = 2)
-            # df %>% DT::formatSignif('CI.L', digits = 2)
-            # df %>% DT::formatSignif('CI.R', digits = 2)
-            # df %>% DT::formatSignif('adj.P.Val', digits = 2)
+            df <- DT::datatable(contrast,
+                                options = list(order = list(2, 'asc'))) %>% 
+                formatRound(columns=2:(ncol(contrast)), digits=4)
             
-        }
-        
-    })
-    
-    # Differential expression: confidence intervals
-    
-    output$contrasttable <- renderPlot({
-        
-        if(!is.null(rcont$cint)){
-            ggplot2::ggplot(rcont$cint, aes(x = protein, y = logFC, colour = logFC)) +
-                coord_flip() +
-                geom_errorbar(aes(ymin = as.numeric(CI.L), ymax = as.numeric(CI.R)), width = 2) +
-                scale_color_viridis_c() +
-                geom_line() +
-                geom_point() +
-                theme_bw() +
-                theme(
-                    panel.border = element_blank(),
-                    panel.grid.major = element_blank(),
-                    panel.grid.minor = element_blank(),
-                    axis.line = element_line(colour = "black"),
-                    axis.text.y = element_text(size = 7, family = "Helvetica")
-                )
         }
         
     })
@@ -2095,7 +1918,7 @@ server <- function(session, input, output) {
             
             names(dw) <- make.names(names = names(dw), unique = T)
             
-            maindata$data_wide <- dw
+            maindata$data_wide_tmp <- dw
             
             shinyjs::show("previewDTInfo")
             shinyjs::show("dataDetailsWrapper")
@@ -2110,9 +1933,9 @@ server <- function(session, input, output) {
     
     output$previewDT <- renderDT({
         
-        if(!is.null(maindata$data_wide)){
+        if(!is.null(maindata$data_wide_tmp)){
             
-            dt <- maindata$data_wide
+            dt <- maindata$data_wide_tmp
             
             dw <- tryCatch({
                 
@@ -2135,6 +1958,17 @@ server <- function(session, input, output) {
         
     })
     
+    observeEvent(input$organism, {
+        
+        if(input$organism == "Other") {
+            createAlert(session, "unsupportedOrganism", "exampleAlert",
+                        content = "Please note that proceeding with organism 'other' means Pathway and Network analysis is unavailable. We are continuously adding support for more species.", append = FALSE,
+                        style = "info")
+        }
+
+        
+    })
+    
     
     observeEvent(input$EndStep1, {
         
@@ -2143,24 +1977,27 @@ server <- function(session, input, output) {
         #maindata$organism <- org_lib(input$organism)
         
         
-        if(input$organism == "Homo sapiens|HSA|9606") {
+        if(input$organism == "Homo sapiens | HSA | 9606") {
             
             library(EnsDb.Hsapiens.v86)
             
             maindata$organism <- EnsDb.Hsapiens.v86
             
-        } else if(input$organism == "Mus musculus|MMU|10090") {
+        } else if(input$organism == "Mus musculus | MMU | 10090") {
             
             library(EnsDb.Mmusculus.v79)
             
             maindata$organism <- EnsDb.Mmusculus.v79
             
-        } else if(input$organism == "Rattus norvegicus|RNO|10116") {
+        } else if(input$organism == "Rattus norvegicus | RNO | 10116") {
             
             library(EnsDb.Rnorvegicus.v79)
             
             maindata$organism <- EnsDb.Rnorvegicus.v79
             
+        } else if(input$organism == "Other") {
+            
+            maindata$organism <- NULL
         }
         
         
@@ -2176,7 +2013,7 @@ server <- function(session, input, output) {
         
         
         
-        if(is.null(maindata$data_wide)) {
+        if(is.null(maindata$data_wide_tmp)) {
             createAlert(session, "selectAFile", "exampleAlert",
                         content = "Please select a file.", append = FALSE,
                         style = "danger")
@@ -2229,32 +2066,34 @@ server <- function(session, input, output) {
     
     # Heatmap Updated ----
     
-    observeEvent(input$renderHeatmap, {
+    prepare_heatmap <- reactive({
         
-        dw <- maindata$data_wide
+        dw_cor <- maindata$udat@main
         
-        dw_cor <- log2(dw[, -..convertColumns])
-        dw_cor[is.na(dw_cor)] <- 0 # Impute
-        dw_cor <- round(cor(dw_cor, method = input$corMethod), 2)
+        if(!is.null(dw_cor)){
+            dw_cor[is.na(dw_cor)] <- 0 # Impute
+            dw_cor <- round(cor(dw_cor, method = input$corMethod), 2)
+        }
+    })
+    
+    output$heatmap <- renderPlotly({
         
-        output$heatmap <- renderPlotly({
-            
-            if(input$showGrid) gg = 0.75
-            else gg = 0
-            
-            heatmaply_cor(dw_cor,
-                          limits = c(min(dw_cor), 1),
-                          col = viridis(n = 100),
-                          fontsize_row = 8,
-                          fontsize_col = 8,
-                          grid_gap = gg,
-                          plot_method = "plotly",
-                          column_text_angle = 270,
-                          show_dendrogram = c(T, F),
-                          row_dend_left = T
-            )
-            
-        })
+        dw_cor <- prepare_heatmap()
+        
+        if(input$showGrid) gg = 0.75
+        else gg = 0
+        
+        heatmaply_cor(dw_cor,
+                      limits = c(min(dw_cor), 1),
+                      col = viridis(n = 100),
+                      fontsize_row = 8,
+                      fontsize_col = 8,
+                      grid_gap = gg,
+                      plot_method = "plotly",
+                      column_text_angle = 270,
+                      show_dendrogram = c(T, F),
+                      row_dend_left = T
+        )
         
     })
     
@@ -2276,68 +2115,73 @@ server <- function(session, input, output) {
         
     }, ignoreInit = T)
     
-    observeEvent(input$PCA, {
+    prepare_pca <- reactive({
+        pca.data <- maindata$udat@main
         
-        dw <- maindata$data_wide
-        si_treatment <- sampleinfo$samples$treatment
-        si_replicate <- sampleinfo$samples$replicate
-        
-        pca.data <- log2(dw[, -..convertColumns])
-        pca.data[is.na(pca.data)] <- 0 # "Impute" missing values as 0
-        pca.data <- IMIFA::pareto_scale(pca.data)
-        
-        if(input$multilevelPCA == T) {
+        if(!is.null(pca.data)) {
+
+            pca.data[is.na(pca.data)] <- 0 # "Impute" missing values as 0
+            pca.data <- IMIFA::pareto_scale(pca.data)
             
-            ndim <- input$pcaDims[2] - input$pcaDims[1] + 1
-            p.pca = mixOmics::pca(X = t(pca.data), ncomp = NULL, multilevel = si_replicate, logratio = 'none', scale = F, center = T)
-            
-        } else {
-            
-            p.pca <- prcomp(t(pca.data), center = TRUE, scale. = F)
-            
-        }
-        
-        
-        
-        
-        # if 2 dims
-        
-        if(input$pcaDims[2] - input$pcaDims[1] == 1) {
-            
-            mydf <- data.frame(pc1 = p.pca$x[, input$pcaDims[1]],
-                               pc2 = p.pca$x[, input$pcaDims[2]],
-                               si_treatment)
-            
-            poly.df <- mydf %>% 
-                group_by(si_treatment) %>%
-                do(.[chull(.$pc1, .$pc2),]) 
-            
-            if(input$showPolygons) {
-                ggplot(mydf, aes(pc1, pc2, colour = as.factor(si_treatment))) +
-                    geom_polygon(data = poly.df, fill = "grey", alpha = .15) +
-                    geom_point(size = 5, aes(text = rownames(mydf))) +
-                    xlab(paste0("PC", input$pcaDims[1])) +
-                    ylab(paste0("PC", input$pcaDims[2])) +
-                    scale_color_manual(values = app_meta$palette) +
-                    theme_light() + theme(legend.title = element_blank()) -> p
+            if(input$multilevelPCA == T) {
+                
+                ndim <- input$pcaDims[2] - input$pcaDims[1] + 1
+                p.pca = mixOmics::pca(X = t(pca.data), ncomp = NULL, multilevel = sampleinfo$samples$replicate, logratio = 'none', scale = F, center = T)
+                
             } else {
-                ggplot(mydf, aes(pc1, pc2, colour = as.factor(si_treatment))) +
-                    geom_point(size = 5, aes(text = rownames(mydf))) +
-                    xlab(paste0("PC", input$pcaDims[1])) +
-                    ylab(paste0("PC", input$pcaDims[2])) +
-                    scale_color_manual(values = app_meta$palette) +
-                    theme_light() + theme(legend.title = element_blank()) -> p
+                
+                p.pca <- prcomp(t(pca.data), center = TRUE, scale. = F)
+                
             }
             
+            p.pca
             
-            output$PCAplots <- renderPlotly({
-                
-                ggplotly(p, tooltip = "text") %>% layout(legend = list(title=list(text='<b> Treatment </b>')))
-            })
             
+            
+        }
+    })
+    
+    pca2d <- reactive({
+        
+        p.pca <- prepare_pca()
+        
+        si_treatment <- sampleinfo$samples$treatment
+        si_replicate <- sampleinfo$samples$replicate
+
+        mydf <- data.frame(pc1 = p.pca$x[, input$pcaDims[1]],
+                           pc2 = p.pca$x[, input$pcaDims[2]],
+                           si_treatment)
+        
+        poly.df <- mydf %>% 
+            group_by(si_treatment) %>%
+            do(.[chull(.$pc1, .$pc2),]) 
+        
+        if(input$showPolygons) {
+            ggplot(mydf, aes(pc1, pc2, colour = as.factor(si_treatment))) +
+                geom_polygon(data = poly.df, fill = "grey", alpha = .15) +
+                geom_point(size = 5, aes(text = rownames(mydf))) +
+                xlab(paste0("PC", input$pcaDims[1])) +
+                ylab(paste0("PC", input$pcaDims[2])) +
+                scale_color_manual(values = app_meta$palette) +
+                theme_light() + theme(legend.title = element_blank()) -> p
+        } else {
+            ggplot(mydf, aes(pc1, pc2, colour = as.factor(si_treatment))) +
+                geom_point(size = 5, aes(text = rownames(mydf))) +
+                xlab(paste0("PC", input$pcaDims[1])) +
+                ylab(paste0("PC", input$pcaDims[2])) +
+                scale_color_manual(values = app_meta$palette) +
+                theme_light() + theme(legend.title = element_blank()) -> p
+        }
+    })
+    
+    output$PCAplots <- renderPlotly({
+        
+        if(input$pcaDims[2] - input$pcaDims[1] == 1) {
+            pcaplot <- pca2d()
+            ggplotly(pcaplot, tooltip = "text") %>% layout(legend = list(title=list(text='<b> Treatment </b>')))
         } else if (input$pcaDims[2] - input$pcaDims[1] == 2) {
-            
-            p <- plotly::plot_ly(x = p.pca$x[,input$pcaDims[1]],
+            p.pca <- prepare_pca()
+            plotly::plot_ly(x = p.pca$x[,input$pcaDims[1]],
                                  y = p.pca$x[,(input$pcaDims[2] - 1)],
                                  z = p.pca$x[,input$pcaDims[2]],
                                  text = rownames(p.pca$x),
@@ -2351,32 +2195,31 @@ server <- function(session, input, output) {
                                             yaxis = list(title = paste0("PC", (input$pcaDims[2] - 1))),
                                             zaxis = list(title = paste0("PC", input$pcaDims[2]))),
                                legend = list(title=list(text='<b> Treatment </b>')))
-            
-            output$PCAplots <- renderPlotly({
-                p
-            })
-            
         }
         
         
-        output$scree <- renderPlot({
-            
-            var_explained_df <- data.frame(PC = paste0("PC",1:length(sampleinfo$samples$samples)),
-                                           var_explained=(p.pca$sdev)^2/sum((p.pca$sdev)^2))
-            
-            var_explained_df$PC <- factor(var_explained_df$PC, levels = var_explained_df$PC)
-            
-            var_explained_df %>%
-                ggplot(aes(x = PC, y = var_explained))+
-                geom_col() +
-                labs(title="Scree plot: PCA on scaled data") +
-                ggthemes::theme_clean() +
-                theme(axis.text.x = element_text(vjust = 0.6), legend.position = "none") +
-                scale_color_grey()
-            
-        })
+    })
+    
+
+    output$scree <- renderPlot({
+        
+        p.pca <- prepare_pca()
+        
+        var_explained_df <- data.frame(PC = paste0("PC",1:length(sampleinfo$samples$samples)),
+                                       var_explained=(p.pca$sdev)^2/sum((p.pca$sdev)^2))
+        
+        var_explained_df$PC <- factor(var_explained_df$PC, levels = var_explained_df$PC)
+        
+        var_explained_df %>%
+            ggplot(aes(x = PC, y = var_explained))+
+            geom_col() +
+            labs(title="Scree plot: PCA on scaled data") +
+            ggthemes::theme_clean() +
+            theme(axis.text.x = element_text(vjust = 0.6), legend.position = "none") +
+            scale_color_grey()
         
     })
+    
     
     observeEvent(input$pcaDims, {
         
@@ -2415,15 +2258,13 @@ server <- function(session, input, output) {
     # Differential expression volcano plot ----
     
     diffv <- reactive({
-        if(!is.null(rcont$contrast)) {
+        
+        contrast <- maindata$udat@deoutput[, -c("t", "B")]
+        
+        if(maindata$udat@deoutput[, .N] > 0) {
+
             
-            contrast <- rcont$contrast
-            
-            setDT(contrast, keep.rownames = T)
-            
-            assign("contrast", contrast, envir = .GlobalEnv)
-            
-            diff_df <- contrast[, c(1, 6, 9)]
+            diff_df <- contrast[, c(1, 2, 5)]
             colnames(diff_df) <- c("external_gene_name", "Fold", "FDR")
             
             
@@ -2442,18 +2283,21 @@ server <- function(session, input, output) {
     
     output$dea_volcano <- renderPlotly({
         
-        diff_df <- diffv()
-        
-        p <- plot_ly(data = diff_df,
-                     type = "scatter",
-                     x = ~Fold,
-                     y = ~(-log10(FDR)),
-                     text = ~external_gene_name,
-                     mode = "markers",
-                     color = ~group,
-                     colors = brewer.pal(uniqueN(sic), "Accent")) %>%
-            layout(yaxis = list(type = "log", showgrid=T,  ticks="outside", autorange=TRUE))
-        p
+        if(maindata$udat@deoutput[, .N] > 0) {
+            diff_df <- diffv()
+            
+            p <- plot_ly(data = diff_df,
+                         type = "scatter",
+                         x = ~Fold,
+                         y = ~(-log10(FDR)),
+                         text = ~external_gene_name,
+                         mode = "markers",
+                         color = ~group,
+                         colors = brewer.pal(uniqueN(sic), "Accent")) %>%
+                layout(yaxis = list(type = "log1p", showgrid=T,  ticks="outside", autorange=TRUE))
+            p
+        }
+
     })
     
     # output$dea_boxplot <- renderPlotly({

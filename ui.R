@@ -8,9 +8,17 @@ require(visNetwork)
 require(DT)
 require(plotly)
 
+# Credit to https://stackoverflow.com/questions/50368690/change-backdrop-for-a-bsmodal-in-shiny-app#answer-50570420
+# for this solution
+bsModalNoClose <-function(...) {
+    b = bsModal(...)
+    b[[2]]$`data-backdrop` = "static"
+    b[[2]]$`data-keyboard` = "false"
+    return(b)
+}
+
 
 # Notification menus ----
-
 help <- shinydashboard::dropdownMenuOutput("helpMenu")
 notifications <- shinydashboard::dropdownMenuOutput("notifMenu")
 
@@ -100,8 +108,6 @@ sidebar <- dashboardSidebar(
              color: #fff;"),
     sidebarMenu(id = "sidebarmenu",
                 menuItem("News", tabName = "news", icon = icon("book")),
-                menuItem("Contact", tabName = "contact", icon = icon("at")),
-                #menuItem("About", tabName = "about", icon = icon("book")),
                 menuItem("Settings", tabName = "settings", icon = icon("sliders-h"))
                 
     ),
@@ -178,29 +184,42 @@ body <- dashboardBody(
                                            ), 
                                            actionButton("ImportWizard", "Start import wizard..."),
                                            
-                                           bsModal(id ="ImportModal1",
+                                           bsModalNoClose(id ="ImportModal1",
                                                    title = "Data import wizard", 
                                                    trigger = "ImportWizard",
                                                    size = "large",
+                                                   
+                                                   bsAlert("unsupportedOrganism"),
                                                    
                                                    fluidRow(
                                                        column(width = 6,
                                                               box(width = NULL,
                                                                   title = "Sample information",
                                                                   
+                                                                  
+                                                                  # Currently only three organisms support UniprotID in ensembldb package
+                                                                  # Will write to developer
+                                                                  
                                                                   selectInput("organism",
                                                                               "Select organism",
-                                                                              list("Homo sapiens|HSA|9606",
-                                                                                   "Bos taurus|BTA|9913",
-                                                                                   "Caenorhabditis elegans|CEL|6239",
-                                                                                   "Danio rerio|DRE|7955",
-                                                                                   "Drosophila melanogaster|DME|7227",
-                                                                                   "Gallus gallus|GGA|9031",
-                                                                                   "Mus musculus|MMU|10090",
-                                                                                   "Rattus norvegicus|RNO|10116",
-                                                                                   "Saccharomyces cerevisiae|SCE|4932",
-                                                                                   "Sus scrofa|SSC|9823",
-                                                                                   "Xenopus tropicalis|XTR|8364")),
+                                                                              list("Homo sapiens | HSA | 9606",
+                                                                                   "Mus musculus | MMU | 10090",
+                                                                                   "Rattus norvegicus | RNO | 10116",
+                                                                                   "Other")),
+                                                                  
+                                                                  # selectInput("organism",
+                                                                  #             "Select organism",
+                                                                  #             list("Homo sapiens|HSA|9606",
+                                                                  #                  "Bos taurus|BTA|9913",
+                                                                  #                  "Caenorhabditis elegans|CEL|6239",
+                                                                  #                  "Danio rerio|DRE|7955",
+                                                                  #                  "Drosophila melanogaster|DME|7227",
+                                                                  #                  "Gallus gallus|GGA|9031",
+                                                                  #                  "Mus musculus|MMU|10090",
+                                                                  #                  "Rattus norvegicus|RNO|10116",
+                                                                  #                  "Saccharomyces cerevisiae|SCE|4932",
+                                                                  #                  "Sus scrofa|SSC|9823",
+                                                                  #                  "Xenopus tropicalis|XTR|8364")),
                                                                   
                                                                   bsTooltip("organism", "In order to use correct annotation databases, we need to know the species your data is derived from.",
                                                                             "right", options = list(container = "body")),
@@ -241,7 +260,7 @@ body <- dashboardBody(
                                                    
                                            ),
                                            
-                                           bsModal(id = "ImportModal2",
+                                           bsModalNoClose(id = "ImportModal2",
                                                    title = "Data import wizard",
                                                    trigger = "BeginStep2",
                                                    size = "large",
@@ -347,7 +366,7 @@ body <- dashboardBody(
                                                    
                                            ),
                                            
-                                           bsModal(id = "ImportModal3",
+                                           bsModalNoClose(id = "ImportModal3",
                                                    title = "Data import wizard",
                                                    trigger = "BeginStep3",
                                                    size = "large",
@@ -429,7 +448,6 @@ body <- dashboardBody(
                                br(),
                                numericInput("missingvalues", label = "",
                                             min = 0, max = 9999, value = 1), # max = number of samples / conditions
-                               actionButton("loadfilterplot", "Show plot"),
                                actionButton("setcutoff", "Set cutoff")
                            )
                     ),
@@ -552,14 +570,14 @@ body <- dashboardBody(
                                                width = NULL,
                                                shiny::sliderInput("pcaDims", "Dimensions", min = 1, max = 10, value = c(1, 2)),
                                                checkboxInput("showPolygons", "Show polygons", value = T),
-                                               checkboxInput("multilevelPCA", "Multi-level", value = F),
-                                               actionButton("PCA", "Update plots")
+                                               checkboxInput("multilevelPCA", "Multi-level", value = F)
                            )
                     ),
                     column(width = 9,
                            shinydashboard::box(
+                               #shinycssloaders::withSpinner(, type = 5, color = "#e80032dd", id = "PCASpinner", size = 1),
                                plotly::plotlyOutput("PCAplots", width = "95%", height = "500px"),
-                               plotOutput("scree", height = "250px"),
+                               shinycssloaders::withSpinner(plotOutput("scree", height = "250px"), type = 5, color = "#e80032dd", id = "ScreeSpinner", size = 1),
                                width = NULL)
                     ))),
         
@@ -575,14 +593,13 @@ body <- dashboardBody(
                                            selected = "pearson"),
                                bsTooltip("corMethod", "if method is 'kendall' or 'spearman', Kendall's tau or Spearman's rho statistic is used to estimate a rank-based measure of association. These are more robust and have been recommended if the data do not necessarily come from a bivariate normal distribution.",
                                          placement = "bottom", trigger = "hover", options = list(container = "body")),
-                               shiny::checkboxInput("showGrid", "Show grid", value = T),
-                               
-                               actionButton("renderHeatmap","Load plot")
+                               shiny::checkboxInput("showGrid", "Show grid", value = T)
                            )),
                     
                     column(width = 9,
                            box(title = "Sample-sample correlation heatmap", width = NULL,
-                               plotlyOutput("heatmap", height = "600px"))
+                               shinycssloaders::withSpinner(plotlyOutput("heatmap", height = "600px"), type = 5, color = "#e80032dd", id = "HeatmapSpinner", size = 1),
+                               )
                     ))
                 
         ),
@@ -604,10 +621,7 @@ body <- dashboardBody(
                                                "Condition3" = 3),
                                 selected = 2),
                     
-                    actionButton("setContrast", "Select"),
-                    p(),
-                    hr(),
-                    helpText("Please review pairing mode under Settings")
+                    actionButton("setContrast", "Select")
                 )
         ),
         tabItem(tabName = "diffexpoutput",
@@ -715,14 +729,6 @@ body <- dashboardBody(
                                    max = 100,
                                    value = 0,
                                    step = 0.1
-                               ),
-                               numericInput(
-                                   "interactioncutoff",
-                                   label = "Interaction confidence",
-                                   min = 0,
-                                   max = 10,
-                                   value = 9,
-                                   step = .1
                                )
                            )
                     ),
@@ -749,14 +755,6 @@ body <- dashboardBody(
                            )
                     )
                 )
-        ),
-        
-        tabItem(tabName = "contact"
-                # TBA social icons. Here or footer?
-                
-                
-                
-                
         ),
         
         
