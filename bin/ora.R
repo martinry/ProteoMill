@@ -7,12 +7,14 @@ ora <- function(gene,
 
   if(is.null(database)){
     if(!exists("REACTOME_low")){
-      if(!file.exists("lib/REACTOME_low.tsv.gz")) hierarchy()
+      if(!file.exists("lib/9606/9606_REACTOME_low.tsv.gz")) hierarchy()
       REACTOME_low <- fread("lib/REACTOME_low.tsv.gz", sep = '\t', header = T)
       assign("REACTOME_low", REACTOME_low, envir = .GlobalEnv)
     }
     database <- REACTOME_low
   }
+  
+  gene <- gene[gene %in% database$UniprotID]
 
   # Genes and their counts in input and background, for each pathway
   dt <- database[, list(genes      = list(UniprotID[UniprotID %in% gene]),

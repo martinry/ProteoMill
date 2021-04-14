@@ -645,7 +645,7 @@ body <- dashboardBody(
                     column(width = 6,
                            box(width = NULL,
                                shinycssloaders::withSpinner(plotlyOutput("dea_volcano", height = "602px"),
-                                                            type = 5, color = "#e80032dd", id = "VolcanoSpinner", size = 1),
+                                                            type = 5, color = "#e80032dd", id = "VolcanoSpinner1", size = 1),
                            ))
                 )
                 
@@ -662,8 +662,7 @@ body <- dashboardBody(
                                            selected = 'REACTOME'),
                                numericInput("min_fc", "Min log2 fold change", value = 0, min = 0, max = 50, step = .5),
                                numericInput("min_pval", "Max adj. P-value", value = 0.05, min = 0, max = 1, step = .01),
-                               htmlOutput("number_of_genes"),
-                               actionButton(inputId = "generate_pathways", label = "Generate pathway data")
+                               htmlOutput("number_of_genes")
                            ),
                            
                            box(title = "Selected pathway info", width = NULL,
@@ -683,13 +682,20 @@ body <- dashboardBody(
                 fluidRow(
                     column(width = 3,
                            box(width = NULL,
-                               actionButton("loadPathwayPlots", "Load plots")
+                               radioButtons("volcanoAnnotation", "Annotation",
+                                            choices = list("Differential expression groups" = "group",
+                                                           "Enriched pathway (top-level)" = "TopReactomeName",
+                                                           "Enriched pathway" = "Pathway_name"
+                                                           ))
                            ),
                     ),
                     column(width = 9,
                            tabBox(width = NULL,
-                                  tabPanel("Volcano plot", plotly::plotlyOutput("volcano_plot", height = 750)),
-                                  tabPanel("Sankey diagram", networkD3::sankeyNetworkOutput("sankey", height = 750))
+                                  tabPanel("Volcano plot",
+                                           shinycssloaders::withSpinner(plotlyOutput("volcano_plot", height = 750), type = 5, color = "#e80032dd", id = "volcanoSpinner2", size = 1)
+                                           ),
+                                  tabPanel("Sankey diagram",
+                                           shinycssloaders::withSpinner(networkD3::sankeyNetworkOutput("sankey", height = 750), type = 5, color = "#e80032dd", id = "sankeySpinner", size = 1))
                            )
                     )
                     
@@ -699,52 +705,54 @@ body <- dashboardBody(
                     box(
                         width = 6,
                         height = 520,#464,
-                        visNetworkOutput("interaction_network")
+                        shinycssloaders::withSpinner(visNetworkOutput("interaction_network"), type = 5, color = "#e80032dd", id = "interactionSpinner", size = 1)
+                        
                     ),
                     box(
                         width = 6,
                         height = 520,
-                        plotly::plotlyOutput("volcano_plot2")
+                        shinycssloaders::withSpinner(plotlyOutput("volcano_plot2"), type = 5, color = "#e80032dd", id = "volcanoSpinner3", size = 1)
                     )
                 ),
                 
                 fluidRow(
                     column(width = 3,
-                           box(
-                               title = "Network settings", width = NULL,
-                               
-                               actionButton("loadNetworkplots", "Load plots"),
-                               
-                               radioButtons(
-                                   "network_regulation",
-                                   label = "Subset by up- or down-regulation",
-                                   choices = list("Up-regulated" = 1, "Down-regulated" = 2, "Both" = 3),
-                                   selected = 3,
-                                   inline = F),
-                               
-                               numericInput(
-                                   "fccutoff",
-                                   label = "Minimum abs. log2FC",
-                                   min = 0,
-                                   max = 100,
-                                   value = 0,
-                                   step = 0.1
-                               )
+                           tabBox(width = NULL,
+                                  tabPanel(
+                                      title = "Network settings",
+                                      
+                                      radioButtons(
+                                          "network_regulation",
+                                          label = "Subset by up- or down-regulation",
+                                          choices = list("Up" = 1, "Down" = 2, "Both" = 3),
+                                          selected = 3, inline = T),
+                                      
+                                      numericInput(
+                                          "fccutoff",
+                                          label = "Minimum abs. log2FC",
+                                          min = 0, max = 100, value = 0, step = 0.1
+                                      ),
+                                      
+                                      numericInput(
+                                          "interactionConfidence",
+                                          label = "Interaction confidence",
+                                          min = 0, max = 10, value = 7, step = 0.1
+                                      )
+                                  ),
+                                  
+                                  tabPanel(
+                                      title = "Selection criteria",
+                                      
+                                      radioButtons("interaction_behaviour", label = "Selection subset",
+                                                   choices = list("Strict" = 1,
+                                                                  "Extended" = 2),
+                                                   inline = T,
+                                                   selected = 1),
+                                      textAreaInput("network_proteins", label = "Select proteins"),
+                                      actionButton("highlight_nodes", label = "Highlight")
+                                  )
                            )
-                    ),
-                    
-                    column(width = 3,
-                           box(
-                               title = "Selection criteria", width = NULL,
-                               
-                               radioButtons("interaction_behaviour", label = "Selection subset",
-                                            choices = list("Strict" = 1,
-                                                           "Extended" = 2),
-                                            inline = T,
-                                            selected = 1),
-                               textAreaInput("network_proteins", label = "Select proteins"),
-                               actionButton("highlight_nodes", label = "Highlight")
-                           )
+                           
                     ),
                     
                     column(width = 3,
@@ -752,6 +760,21 @@ body <- dashboardBody(
                                title = "Protein info", width = NULL,
                                uiOutput("clicked_node"),
                                uiOutput("hovered_node")
+                           )
+                           
+                    ),
+                    
+                    column(width = 3,
+                           box(width = NULL,
+                               title = "Volcano annotation",
+                               radioButtons("volcanoAnnotation2", "Annotation",
+                                            choices = list("Differential expression groups" = "group",
+                                                           "Enriched pathway (top-level)" = "TopReactomeName",
+                                                           "Enriched pathway" = "Pathway_name"
+                                            ), selected = "TopReactomeName")
+                               # title = "Protein info", width = NULL,
+                               # uiOutput("clicked_node"),
+                               # uiOutput("hovered_node")
                            )
                     )
                 )

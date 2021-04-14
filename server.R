@@ -445,15 +445,22 @@ server <- function(session, input, output) {
     
     subset_interactions <- function() {
         
-        proteins <- maindata$data_wide[, "UNIPROTID"][[1]]
+        all_proteins <- maindata$udat@identifiers[, "UNIPROTID"][[1]]
         
-        #interactions <- data.table::fread("lib/interactions5.txt.gz")
-        interactions <- data.table::fread("lib/reactome.9606.interactions.txt.gz")
+        interactions <- data.table::fread("lib/9606/9606.string.interactions.txt.gz")
         
-        pathways$ints <- interactions[(Interactor1 %in% proteins) & (Interactor2 %in% proteins)]
+        pathways$ints <- interactions[(Interactor1 %in% all_proteins) & (Interactor2 %in% all_proteins)]
+        
+        N <- udat@main[, .N]
+       
+        if(dplyr::between(N, 1500, 2999)) updateNumericInput(session = session, "interactionConfidence", label = "Interaction confidence", min = 0, max = 10, value = 7, step = 0.1)
+        else if(dplyr::between(N, 3000, 4999)) updateNumericInput(session = session, "interactionConfidence", label = "Interaction confidence", min = 0, max = 10, value = 8, step = 0.1)
+        else if(dplyr::between(N, 5000, 8999)) updateNumericInput(session = session, "interactionConfidence", label = "Interaction confidence", min = 0, max = 10, value = 9, step = 0.1)
+        else if(dplyr::between(N, 9000, 14999)) updateNumericInput(session = session, "interactionConfidence", label = "Interaction confidence", min = 0, max = 10, value = 9.5, step = 0.1)
+        else if(N >= 15000) updateNumericInput(session = session, "interactionConfidence", label = "Interaction confidence", min = 0, max = 10, value = 9.9, step = 0.1)
         
         # assign("proteins", proteins, envir = .GlobalEnv)
-        assign("ints", pathways$ints, envir = .GlobalEnv)
+        #assign("ints", pathways$ints, envir = .GlobalEnv)
         
         
     }
@@ -505,8 +512,6 @@ server <- function(session, input, output) {
         # Used later to enable reverting to original from subsetted dataset.
         maindata$data_origin <- data_wide
         
-        assign("ddw", data_wide, envir = .GlobalEnv)
-        
         if(input$LogTransformData) data_wide[, 2:ncol(data_wide)] <- log2(data_wide[, 2:ncol(data_wide)])
         
         if(input$organism != "other") {
@@ -533,13 +538,13 @@ server <- function(session, input, output) {
             
             names(data_wide)[1] <- i
             
-            pdesc <- data.table::fread("lib/protein_descriptions.txt.gz")
+            #pdesc <- data.table::fread("lib/protein_descriptions.txt.gz")
             
-            setkey(data_wide, "UNIPROTID")
-            setkey(pdesc, "UNIPROTID")
-            
-            pdesc <- pdesc[maindata$data_wide[,1:5]]
-            maindata$pdesc <- pdesc
+            # setkey(data_wide, "UNIPROTID")
+            # setkey(pdesc, "UNIPROTID")
+            # 
+            # pdesc <- pdesc[maindata$data_wide[,1:5]]
+            # maindata$pdesc <- pdesc
             
         }
             
@@ -586,7 +591,7 @@ server <- function(session, input, output) {
                    main           = data_wide[, 2:ncol(data_wide)],
                    rawidentifiers = tr_all,
                    identifiers    = tr_all,
-                   descriptions   = pdesc,
+                   descriptions   = data.table(),
                    deoutput       = data.table())
         
         
@@ -747,7 +752,7 @@ server <- function(session, input, output) {
     
     
     output$identifierinfo <- renderTable({
-        if(!is.null(maindata$udat@identifiers)) {
+        if(!is.null(maindata$udat)) {
             
             missingids <- maindata$udat@identifiers
             missingidspc <- apply(missingids, 2, FUN = function(x) paste0(round(((sum(!startsWith(x, "MISSING")) / missingids[, .N]) * 100), 2), "% (", sum(!startsWith(x, "MISSING")), ")") )
@@ -759,7 +764,7 @@ server <- function(session, input, output) {
     # Remake reactive
     output$violinplot <- renderPlot({
         
-        if(!is.null(maindata$udat@main) & !is.null(sampleinfo$samples)){
+        if(!is.null(maindata$udat) & !is.null(sampleinfo$samples)){
             dat <- stack(as.data.frame(maindata$udat@main))
             dat <- dat[!is.na(dat$values), ]
             dat$sample <- sub("_.*", "", dat$ind)
@@ -806,34 +811,36 @@ server <- function(session, input, output) {
     # Missing values: frequency plot ----
     
     nafrequencies <- reactive({
-        
+            
         data_wide <- maindata$udat@main
         
-        if(!is.null(data_wide)){
-            # Which elements are NA?
-            allNA <- is.na(data_wide)
-            
-            # Summary of how many TRUEs there are in each row
-            NA_frequency <- table(rowSums(allNA))
-            
-            naf <- as.data.frame(NA_frequency)
-        }
+        # Which elements are NA?
+        allNA <- is.na(data_wide)
+        
+        # Summary of how many TRUEs there are in each row
+        NA_frequency <- table(rowSums(allNA))
+        
+        naf <- as.data.frame(NA_frequency)
+        
         
     })
     
     output$nafreq <- renderPlot({
         
-        naf <- nafrequencies()
+        if(!is.null(maindata$udat)){
+            naf <- nafrequencies()
+            
+            # Draw plot
+            plots$mv <- ggplot(naf, aes(x = Var1, y = Freq, color = Var1)) +
+                geom_bar(stat = "identity", width = .9, fill = "white") +
+                labs(x = "Number of missing values in at least one sample", y = "Number of proteins") +
+                ggthemes::theme_clean() +
+                theme(axis.text.x = element_text(vjust = 0.6), legend.position = "none") +
+                scale_color_grey()
+            
+            plots$mv
         
-        # Draw plot
-        plots$mv <- ggplot(naf, aes(x = Var1, y = Freq, color = Var1)) +
-            geom_bar(stat = "identity", width = .9, fill = "white") +
-            labs(x = "Number of missing values in at least one sample", y = "Number of proteins") +
-            ggthemes::theme_clean() +
-            theme(axis.text.x = element_text(vjust = 0.6), legend.position = "none") +
-            scale_color_grey()
-        
-        plots$mv
+        }
         
     })
     
@@ -862,8 +869,6 @@ server <- function(session, input, output) {
             
             ids <- data_wide[, 1:5]
             data_wide <- data_wide[, 6:ncol(data_wide)]
-            
-            #subset_interactions()
             
             unlock_menus()
             
@@ -1064,9 +1069,11 @@ server <- function(session, input, output) {
             
             contrast <- contrast[order(contrast$P.Value, decreasing = F),]
             contrast <- data.table::as.data.table(contrast, keep.rownames = T)
-            names(contrast) <- c(sampleinfo$sID, names(contrast[, 2:ncol(contrast)]))
+            #names(contrast) <- c(sampleinfo$sID, names(contrast[, 2:ncol(contrast)]))
             
-            maindata$udat@deoutput <- contrast
+            contrast <- contrast[order(contrast[, 1])]
+            
+            maindata$udat@deoutput <- contrast[, 2:ncol(contrast)]
             
             assign("udat", maindata$udat, envir = .GlobalEnv)
             
@@ -1140,6 +1147,8 @@ server <- function(session, input, output) {
     output$diffexptable_up <- DT::renderDataTable({
         
         contrast <- maindata$udat@deoutput[, -c("t", "B")]
+        sID <- sampleinfo$sID
+        contrast <- cbind(maindata$udat@identifiers[, ..sID], contrast)
         
         if(maindata$udat@deoutput[, .N] > 0){
             contrast <- contrast[abs(logFC) >= input$diffexp_limit_fc]
@@ -1159,6 +1168,8 @@ server <- function(session, input, output) {
     output$diffexptable_down <- DT::renderDataTable({
         
         contrast <- maindata$udat@deoutput[, -c("t", "B")]
+        sID <- sampleinfo$sID
+        contrast <- cbind(maindata$udat@identifiers[, ..sID], contrast)
         
         if(maindata$udat@deoutput[, .N] > 0){
             contrast <- contrast[abs(logFC) >= input$diffexp_limit_fc]
@@ -1175,11 +1186,12 @@ server <- function(session, input, output) {
     
     # Pathways ----
     
+    # User sets minimum fold change from diff exp output to decide which proteins to include in pathway analysis
     observeEvent(input$min_fc, {
         
         output$number_of_genes <- renderUI({
             
-            contrast <- rcont$contrast
+            contrast <- maindata$udat@deoutput
             
             up <- paste("Up-regulated:", contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval, .N], "proteins", sep = " ")
             down <- paste("Down-regulated:", contrast[logFC < (input$min_fc * -1) & adj.P.Val < input$min_pval, .N], "proteins", sep = " ")
@@ -1189,6 +1201,7 @@ server <- function(session, input, output) {
         })
     })
     
+    # List protein names when clicked pathway
     show_selected <- function(p, g){
         
         output$selected_pathway <- renderUI({
@@ -1204,7 +1217,10 @@ server <- function(session, input, output) {
         i = input$upregulated_pathways_table_rows_selected[1]
         up <- UPREGULATED_pathways[i,]
         p <- paste("<b>", up[,Pathway_name], "</b>")
-        g <- paste(unlist(up[,genes]), collapse = ", ")
+        #assign("up", up, envir = .GlobalEnv)
+        #g <- paste(unlist(up[,genes]), collapse = ", ")
+        sID <- sampleinfo$sID
+        g <- paste(udat@identifiers[UNIPROTID %in% unlist(up[, genes]), ..sID][[1]], collapse = ", ")
         
         show_selected(p, g)
         
@@ -1215,146 +1231,187 @@ server <- function(session, input, output) {
         i = input$downregulated_pathways_table_rows_selected[1]
         down <- DOWNREGULATED_pathways[i,]
         p <- paste("<b>", down[,Pathway_name], "</b>")
-        g <- paste(unlist(down[,genes]), collapse = ", ")
+        #g <- paste(unlist(down[,genes]), collapse = ", ")
+        sID <- sampleinfo$sID
+        g <- paste(udat@identifiers[UNIPROTID %in% unlist(down[, genes]), ..sID][[1]], collapse = ", ")
         
         show_selected(p, g)
         
         
     })
     
-    
-    
-    
-    observeEvent(input$generate_pathways, {
+    generate_pathways <- reactive({
         
-        contrast <- rcont$contrast
-        
-        if(contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval, .N] < 3 | contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval, .N] < 3){
-            updateNotifications("Too few differential proteins.","exclamation-triangle", "danger")
+        if(maindata$udat@deoutput[, .N] == 0){
+            updateNotifications("Run differential expression first.","exclamation-triangle", "danger")
         } else {
+            contrast <- cbind(maindata$udat@identifiers[, "UNIPROTID"], maindata$udat@deoutput)
             
-            #updateNumericInput(session = session, inputId = "pvaluecutoff", label = "Maximum adj. Pvalue", value = input$min_pval)
-            #updateNumericInput(session = session, inputId = "fccutoff", label = "Minimum abs. log2FC", value = input$min_fc)
-            
-            UPREGULATED_genes <- contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval, UNIPROTID]
-            DOWNREGULATED_genes <- contrast[logFC < (input$min_fc * -1) & adj.P.Val < input$min_pval, UNIPROTID]
-            
-            UPREGULATED_pathways <- ora(UPREGULATED_genes)@output
-            pathways$UPREGULATED_pathways <- UPREGULATED_pathways
-            
-            DOWNREGULATED_pathways<- ora(DOWNREGULATED_genes)@output
-            pathways$DOWNREGULATED_pathways <- DOWNREGULATED_pathways
-            
-            output$upregulated_pathways_table <- DT::renderDT(
+            if(contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval, .N] < 3 | contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval, .N] < 3) {
+                isolate(updateNotifications("Too few differential proteins.","exclamation-triangle", "danger"))
+            } else {
                 
-                pathways$upregulated_pathways_table <- DT::datatable(UPREGULATED_pathways[, -c("genes", "background")],
-                                                                     selection = 'single',
-                                                                     options = list(autoWidth = TRUE,
-                                                                                    scrollX=TRUE,
-                                                                                    columnDefs = list(
-                                                                                        list(width = '100px', targets = c(1, 3)),
-                                                                                        list(width = '60px', targets = c(6, 7))
-                                                                                    )))
-            )
-            
-            pathways$upregulated_pathways_table
-            
-            pathways$downregulated_pathways_table <- output$downregulated_pathways_table <- DT::renderDT(
-                DT::datatable(DOWNREGULATED_pathways[, -c("genes", "background")],
-                              selection = 'single',
-                              options = list(autoWidth = TRUE,
-                                             scrollX=TRUE,
-                                             columnDefs = list(
-                                                 list(width = '100px', targets = c(1, 3)),
-                                                 list(width = '60px', targets = c(6, 7))
-                                             )))
-            )
-            
-            pathways$downregulated_pathways_table
-            
-            updateTasks(text = "Run pathway enrichment", value = 100, color = "green", i = 0006)
-            updateNotifications("Pathway analysis complete.","check-circle", "success")
+                UPREGULATED_genes <- contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval, UNIPROTID]
+                DOWNREGULATED_genes <- contrast[logFC < (input$min_fc * -1) & adj.P.Val < input$min_pval, UNIPROTID]
+                
+                UPREGULATED_pathways <- ora(UPREGULATED_genes)@output
+                pathways$UPREGULATED_pathways <- UPREGULATED_pathways
+                
+                DOWNREGULATED_pathways<- ora(DOWNREGULATED_genes)@output
+                pathways$DOWNREGULATED_pathways <- DOWNREGULATED_pathways
+                
+                # updateTasks(text = "Run pathway enrichment", value = 100, color = "green", i = 0006)
+                # updateNotifications("Pathway analysis complete.","check-circle", "success")
+                
+                # return(list("UPREGULATED_pathways" = UPREGULATED_pathways,
+                #             "DOWNREGULATED_pathways" = DOWNREGULATED_pathways))
+            }
         }
-        
-        
-        
     })
+    
+    output$upregulated_pathways_table <- DT::renderDT(
+        
+        if(maindata$udat@deoutput[, .N] > 0) {
+            generate_pathways()
+            UPREGULATED_pathways <- pathways$UPREGULATED_pathways
+            assign("UPREGULATED_pathways", UPREGULATED_pathways, envir = .GlobalEnv)
+            DT::datatable(UPREGULATED_pathways[, -c("genes", "background")],
+                         selection = 'single',
+                         options = list(autoWidth = TRUE,
+                                        scrollX=TRUE,
+                                        columnDefs = list(
+                                            list(width = '100px', targets = c(1, 3)),
+                                            list(width = '60px', targets = c(6, 7))
+                                        )))
+        }
+    )
+    
+    output$downregulated_pathways_table <- DT::renderDT(
+        
+        if(maindata$udat@deoutput[, .N] > 0) {
+            generate_pathways()
+            
+            DOWNREGULATED_pathways <- pathways$DOWNREGULATED_pathways
+            assign("DOWNREGULATED_pathways", DOWNREGULATED_pathways, envir = .GlobalEnv)
+            
+            DT::datatable(DOWNREGULATED_pathways[, -c("genes", "background")],
+                          selection = 'single',
+                          options = list(autoWidth = TRUE,
+                                         scrollX=TRUE,
+                                         columnDefs = list(
+                                             list(width = '100px', targets = c(1, 3)),
+                                             list(width = '60px', targets = c(6, 7))
+                                         )))
+        }
+    )
+    
+
     
     # Volcano plot
     
-    observeEvent(input$loadPathwayPlots, {
+    
+    
+    pathway_vis <- reactive({
         
-        UPREGULATED_pathways <- pathways$UPREGULATED_pathways
-        DOWNREGULATED_pathways <- pathways$DOWNREGULATED_pathways
-        
-        if(!exists("UPREGULATED_pathways")){
-            updateNotifications("Run pathway analysis first.","exclamation-triangle", "danger")
+        if(is.null(pathways$UPREGULATED_pathways)){
+            isolate(updateNotifications("Run pathway analysis first.","exclamation-triangle", "danger"))
         } else {
+            contrast <- maindata$udat@deoutput[, -c("t", "B")]
+            sID <- sampleinfo$sID
+            contrast <- cbind(maindata$udat@identifiers[, ..sID], contrast)
             
-            output$volcano_plot <- renderPlotly(
-                {
-                    contrast <- rcont$contrast
-                    sID <- sampleinfo$sID
-                    
-                    res <- enrichment_results(UPREGULATED_pathways, DOWNREGULATED_pathways, contrast)
-                    
-                    
-                    # # # #
-                    
-                    tba <- contrast[!(UNIPROTID %in% res$Gene), c("UNIPROTID", "logFC", "P.Value")]
-                    colnames(tba) <- c("Gene", "logFC", "P.Value")
-                    
-                    tba <- tba[!is.na(logFC)]
-                    
-                    tba[, c("ReactomeID", "P.Adj")] <- NA
-                    
-                    tba[, "TopReactomeName"] <- "[No significant over-representation]"
-                    tba[, "Pathway_name"] <- "[No significant over-representation]"
-                    
-                    setcolorder(tba, colnames(res))
-                    
-                    res <- rbindlist(list(res, tba))
-                    
-                    
-                    # # # #
-                    
-                    setkeyv(res, "Gene")
-                    setkeyv(contrast, "UNIPROTID")
-                    res <- res[contrast[,..convertColumns], nomatch = 0]
-                    
-                    names(res) <- c("UNIPROTID", c("ReactomeID", "Pathway_name", "TopReactomeName", "P.Adj", "logFC", "P.Value"), convertColumns[-1])
-                    setcolorder(res, c(convertColumns, c("ReactomeID", "Pathway_name", "TopReactomeName", "P.Adj", "logFC", "P.Value")))
-                    
-                    res$Pathway_name <- stringr::str_wrap(res$Pathway_name, 50)
-                    
-                    pathways$v <- volcano(res, "Lowest", sID)
-                    
-                    
-                    plots$volcano <- plotly::ggplotly(pathways$v$volcano_plot) %>%
-                        layout(dragmode = "select")
-                    
-                    plots$volcano
-                    
-                })
+            diff_df <- contrast[, c(1, 2, 5)]
+            colnames(diff_df) <- c("UNIPROTID", "Fold-change", "FDR")
             
+            dt_all <- rbindlist(list(pathways$UPREGULATED_pathways, pathways$DOWNREGULATED_pathways))
+            dt_all <- dt_all[ lengths(genes) > 0L]
             
-            output$volcano_plot2 <- renderPlotly(
-                {
-                    gg <- plotly::ggplotly(pathways$v$volcano_plot, width = 700, height = 500) %>%
-                        layout(dragmode = "select") %>% 
-                        config(scrollZoom = T)
-                    gg$x$data[[1]]$visible <- 'legendonly'  
-                    gg
-                    
-                })
+            dt_all <- get_top_pathways(dt_all)
+            
+            setkey(dt_all, "UNIPROTID")
+            setkey(diff_df, "UNIPROTID")
+            
+            diff_df <- merge.data.table(x = diff_df, y = dt_all, by = "UNIPROTID", all = T)
+            
+            diff_df[is.na(ReactomeID), 5:6] <- "[No significant over-representation]"
+            
+            diff_df[Pathway.P.Adj >= 0.05, "TopReactomeName"] <- "[No significant over-representation]"
+            diff_df[Pathway.P.Adj >= 0.05, "Pathway_name"] <- "[No significant over-representation]"
+            
+            diff_df$Pathway_name <- stringr::str_wrap(diff_df$Pathway_name, 30)
+            
+            diff_df$group <- "Not Sign."
+            
+            diff_df[FDR < 0.05 & abs(`Fold-change`) < 1.5, "group"] <- "Sign."
+            
+            diff_df[FDR >= 0.05 & abs(`Fold-change`) > 1.5, "group"] <- "FC"
+            
+            diff_df[FDR < 0.05 & abs(`Fold-change`) > 1.5, "group"] <- "Sign. & FC"
+            
+            return(diff_df)
             
         }
-        
-        
-        
-        
-        
     })
+    
+    output$volcano_plot <- renderPlotly(
+        {
+            if(!is.null(pathways$UPREGULATED_pathways)){
+                diff_df <- pathway_vis()
+                
+                assign("diff_df", diff_df, envir = .GlobalEnv)
+                
+                nb.cols <- uniqueN(diff_df[, get(input$volcanoAnnotation)])
+                mycolors <- c("gray", colorRampPalette(brewer.pal(8, "Accent"))(nb.cols))
+                
+                plot_ly(data = diff_df,
+                        type = "scatter",
+                        x = ~`Fold-change`,
+                        y = ~-log10(FDR),
+                        text = ~UNIPROTID,
+                        mode = "markers",
+                        color = ~get(input$volcanoAnnotation),
+                        colors = mycolors) %>%
+                    layout(yaxis = list(type = "log1p", showgrid = T, ticks = "outside", autorange = T))
+            }
+            
+        })
+    
+    
+    output$volcano_plot2 <- renderPlotly(
+        {
+            
+            if(!is.null(pathways$UPREGULATED_pathways)){
+                diff_df <- pathway_vis()
+                
+                nb.cols <- uniqueN(diff_df[, get(input$volcanoAnnotation2)])
+                mycolors <- c("gray", colorRampPalette(brewer.pal(8, "Accent"))(nb.cols))
+                
+                sorted_paths <- sort(unique(diff_df[, get(input$volcanoAnnotation2)]))
+                sorted_path_names <- mycolors[seq_along(sorted_paths)]
+                names(sorted_path_names) <- sorted_paths
+                diff_df$col <- sorted_path_names[diff_df[, get(input$volcanoAnnotation2)]]
+                
+                plot_ly(data = diff_df,
+                        type = "scatter",
+                        x = ~`Fold-change`,
+                        y = ~-log10(FDR),
+                        text = ~UNIPROTID,
+                        key =  ~UNIPROTID,
+                        mode = "markers",
+                        color = ~get(input$volcanoAnnotation2),
+                        colors = mycolors,
+                        width = 650, height = 500) %>%
+                    layout(yaxis = list(type = "log1p",
+                                        showgrid = T,
+                                        ticks="outside",
+                                        autorange = T),
+                           dragmode = "lasso") %>% 
+                    config(scrollZoom = T)
+                    
+                
+            }
+            
+        })
     
     
     
@@ -1378,7 +1435,7 @@ server <- function(session, input, output) {
             
             name <- input$hovered_node
             
-            description <- maindata$pdesc[get(sampleinfo$sID) == input$hovered_node, annotation]
+            description <- maindata$udat@descriptions[get(sampleinfo$sID) == input$hovered_node, annotation]
             
             HTML(
                 paste(paste(tags$strong("Name:"), name, sep = " "),
@@ -1420,18 +1477,11 @@ server <- function(session, input, output) {
         
         
     })
+
     
-    # observeEvent(input$loadNetworkplots, {
-    #     
-    #     ints2 <- interactions[(protein1 %in% proteins) & (protein2 %in% proteins)]
-    #     
-    # })
-    
-    output$interaction_network <- renderVisNetwork({
-        
-        contrast <- rcont$contrast
-        res <- pathways$v$res
+    make_network <- reactive({
         sID <- sampleinfo$sID
+        contrast <- cbind(maindata$udat@identifiers[, ..sID], maindata$udat@deoutput)
         
         dir <- input$network_regulation
         
@@ -1445,17 +1495,12 @@ server <- function(session, input, output) {
             proteins <- contrast[(abs(logFC) >= input$fccutoff)]$UNIPROTID
         }
         
-        
         ints2 <- pathways$ints[(Interactor1 %in% proteins) & (Interactor2 %in% proteins)]
-        #ints2 <- ints2[score > input$interactioncutoff]
-        
+        ints2 <- ints2[score > input$interactionConfidence]
         
         mynodes <- unlist(event_data("plotly_selected")$key)
         
         mynodes <- contrast[get(sID) %in% mynodes, "UNIPROTID"][[1]]
-        
-        
-        # TBA: all interactions option
         
         interacts <- function(i){
             return(ints2[(Interactor1 == i & Interactor2 %in% mynodes) | (Interactor2 == i & Interactor1 %in% mynodes), .N])
@@ -1489,47 +1534,50 @@ server <- function(session, input, output) {
         
         g <- igraph::graph_from_data_frame(edges, directed = F, vertices = nodes)
         
-        r <- res[V(g)$label, on = "UNIPROTID", ]
+        diff_df <- pathway_vis()
         
+        nb.cols <- uniqueN(diff_df[, get(input$volcanoAnnotation2)])
+        mycolors <- c("gray", colorRampPalette(brewer.pal(8, "Accent"))(nb.cols))
         
-        g <- set.vertex.attribute(g, name = "name",  value = as.vector (r[, ..sID][[1]]))
-        g <- set.vertex.attribute(g, name = "color", value = r$col)
-        g <- set.vertex.attribute(g, name = "group", value = r$TopReactomeName)
+        sorted_paths <- sort(unique(diff_df[, get(input$volcanoAnnotation2)]))
+        sorted_path_names <- mycolors[seq_along(sorted_paths)]
+        names(sorted_path_names) <- sorted_paths
+        diff_df$col <- sorted_path_names[diff_df[, get(input$volcanoAnnotation2)]]
         
+        diff_df <- diff_df[V(g)$label, on = "UNIPROTID", ]
         
-        layoutf <- function(type) {
-            switch(type,
-                   "1" = "layout_nicely",
-                   "2" = "layout_in_circle",
-                   "3" = "layout_on_grid",
-                   "4" = "layout_on_sphere",
-                   "5" = "layout_randomly",
-                   "6" = "layout_DH")
-        }
+        g <- set.vertex.attribute(g, name = "name",  value = as.vector (diff_df[, ..sID][[1]]))
+        g <- set.vertex.attribute(g, name = "color", value = diff_df$col)
+        g <- set.vertex.attribute(g, name = "group", value = diff_df$TopReactomeName)
         
         if(exists("g")){
-            V(g)$name <- res[V(g)$name, on = sID, ..sID][[1]]
+            V(g)$name <- diff_df[V(g)$name, on = sID, ..sID][[1]]
         } else {
-            names(V(g)) <- res[V(g)$name, on = "UNIPROTID", "UNIPROTID"][[1]]
+            names(V(g)) <- diff_df[V(g)$name, on = "UNIPROTID", "UNIPROTID"][[1]]
         }
         
+        return(g)
         
+    })
+    
+    output$interaction_network <- renderVisNetwork({
+        
+        g <- make_network()
+
         visNetwork::visIgraph(g) %>%
             visInteraction(hover = TRUE) %>%
-            visIgraphLayout(layout = layoutf(1), randomSeed = 1) %>%
+            visIgraphLayout(layout = "layout_nicely", randomSeed = 1) %>%
             visOptions(selectedBy = list(variable = "group"), height = "475px") %>%
             visEvents(
                 click = "function(nodes) {
-        Shiny.onInputChange('clicked_node', {node : nodes.node});
-        ;}",
+                Shiny.onInputChange('clicked_node', {node : nodes.node});
+                ;}",
                 hoverNode = "function(nodes) {
-        console.info('hover')
-        console.info(nodes)
-        Shiny.onInputChange('hovered_node', {node : nodes.node});
-        ;}"
+                console.info('hover')
+                console.info(nodes)
+                Shiny.onInputChange('hovered_node', {node : nodes.node});
+                ;}"
             )
-        
-        
     })
     
     
@@ -1571,11 +1619,11 @@ server <- function(session, input, output) {
     # Goodness-of-fit ----
     observeEvent(input$generatedistributions, {
         
-        data_wide <- maindata$data_wide
+        data_origin <- maindata$udat@raw
         
-        if(!is.null(data_wide)){
+        if(!is.null(data_origin)){
             
-            data_wide_NAex <- na.exclude(dframe(maindata$data_origin[1:100], sampleinfo$sID))
+            data_wide_NAex <- na.exclude(data_origin[1:100])
             
             fit.lnorm <- tryCatch( apply(data_wide_NAex, 1, function(x) fitdistrplus::fitdist(as.numeric(x), "lnorm")),
                                    error = function(e) print(e))
@@ -2036,8 +2084,12 @@ server <- function(session, input, output) {
                 shinyjs::hide("Modal2Spinner")
                 #toggleModal(session, "ImportModal3", toggle = "toggle")
                 
+                subset_interactions()
+                
                 updateNotifications("Dataset uploaded.","check-circle", "success")
                 updateTasks(text = "Upload a dataset", value = 100, color = "green", i = 0001)
+                
+                
                 
             } else {
                 
@@ -2103,7 +2155,7 @@ server <- function(session, input, output) {
         
         # Multilevel analysis can only be performed when at least one sample is repeated.
         sinfo <- sampleinfo$samples
-        sinfo <- setDT(sinfo)
+        sinfo <- as.data.table(sinfo)
         
         if(length(Reduce(setdiff, sinfo[, .(list(unique(replicate))), treatment]$V1)) > 0){
             
@@ -2260,22 +2312,21 @@ server <- function(session, input, output) {
     diffv <- reactive({
         
         contrast <- maindata$udat@deoutput[, -c("t", "B")]
+        sID <- sampleinfo$sID
+        contrast <- cbind(maindata$udat@identifiers[, ..sID], contrast)
         
         if(maindata$udat@deoutput[, .N] > 0) {
-
             
             diff_df <- contrast[, c(1, 2, 5)]
             colnames(diff_df) <- c("external_gene_name", "Fold", "FDR")
             
-            
-            
-            diff_df$group <- "NotSignificant"
+            diff_df$group <- "Not Sign."
             
             diff_df[FDR < 0.05 & abs(Fold) < 1.5, "group"] <- "Sign."
             
             diff_df[FDR >= 0.05 & abs(Fold) > 1.5, "group"] <- "FC"
             
-            diff_df[FDR < 0.05 & abs(Fold) > 1.5, "group"] <- "Sign&FC"
+            diff_df[FDR < 0.05 & abs(Fold) > 1.5, "group"] <- "Sign. & FC"
             
             as.data.frame(diff_df)
         }

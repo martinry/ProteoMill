@@ -11,7 +11,7 @@ get_top_pathways <- function(pathways){
 
   pathways <- pathways[, .SD[which.min(p.adj)], by = V1]
 
-  colnames(pathways) <- c("Gene", "ReactomeID", "Pathway_name", "TopReactomeName", "P.Adj")
+  colnames(pathways) <- c("UNIPROTID", "ReactomeID", "Pathway_name", "TopReactomeName", "Pathway.P.Adj")
 
   return(pathways)
 
@@ -28,7 +28,6 @@ enrichment_results <- function(UPREGULATED_pathways, DOWNREGULATED_pathways, con
 
   dt_all <- rbindlist(list(dt_up, dt_down))
 
-  # dt_all <- merge.data.table(dt_all, contrast[,c("UNIPROTID", "logFC", "CI.L", "CI.R", "P.Value")], by.x = "Gene", by.y = "UNIPROTID")
   dt_all <- merge.data.table(dt_all, contrast[,c("UNIPROTID", "logFC", "P.Value")], by.x = "Gene", by.y = "UNIPROTID")
 
 

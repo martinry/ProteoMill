@@ -52,6 +52,7 @@ hierarchy <- function(){
   REACTOME_low <- REACTOME_low[ReactomeID %in% REACTOME_hierarchy$V2]
   
   protein_descriptions <- data.table::fread(collect("https://string-db.org/mapping_files/uniprot/human.uniprot_2_string.2018.tsv.gz"))
+  
 
   require(igraph)
   G <- graph.data.frame(d = data.frame(REACTOME_hierarchy$V2, REACTOME_hierarchy$V1), directed = T)
@@ -86,26 +87,34 @@ hierarchy <- function(){
 
 get_interactions <- function(){
 	
-	actions <- collect('https://stringdb-static.org/download/protein.actions.v11.0/9606.protein.actions.v11.0.txt.gz')
-	actions <- fread(actions)
+	#actions <- collect('https://stringdb-static.org/download/protein.actions.v11.0/9606.protein.actions.v11.0.txt.gz')
+	actions <- fread("9606.protein.actions.v11.0.txt.gz")
 	
 	interactions <- data.table::fread(collect("https://stringdb-static.org/download/protein.links.v11.0/9606.protein.links.v11.0.txt.gz"), sep = " ", 
 									  header = T)
 	
-	uniprot_to_string_src <- fread("human.uniprot_2_string.2018.tsv")
+	interactions <- fread("9606.protein.links.v11.0.txt.gz")
 	
-	uniprot_to_string_src$up <- gsub("\\|.*", "", uniprot_to_string_src$V2)
+	#protein_descriptions <- data.table::fread(collect("https://string-db.org/mapping_files/uniprot/all_organisms.uniprot_2_string.2018.tsv.gz"))
 	
-	uniprot_to_string_src <- uniprot_to_string_src[, c(3,6)]
+	uniprot_to_string_src <- fread("all_organisms.uniprot_2_string.2018.tsv.gz", skip = 1)
+	
+	colnames(uniprot_to_string_src) <- c("Species", "UNIPROTID", "STRINGID", "IDENTITY", "BITSCORE")
+	
+	uniprot_to_string_src_human <- uniprot_to_string_src[Species == 9606]
+	
+	uniprot_to_string_src_human$UNIPROTID <- sub("\\|.*", "", uniprot_to_string_src_human$UNIPROTID)
+	
+	uniprot_to_string_src_human <- uniprot_to_string_src_human[, c("UNIPROTID", "STRINGID")]
 	
 	setkey(interactions, protein1)
-	setkey(uniprot_to_string_src, V3)
+	setkey(uniprot_to_string_src_human, STRINGID)
 	
-	interactions2 <- interactions[uniprot_to_string_src, nomatch = 0]
+	interactions2 <- interactions[uniprot_to_string_src_human]
 	
 	setkey(interactions2, protein2)
 	
-	interactions3 <- interactions2[uniprot_to_string_src, nomatch = 0]
+	interactions3 <- interactions2[uniprot_to_string_src_human]
 	
 	keycols = c("protein1","protein2")
 	setkeyv(interactions3, keycols)
@@ -113,17 +122,16 @@ get_interactions <- function(){
 	keycols = c("item_id_a","item_id_b")
 	setkeyv(actions, keycols)
 	
-	interactions4 <- interactions3[actions, nomatch = 0]
+	interactions4 <- interactions3[actions]
 	
-	fwrite(interactions4)
+	interactions5 <- interactions4[, c(4, 5, 10)]
 	
-	interactions5 <- interactions4[, c(4:10)]
+	colnames(interactions5) <- c("Interactor1", "Interactor2", "Score")
 	
-	colnames(interactions5) <- c("protein1", "protein2", "mode", "action", "is_directional", "a_is_acting", "score")
+	interactions5$Score <- interactions5$Score / 100
 	
-	interactions5$score <- interactions5$score / 100
-	
-	fwrite(interactions5, "interactions5.txt", compress = "gzip")
-	fwrite(actions, "9606.protein.actions.v11.0.txt.gz", compress = "gzip")
+	fwrite(interactions5, "9606/9606.string.interactions.txt.gz", compress = "gzip")
+	#fwrite(actions, "9606.protein.actions.v11.0.txt.gz", compress = "gzip")
+
 	
 }
