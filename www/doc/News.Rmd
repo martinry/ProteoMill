@@ -8,6 +8,21 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+##### April 15, 2021
+
+* Easier data import
+* Improved PCA and heatmap functionality
+* Tooltips everywhere
+* Volcano plot for differential expression analysis
+* Volcano plot for enrichment/network can switch between annotation modes
+
+
+
+##### March 10, 2021
+
+* Support for additional species: mouse and rat
+
+
 ##### November 04, 2020
 
 * ProteoMill automatically detects and converts identifiers, but there is now a dedicated tool for converting arbitrary identifier lists between ID types.

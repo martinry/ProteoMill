@@ -114,7 +114,6 @@ server <- function(session, input, output) {
     # Remove text "Loading packages, please wait..."
     removeUI(selector = "#notifications-wrapper > span")
     
-    
     # Define reactive variables ----
     notifications <- reactiveValues()
     tasks <- reactiveValues()
@@ -381,6 +380,20 @@ server <- function(session, input, output) {
     
     
     
+    
+    # Settings: toggle tooltips
+    
+    observeEvent(input$toggleToolTip, {
+        
+        # $('*[title]').tooltip('disable');
+        
+        if(input$toggleToolTip == "Yes") shinyjs::runjs("$('*[title]').tooltip('enable');")
+        else shinyjs::runjs("$('*[title]').tooltip('disable');")
+        
+        
+        
+    })
+    
     # Build sample info ----
     
     sample_data <- function(d) {
@@ -538,14 +551,6 @@ server <- function(session, input, output) {
             
             names(data_wide)[1] <- i
             
-            #pdesc <- data.table::fread("lib/protein_descriptions.txt.gz")
-            
-            # setkey(data_wide, "UNIPROTID")
-            # setkey(pdesc, "UNIPROTID")
-            # 
-            # pdesc <- pdesc[maindata$data_wide[,1:5]]
-            # maindata$pdesc <- pdesc
-            
         }
             
        setkeyv(tr_all, i)
@@ -584,6 +589,13 @@ server <- function(session, input, output) {
         # maindata$data_wide <- data_wide
         # maindata$data_origin <- data_wide
         
+       pdesc <- data.table::fread("lib/9606/9606.protein.info.txt.gz")
+       
+       setkey(tr_all, "UNIPROTID")
+       setkey(pdesc, "UNIPROTID")
+       # 
+       pdesc <- pdesc[tr_all]
+       # maindata$pdesc <- pdesc
 
         
         udat <- new("userdata",
@@ -591,7 +603,7 @@ server <- function(session, input, output) {
                    main           = data_wide[, 2:ncol(data_wide)],
                    rawidentifiers = tr_all,
                    identifiers    = tr_all,
-                   descriptions   = data.table(),
+                   descriptions   = pdesc,
                    deoutput       = data.table())
         
         
@@ -859,11 +871,11 @@ server <- function(session, input, output) {
     
     observeEvent(input$setcutoff, {
         
-        data_wide <- maindata$udat@main
-        
-        subsample_data()
-        
-        if(!is.null(data_wide)) {
+        if(!is.null(maindata$udat)) {
+            data_wide <- maindata$udat@main
+            
+            subsample_data()
+            
             d <- cbind(maindata$udat@rawidentifiers, maindata$udat@raw)
             data_wide <- subset_by_na(dataset = d, treatment = sampleinfo$samples$treatment, threshold = input$missingvalues)
             
@@ -931,7 +943,7 @@ server <- function(session, input, output) {
             )
         })
         output$network <- renderMenu({
-            menuItem("Network analysis", icon = icon("vector-square"),
+            menuItem("Network analysis", icon = icon("connectdevelop"),
                      menuSubItem("Interactions", tabName = "interactions", href = NULL, newtab = TRUE,
                                  icon = shiny::icon("angle-double-right"), selected = F))
         })
@@ -1244,11 +1256,13 @@ server <- function(session, input, output) {
         
         if(maindata$udat@deoutput[, .N] == 0){
             updateNotifications("Run differential expression first.","exclamation-triangle", "danger")
+            return(F)
         } else {
             contrast <- cbind(maindata$udat@identifiers[, "UNIPROTID"], maindata$udat@deoutput)
             
             if(contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval, .N] < 3 | contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval, .N] < 3) {
                 isolate(updateNotifications("Too few differential proteins.","exclamation-triangle", "danger"))
+                return(F)
             } else {
                 
                 UPREGULATED_genes <- contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval, UNIPROTID]
@@ -1259,6 +1273,8 @@ server <- function(session, input, output) {
                 
                 DOWNREGULATED_pathways<- ora(DOWNREGULATED_genes)@output
                 pathways$DOWNREGULATED_pathways <- DOWNREGULATED_pathways
+                
+                return(T)
                 
                 # updateTasks(text = "Run pathway enrichment", value = 100, color = "green", i = 0006)
                 # updateNotifications("Pathway analysis complete.","check-circle", "success")
@@ -1272,36 +1288,41 @@ server <- function(session, input, output) {
     output$upregulated_pathways_table <- DT::renderDT(
         
         if(maindata$udat@deoutput[, .N] > 0) {
-            generate_pathways()
-            UPREGULATED_pathways <- pathways$UPREGULATED_pathways
-            assign("UPREGULATED_pathways", UPREGULATED_pathways, envir = .GlobalEnv)
-            DT::datatable(UPREGULATED_pathways[, -c("genes", "background")],
-                         selection = 'single',
-                         options = list(autoWidth = TRUE,
-                                        scrollX=TRUE,
-                                        columnDefs = list(
-                                            list(width = '100px', targets = c(1, 3)),
-                                            list(width = '60px', targets = c(6, 7))
-                                        )))
+            gp <- generate_pathways()
+            if(gp){
+                UPREGULATED_pathways <- pathways$UPREGULATED_pathways
+                assign("UPREGULATED_pathways", UPREGULATED_pathways, envir = .GlobalEnv)
+                DT::datatable(UPREGULATED_pathways[, -c("genes", "background")],
+                              selection = 'single',
+                              options = list(autoWidth = TRUE,
+                                             scrollX=TRUE,
+                                             columnDefs = list(
+                                                 list(width = '100px', targets = c(1, 3)),
+                                                 list(width = '60px', targets = c(6, 7))
+                                             )))
+            }
+
         }
     )
     
     output$downregulated_pathways_table <- DT::renderDT(
         
         if(maindata$udat@deoutput[, .N] > 0) {
-            generate_pathways()
+            gp <- generate_pathways()
+            if(gp){
             
-            DOWNREGULATED_pathways <- pathways$DOWNREGULATED_pathways
-            assign("DOWNREGULATED_pathways", DOWNREGULATED_pathways, envir = .GlobalEnv)
-            
-            DT::datatable(DOWNREGULATED_pathways[, -c("genes", "background")],
-                          selection = 'single',
-                          options = list(autoWidth = TRUE,
-                                         scrollX=TRUE,
-                                         columnDefs = list(
-                                             list(width = '100px', targets = c(1, 3)),
-                                             list(width = '60px', targets = c(6, 7))
-                                         )))
+                DOWNREGULATED_pathways <- pathways$DOWNREGULATED_pathways
+                assign("DOWNREGULATED_pathways", DOWNREGULATED_pathways, envir = .GlobalEnv)
+                
+                DT::datatable(DOWNREGULATED_pathways[, -c("genes", "background")],
+                              selection = 'single',
+                              options = list(autoWidth = TRUE,
+                                             scrollX=TRUE,
+                                             columnDefs = list(
+                                                 list(width = '100px', targets = c(1, 3)),
+                                                 list(width = '60px', targets = c(6, 7))
+                                             )))
+            }
         }
     )
     
@@ -1317,11 +1338,11 @@ server <- function(session, input, output) {
             isolate(updateNotifications("Run pathway analysis first.","exclamation-triangle", "danger"))
         } else {
             contrast <- maindata$udat@deoutput[, -c("t", "B")]
-            sID <- sampleinfo$sID
-            contrast <- cbind(maindata$udat@identifiers[, ..sID], contrast)
+            #sID <- sampleinfo$sID
+            contrast <- cbind(maindata$udat@identifiers, contrast)
             
-            diff_df <- contrast[, c(1, 2, 5)]
-            colnames(diff_df) <- c("UNIPROTID", "Fold-change", "FDR")
+            diff_df <- contrast[, c(1:6, 9)]
+            colnames(diff_df)[6:7] <- c("Fold-change", "FDR")
             
             dt_all <- rbindlist(list(pathways$UPREGULATED_pathways, pathways$DOWNREGULATED_pathways))
             dt_all <- dt_all[ lengths(genes) > 0L]
@@ -1333,7 +1354,7 @@ server <- function(session, input, output) {
             
             diff_df <- merge.data.table(x = diff_df, y = dt_all, by = "UNIPROTID", all = T)
             
-            diff_df[is.na(ReactomeID), 5:6] <- "[No significant over-representation]"
+            diff_df[is.na(ReactomeID), 9:10] <- "[No significant over-representation]"
             
             diff_df[Pathway.P.Adj >= 0.05, "TopReactomeName"] <- "[No significant over-representation]"
             diff_df[Pathway.P.Adj >= 0.05, "Pathway_name"] <- "[No significant over-representation]"
@@ -1367,7 +1388,7 @@ server <- function(session, input, output) {
                         type = "scatter",
                         x = ~`Fold-change`,
                         y = ~-log10(FDR),
-                        text = ~UNIPROTID,
+                        text = ~get(sampleinfo$sID),
                         mode = "markers",
                         color = ~get(input$volcanoAnnotation),
                         colors = mycolors) %>%
@@ -1395,8 +1416,8 @@ server <- function(session, input, output) {
                         type = "scatter",
                         x = ~`Fold-change`,
                         y = ~-log10(FDR),
-                        text = ~UNIPROTID,
-                        key =  ~UNIPROTID,
+                        text = ~get(sampleinfo$sID),
+                        key =  ~get(sampleinfo$sID),
                         mode = "markers",
                         color = ~get(input$volcanoAnnotation2),
                         colors = mycolors,
@@ -1438,9 +1459,9 @@ server <- function(session, input, output) {
             description <- maindata$udat@descriptions[get(sampleinfo$sID) == input$hovered_node, annotation]
             
             HTML(
-                paste(paste(tags$strong("Name:"), name, sep = " "),
-                      paste(tags$strong("Description:"), description, sep = " "),
-                      sep = "<br/>")
+                    paste(paste(tags$strong("Name:"), name, sep = " "),
+                          paste(tags$strong("Description:"), description, sep = " "),
+                          sep = "<br/>")
             )
             
         }
@@ -1481,22 +1502,22 @@ server <- function(session, input, output) {
     
     make_network <- reactive({
         sID <- sampleinfo$sID
-        contrast <- cbind(maindata$udat@identifiers[, ..sID], maindata$udat@deoutput)
+        contrast <- cbind(maindata$udat@identifiers, maindata$udat@deoutput)
         
         dir <- input$network_regulation
         
         if(dir == 1){
-            proteins <- contrast[(abs(logFC) >= input$fccutoff) &
+            proteins_ <- contrast[(abs(logFC) >= input$fccutoff) &
                                      (logFC > 0)]$UNIPROTID
         } else if(dir == 2){
-            proteins <- contrast[(abs(logFC) >= input$fccutoff) &
+            proteins_ <- contrast[(abs(logFC) >= input$fccutoff) &
                                      (logFC <= 0)]$UNIPROTID
         } else {
-            proteins <- contrast[(abs(logFC) >= input$fccutoff)]$UNIPROTID
+            proteins_ <- contrast[(abs(logFC) >= input$fccutoff)]$UNIPROTID
         }
         
-        ints2 <- pathways$ints[(Interactor1 %in% proteins) & (Interactor2 %in% proteins)]
-        ints2 <- ints2[score > input$interactionConfidence]
+        ints2 <- pathways$ints[(Interactor1 %in% proteins_) & (Interactor2 %in% proteins_)]
+        ints2 <- ints2[Score > input$interactionConfidence]
         
         mynodes <- unlist(event_data("plotly_selected")$key)
         
@@ -1562,6 +1583,8 @@ server <- function(session, input, output) {
     
     output$interaction_network <- renderVisNetwork({
         
+        if(!is.null(pathways$UPREGULATED_pathways)){
+            
         g <- make_network()
 
         visNetwork::visIgraph(g) %>%
@@ -1578,6 +1601,7 @@ server <- function(session, input, output) {
                 Shiny.onInputChange('hovered_node', {node : nodes.node});
                 ;}"
             )
+        }
     })
     
     

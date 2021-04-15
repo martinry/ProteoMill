@@ -238,7 +238,7 @@ body {
 
 .footer_wrapper{
 	height:50px;
-    position:absolute;
+    position:fixed;
     display:inline-block;
     bottom: 0;
     right: 0;

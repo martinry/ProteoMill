@@ -226,7 +226,7 @@ body <- dashboardBody(
                                                                   
                                                                   selectInput("DataType", "Type of data",
                                                                               list("Proteins",
-                                                                                   "Peptides")),
+                                                                                   "Peptides + proteins")),
                                                                   bsTooltip("DataType", "ProteoMill supports peptide-level and protein-level data.",
                                                                             "right", options = list(container = "body"))
                                                               )
@@ -238,10 +238,7 @@ body <- dashboardBody(
                                                                   
                                                                   checkboxInput("LogTransformData", "Log₂-transform data", value = T),
                                                                   bsTooltip("LogTransformData", "Throughout the analysis, log-transformed data will be used. If your data is already log₂-transformed, uncheck this box.",
-                                                                            "right", options = list(container = "body")),
-                                                                  checkboxInput("NormalizeData", "Apply normalization"),
-                                                                  bsTooltip("NormalizeData", "If your data needs preprocessing in the form of normalization, check this box.",
-                                                                            "right", options = list(container = "body")),
+                                                                            "right", options = list(container = "body"))
                                                                   
                                                               ))
                                                        
@@ -570,7 +567,13 @@ body <- dashboardBody(
                                                width = NULL,
                                                shiny::sliderInput("pcaDims", "Dimensions", min = 1, max = 10, value = c(1, 2)),
                                                checkboxInput("showPolygons", "Show polygons", value = T),
-                                               checkboxInput("multilevelPCA", "Multi-level", value = F)
+                                               checkboxInput("multilevelPCA", "Multi-level", value = F),
+                                               bsTooltip("pcaDims", "Should the plot be displayed in 2D or 3D? Which principal components should be visualized?",
+                                                         "right", options = list(container = "body")),
+                                               bsTooltip("showPolygons", "Should the area between samples be displayed?",
+                                                         "right", options = list(container = "body")),
+                                               bsTooltip("multilevelPCA", "Should PCA adjust for paired samples?",
+                                                         "right", options = list(container = "body"))
                            )
                     ),
                     column(width = 9,
@@ -591,9 +594,11 @@ body <- dashboardBody(
                                                                                        "Spearman" = "spearman",
                                                                                        "Kendall" = "kendall"),
                                            selected = "pearson"),
-                               bsTooltip("corMethod", "if method is 'kendall' or 'spearman', Kendall's tau or Spearman's rho statistic is used to estimate a rank-based measure of association. These are more robust and have been recommended if the data do not necessarily come from a bivariate normal distribution.",
-                                         placement = "bottom", trigger = "hover", options = list(container = "body")),
-                               shiny::checkboxInput("showGrid", "Show grid", value = T)
+                               # bsTooltip("corMethod", "if method is 'kendall' or 'spearman', Kendall's tau or Spearman's rho statistic is used to estimate a rank-based measure of association. These are more robust and have been recommended if the data do not necessarily come from a bivariate normal distribution.",
+                               #           placement = "bottom", trigger = "hover", options = list(container = "body")),
+                               shiny::checkboxInput("showGrid", "Show grid", value = T),
+                               bsTooltip("corMethod", "If method is \\'kendall\\' or \\'spearman\\', Kendall\\'s tau or Spearman\\'s rho statistic is used to estimate a rank-based measure of association. These are more robust and have been recommended if the data do not necessarily come from a bivariate normal distribution.",
+                                         "right", options = list(container = "body"))
                            )),
                     
                     column(width = 9,
@@ -607,22 +612,38 @@ body <- dashboardBody(
         # Differential expression analysis
         
         tabItem(tabName = "contrasts",
-                box(
-                    title = "Set contrasts", status = "primary", solidHeader = F,
-                    helpText("Which treatments should be compared?"),
-                    selectInput("contrast1", label = "Condition 1",
-                                choices = list("Condition1" = 1,
-                                               "Condition2" = 2,
-                                               "Condition3" = 3),
-                                selected = 1),
-                    selectInput("contrast2", label = "Condition 2",
-                                choices = list("Condition1" = 1,
-                                               "Condition2" = 2,
-                                               "Condition3" = 3),
-                                selected = 2),
-                    
-                    actionButton("setContrast", "Select")
+                fluidRow(
+                    column(width = 4,
+                           box(width = NULL,
+                               title = "Set contrasts", status = "primary", solidHeader = F,
+                               helpText("Which treatments should be compared?"),
+                               selectInput("contrast1", label = "Condition 1",
+                                           choices = list("Condition1" = 1,
+                                                          "Condition2" = 2,
+                                                          "Condition3" = 3),
+                                           selected = 1),
+                               selectInput("contrast2", label = "Condition 2",
+                                           choices = list("Condition1" = 1,
+                                                          "Condition2" = 2,
+                                                          "Condition3" = 3),
+                                           selected = 2),
+                               
+                               actionButton("setContrast", "Select")
+                           )
+                    ),
+                    column(width = 4,
+                           box(width = NULL,
+                               selectInput("setDEengine",
+                                           label = "Set engine",
+                                           choices = list("Limma version 3.39.1" = 1,
+                                                          "DESeq2 version 3.10" = 2),
+                                           selected = 1),
+                               bsTooltip("setDEengine", "Limma and DESeq2 are common tools for differential expression. If you are unsure what to choose, a general guideline is that DESeq2 is better suited for RNA-seq data, while limma is more appropriate for MS-proteomics and microarray data.",
+                                         "right", options = list(container = "body")),
+                               radioButtons("diffexppairing", "Pairing", choices = list("Paired" = 1, "Unpaired" = 2), inline = T, selected = 2))
+                           )
                 )
+                
         ),
         tabItem(tabName = "diffexpoutput",
                 plotOutput("contrasttable", width = "800px", height = "1600px")),
@@ -634,18 +655,29 @@ body <- dashboardBody(
                                br(),
                                numericInput("diffexp_limit_fc", "Abs. log2 fold-change greater than or equal to", min = 0, max = 50, value = 0, step = .5),
                                numericInput("diffexp_limit_pval", "Adj. P-value less than", min = 0, max = 1, value = 1, step = .1),
+                               bsTooltip("diffexp_limit_fc", "Should PCA adjust for paired samples?",
+                                         "right", options = list(container = "body")),
+                               bsTooltip("diffexp_limit_pval", "Should PCA adjust for paired samples?",
+                                         "right", options = list(container = "body"))
                            ),
                            tabBox(width = NULL,
                                   tabPanel("Summary statistics", tableOutput("diffexptable_summary")),
                                   tabPanel("Up-regulated proteins", DT::dataTableOutput("diffexptable_up")),
-                                  tabPanel("Down-regulated proteins", DT::dataTableOutput("diffexptable_down"))),
-                           box(width = NULL,
-                               downloadButton('download',"Download")
-                           )),
+                                  tabPanel("Down-regulated proteins", DT::dataTableOutput("diffexptable_down")),
+                                  bsTooltip("diffexptable_summary", "Should PCA adjust for paired samples?",
+                                            "right", options = list(container = "body")),
+                                  bsTooltip("diffexptable_up", "Should PCA adjust for paired samples?",
+                                            "right", options = list(container = "body")),
+                                  bsTooltip("diffexptable_down", "Should PCA adjust for paired samples?",
+                                            "right", options = list(container = "body"))
+                                  
+                                  )),
                     column(width = 6,
                            box(width = NULL,
                                shinycssloaders::withSpinner(plotlyOutput("dea_volcano", height = "602px"),
                                                             type = 5, color = "#e80032dd", id = "VolcanoSpinner1", size = 1),
+                               bsTooltip("dea_volcano", "Should PCA adjust for paired samples?",
+                                         "bottom", options = list(container = "body"))
                            ))
                 )
                 
@@ -717,7 +749,7 @@ body <- dashboardBody(
                 
                 fluidRow(
                     column(width = 3,
-                           tabBox(width = NULL,
+                           tabBox(width = NULL, height = 255,
                                   tabPanel(
                                       title = "Network settings",
                                       
@@ -756,12 +788,11 @@ body <- dashboardBody(
                     ),
                     
                     column(width = 3,
-                           box(
+                           box(height = 255,
                                title = "Protein info", width = NULL,
                                uiOutput("clicked_node"),
-                               uiOutput("hovered_node")
+                               uiOutput("hovered_node", style = "height: 184px; overflow-y: scroll;")
                            )
-                           
                     ),
                     
                     column(width = 3,
@@ -785,24 +816,15 @@ body <- dashboardBody(
                 fluidRow(
                     column(width = 5,
                            box(title = "Settings", width = NULL,
-                               h4("Display options"),
+                               
+                               h6("Display options"),
                                hr(),
-                               radioButtons(
-                                   inputId = 'colorScheme',
-                                   label = 'Preferred color scheme',
-                                   choices = list(
-                                       "Normal" = 1,
-                                       "Colorblind friendly" = 2
-                                   ),
-                                   inline = T
-                               ), 
-                               radioButtons(inputId = 'textSize', label = 'Text size',
-                                            choices = list("Small", "Medium", "Large"), selected = "Medium", inline = T),
-                               h4("Target organism"),
-                               hr(),
-                               selectInput("species", "Select species",
-                                           list("Species" = list("Human (Homo sapiens)"))),
-                               h4("Identifier type"),
+                               radioButtons(inputId = "toggleToolTip", label = "Display tool-tip", choices = list("Yes", "No"), selected = "Yes", inline = T),
+                               bsTooltip("toggleToolTip", "This is a tooltip and it\\'s currently visible.",
+                                         "right", options = list(container = "body")),
+                               br(),
+                               
+                               h6("Identifier type"),
                                hr(),
                                selectInput("displayIdentifier",
                                            label = "Display ID labels as",
@@ -810,18 +832,12 @@ body <- dashboardBody(
                                                "UniProtKB" = 2,
                                                "Entrez" = 3,
                                                "Gene Symbol" = 4,
-                                               "Ens. Gene ID" = 5,
-                                               "Ens. Protein ID" = 6
+                                               "Ensembl Gene ID" = 5,
+                                               "Ensembl Protein ID" = 6
                                            ),
                                            selected = 1),
-                               h4("Differential expression"),
-                               hr(),
-                               selectInput("setDEengine",
-                                           label = "Set engine",
-                                           choices = list("Limma version 3.39.1" = 1,
-                                                          "DESeq2 version 3.10" = 2),
-                                           selected = 1),
-                               radioButtons("diffexppairing", "Pairing", choices = list("Paired" = 1, "Unpaired" = 2), inline = T, selected = 2)
+                               bsTooltip("displayIdentifier", "This option determines how identifiers are displayed (regardless of the identifier type used in your dataset). It can be changed at any time.",
+                                         "right", options = list(container = "body")),
                            )
                     )
                 )

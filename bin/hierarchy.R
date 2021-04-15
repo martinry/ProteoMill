@@ -88,12 +88,12 @@ hierarchy <- function(){
 get_interactions <- function(){
 	
 	#actions <- collect('https://stringdb-static.org/download/protein.actions.v11.0/9606.protein.actions.v11.0.txt.gz')
-	actions <- fread("9606.protein.actions.v11.0.txt.gz")
+	actions <- fread("9606/9606.protein.actions.v11.0.txt.gz")
 	
-	interactions <- data.table::fread(collect("https://stringdb-static.org/download/protein.links.v11.0/9606.protein.links.v11.0.txt.gz"), sep = " ", 
-									  header = T)
+	# interactions <- data.table::fread(collect("https://stringdb-static.org/download/protein.links.v11.0/9606.protein.links.v11.0.txt.gz"), sep = " ", 
+	# 								  header = T)
 	
-	interactions <- fread("9606.protein.links.v11.0.txt.gz")
+	interactions <- fread("9606/9606.protein.links.v11.0.txt.gz")
 	
 	#protein_descriptions <- data.table::fread(collect("https://string-db.org/mapping_files/uniprot/all_organisms.uniprot_2_string.2018.tsv.gz"))
 	
@@ -132,6 +132,19 @@ get_interactions <- function(){
 	
 	fwrite(interactions5, "9606/9606.string.interactions.txt.gz", compress = "gzip")
 	#fwrite(actions, "9606.protein.actions.v11.0.txt.gz", compress = "gzip")
+	
+	
+	protein_info <- fread("9606/9606.protein.info.v11.0.txt.gz")
+	
+	setkey(protein_info, protein_external_id)
+	setkey(uniprot_to_string_src_human, STRINGID)
+	
+	protein_info <- protein_info[uniprot_to_string_src_human]
+	
+	protein_info <- protein_info[, c(4,5)]
+	
+	
+	fwrite(protein_info, "lib/9606/9606.protein.info.txt.gz", compress = "gzip")
 
 	
 }
