@@ -24,6 +24,12 @@
 	
 }
 
+.main-sidebar {
+	height: 865px;
+	min-height: inherit !important;
+	overflow-y: scroll;
+}
+
 #currentVal span {
   color: #ccc;
 }
@@ -176,9 +182,12 @@
 	position: absolute;
 }
 
+/*
 #sidebarItemExpanded > ul:nth-child(5) > li:nth-child(3), #sidebarItemExpanded > ul:nth-child(5) > li:nth-child(4) {
 	opacity: .4 !important;
 }
+*/
+
 
 #ss-connect-dialog {
 	bottom: 30%!important;

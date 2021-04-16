@@ -59,11 +59,11 @@ sidebar <- dashboardSidebar(
     sidebarMenu(id = "sidebarmenu",
                 menuItem("Dataset options", icon = icon("table"),
                          menuSubItem("Upload data", tabName = "file-input", href = NULL, newtab = TRUE,
-                                     icon = shiny::icon("angle-double-right"), selected = T),
+                                     icon = shiny::icon("caret-right"), selected = T),
                          menuSubItem("Data summary", tabName = "data-summary", href = NULL, newtab = TRUE,
-                                     icon = shiny::icon("angle-double-right"), selected = F),
+                                     icon = shiny::icon("caret-right"), selected = F),
                          menuSubItem("Missing  values", tabName = "filters", href = NULL, newtab = TRUE,
-                                     icon = shiny::icon("angle-double-right"), selected = F),
+                                     icon = shiny::icon("caret-right"), selected = F),
                          startExpanded = T
                          
                 ),
@@ -94,10 +94,9 @@ sidebar <- dashboardSidebar(
                 menuItem("Goodness-of-fit", tabName = "goodnessOfFit", icon = icon("chart-bar")),
                 #menuItem("BLAST", tabName = "blast", icon = icon("dna")),
                 #menuItem("Protein structures", tabName = "structures", icon = icon("fingerprint")),
-                menuItem("Generate report", tabName = "file-export", icon = icon("file-download"))
+                menuItem("Generate report", tabName = "file-export", icon = icon("file-alt"))
     ),
     tags$br(),
-    
     tags$div(id = 'test', "Documentation", style = "
              letter-spacing: 3.3px;
              line-height: 42px;
@@ -107,8 +106,27 @@ sidebar <- dashboardSidebar(
              margin-top: 2px;
              color: #fff;"),
     sidebarMenu(id = "sidebarmenu",
-                menuItem("News", tabName = "news", icon = icon("book")),
-                menuItem("Settings", tabName = "settings", icon = icon("sliders-h"))
+                menuItem("News", tabName = "news", icon = icon("bullhorn")),
+                menuItem("Settings", tabName = "settings", icon = icon("sliders-h")),
+                menuItem("Documentation", tabName = "documentation", icon = icon("book"),
+                         menuItem("Introduction", tabName = "introduction", icon = icon("caret-right"),
+                                  menuSubItem("Intended audience", tabName = "intendedaudience", href = NULL,
+                                              icon = shiny::icon("caret-right"), selected = F),
+                                  menuSubItem("Limitations", tabName = "limitations", href = NULL,
+                                              icon = shiny::icon("caret-right"), selected = F)),
+                         menuSubItem("Overview", tabName = "overview", href = NULL,
+                                     icon = shiny::icon("caret-right"), selected = F),
+                         menuSubItem("Dataset upload", tabName = "datasetupload", href = NULL,
+                                     icon = shiny::icon("caret-right"), selected = F),
+                         menuSubItem("Quality control", tabName = "qualitycontrol", href = NULL,
+                                     icon = shiny::icon("caret-right"), selected = F),
+                         menuSubItem("Differential expression", tabName = "aboutdifferentialexpression", href = NULL,
+                                     icon = shiny::icon("caret-right"), selected = F),
+                         menuSubItem("Pathways", tabName = "Introduction", href = NULL, newtab = TRUE,
+                                     icon = shiny::icon("caret-right"), selected = F),
+                         menuSubItem("Protein-protein interactions", tabName = "proteinproteininteractions", href = NULL,
+                                     icon = shiny::icon("caret-right"), selected = F)
+                )
                 
     ),
     useShinyjs()
@@ -172,6 +190,7 @@ body <- dashboardBody(
                 fluidRow(
                     column(width = 5,
                            tabBox(width = NULL,
+                                  height = 250,
                                   tabPanel(title = "Data import wizard",
                                            p(
                                                helpText(

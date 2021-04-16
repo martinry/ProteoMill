@@ -286,6 +286,7 @@ server <- function(session, input, output) {
         if(input$sidebarmenu == "news"){
             showModal(
                 modalDialog(size = "l",
+                            easyClose = T,
                             renderUI({
                                 tags$iframe(
                                     src = paste0("doc/News.html"),
@@ -385,8 +386,6 @@ server <- function(session, input, output) {
     
     observeEvent(input$toggleToolTip, {
         
-        # $('*[title]').tooltip('disable');
-        
         if(input$toggleToolTip == "Yes") shinyjs::runjs("$('*[title]').tooltip('enable');")
         else shinyjs::runjs("$('*[title]').tooltip('disable');")
         
@@ -460,7 +459,7 @@ server <- function(session, input, output) {
         
         all_proteins <- maindata$udat@identifiers[, "UNIPROTID"][[1]]
         
-        interactions <- data.table::fread("lib/9606/9606.string.interactions.txt.gz")
+        interactions <- data.table::fread(paste0("lib/", maindata$taxid, "/", maindata$taxid, ".string.interactions.txt.gz"))
         
         pathways$ints <- interactions[(Interactor1 %in% all_proteins) & (Interactor2 %in% all_proteins)]
         
@@ -589,14 +588,12 @@ server <- function(session, input, output) {
         # maindata$data_wide <- data_wide
         # maindata$data_origin <- data_wide
         
-       pdesc <- data.table::fread("lib/9606/9606.protein.info.txt.gz")
-       
+       pdesc <- data.table::fread(paste0("lib/", maindata$taxid, "/", maindata$taxid, ".protein.info.txt.gz"))
+
        setkey(tr_all, "UNIPROTID")
        setkey(pdesc, "UNIPROTID")
-       # 
+       
        pdesc <- pdesc[tr_all]
-       # maindata$pdesc <- pdesc
-
         
         udat <- new("userdata",
                    raw            = data_wide[, 2:ncol(data_wide)],
@@ -1992,6 +1989,7 @@ server <- function(session, input, output) {
             
             maindata$data_wide_tmp <- dw
             
+            print("hello")
             shinyjs::show("previewDTInfo")
             shinyjs::show("dataDetailsWrapper")
             
@@ -2054,22 +2052,26 @@ server <- function(session, input, output) {
             library(EnsDb.Hsapiens.v86)
             
             maindata$organism <- EnsDb.Hsapiens.v86
+            maindata$taxid <- 9606
             
         } else if(input$organism == "Mus musculus | MMU | 10090") {
             
             library(EnsDb.Mmusculus.v79)
             
             maindata$organism <- EnsDb.Mmusculus.v79
+            maindata$taxid <- 10090
             
         } else if(input$organism == "Rattus norvegicus | RNO | 10116") {
             
             library(EnsDb.Rnorvegicus.v79)
             
             maindata$organism <- EnsDb.Rnorvegicus.v79
+            maindata$taxid <- 10116
             
         } else if(input$organism == "Other") {
             
             maindata$organism <- NULL
+            maindata$taxid <- NULL
         }
         
         
@@ -2105,10 +2107,10 @@ server <- function(session, input, output) {
                 }
                 
                 toggleModal(session, "ImportModal2", toggle = "toggle")
-                shinyjs::hide("Modal2Spinner")
-                #toggleModal(session, "ImportModal3", toggle = "toggle")
                 
                 subset_interactions()
+                
+                shinyjs::hide("Modal2Spinner")
                 
                 updateNotifications("Dataset uploaded.","check-circle", "success")
                 updateTasks(text = "Upload a dataset", value = 100, color = "green", i = 0001)
@@ -2128,17 +2130,7 @@ server <- function(session, input, output) {
         }
         
     })
-    
-    # observeEvent(input$EndStep3, {
-    #     
-    #     # subset_interactions()
-    #     
-    #     toggleModal(session, "ImportModal3", toggle = "toggle")
-    #     updateNotifications("Dataset uploaded.","check-circle", "success")
-    #     updateTasks(text = "Upload a dataset", value = 100, color = "green", i = 0001)
-    #     
-    #     
-    # })
+
     
     # Heatmap Updated ----
     

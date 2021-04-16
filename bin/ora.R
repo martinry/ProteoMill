@@ -1,18 +1,12 @@
 
 
 ora <- function(gene,
+                taxid = 9606,
                 database = NULL,
                 pAdjMethod = "BH") {
 
 
-  if(is.null(database)){
-    if(!exists("REACTOME_low")){
-      if(!file.exists("lib/9606/9606_REACTOME_low.tsv.gz")) hierarchy()
-      REACTOME_low <- fread("lib/REACTOME_low.tsv.gz", sep = '\t', header = T)
-      assign("REACTOME_low", REACTOME_low, envir = .GlobalEnv)
-    }
-    database <- REACTOME_low
-  }
+  database <- fread(paste0("lib/", taxid, "/", taxid, "_REACTOME_low.tsv.gz"), sep = '\t', header = T)
   
   gene <- gene[gene %in% database$UniprotID]
 

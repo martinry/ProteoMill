@@ -88,12 +88,12 @@ hierarchy <- function(){
 get_interactions <- function(){
 	
 	#actions <- collect('https://stringdb-static.org/download/protein.actions.v11.0/9606.protein.actions.v11.0.txt.gz')
-	actions <- fread("9606/9606.protein.actions.v11.0.txt.gz")
+	actions <- fread("lib/9606/9606.protein.actions.v11.0.txt.gz")
 	
 	# interactions <- data.table::fread(collect("https://stringdb-static.org/download/protein.links.v11.0/9606.protein.links.v11.0.txt.gz"), sep = " ", 
 	# 								  header = T)
 	
-	interactions <- fread("9606/9606.protein.links.v11.0.txt.gz")
+	interactions <- fread("lib/9606/9606.protein.links.v11.0.txt.gz")
 	
 	#protein_descriptions <- data.table::fread(collect("https://string-db.org/mapping_files/uniprot/all_organisms.uniprot_2_string.2018.tsv.gz"))
 	
