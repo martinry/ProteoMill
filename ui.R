@@ -41,7 +41,6 @@ header <- dashboardHeader(
                      )
             )
     )
-    #tags$li(class = "dropdown", id = "test-button", actionButton("checkMemory", "Check memory"))
 )
 
 # Sidebar menu ----
@@ -92,12 +91,10 @@ sidebar <- dashboardSidebar(
     sidebarMenu(id = "sidebarmenu",
                 menuItem("Identifier tools", tabName = "validateIDs", icon = icon("font")),
                 menuItem("Goodness-of-fit", tabName = "goodnessOfFit", icon = icon("chart-bar")),
-                #menuItem("BLAST", tabName = "blast", icon = icon("dna")),
-                #menuItem("Protein structures", tabName = "structures", icon = icon("fingerprint")),
                 menuItem("Generate report", tabName = "file-export", icon = icon("file-alt"))
     ),
     tags$br(),
-    tags$div(id = 'test', "Documentation", style = "
+    tags$div(id = 'test', "Information", style = "
              letter-spacing: 3.3px;
              line-height: 42px;
              text-transform: uppercase;
@@ -106,27 +103,10 @@ sidebar <- dashboardSidebar(
              margin-top: 2px;
              color: #fff;"),
     sidebarMenu(id = "sidebarmenu",
-                menuItem("News", tabName = "news", icon = icon("bullhorn")),
-                menuItem("Settings", tabName = "settings", icon = icon("sliders-h")),
-                menuItem("Documentation", tabName = "documentation", icon = icon("book"),
-                         menuItem("Introduction", tabName = "introduction", icon = icon("caret-right"),
-                                  menuSubItem("Intended audience", tabName = "intendedaudience", href = NULL,
-                                              icon = shiny::icon("caret-right"), selected = F),
-                                  menuSubItem("Limitations", tabName = "limitations", href = NULL,
-                                              icon = shiny::icon("caret-right"), selected = F)),
-                         menuSubItem("Overview", tabName = "overview", href = NULL,
-                                     icon = shiny::icon("caret-right"), selected = F),
-                         menuSubItem("Dataset upload", tabName = "datasetupload", href = NULL,
-                                     icon = shiny::icon("caret-right"), selected = F),
-                         menuSubItem("Quality control", tabName = "qualitycontrol", href = NULL,
-                                     icon = shiny::icon("caret-right"), selected = F),
-                         menuSubItem("Differential expression", tabName = "aboutdifferentialexpression", href = NULL,
-                                     icon = shiny::icon("caret-right"), selected = F),
-                         menuSubItem("Pathways", tabName = "Introduction", href = NULL, newtab = TRUE,
-                                     icon = shiny::icon("caret-right"), selected = F),
-                         menuSubItem("Protein-protein interactions", tabName = "proteinproteininteractions", href = NULL,
-                                     icon = shiny::icon("caret-right"), selected = F)
-                )
+                menuItem("News", tabName = "news", icon = icon("bullhorn"), badgeLabel = "Updates", badgeColor = "blue"),
+                menuItem("Documentation", icon = icon("book"),
+                         badgeLabel = "New", badgeColor = "red", href = "https://bookdown.org/martin_ryden/proteomill_documentation/"),
+                menuItem("Settings", tabName = "settings", icon = icon("sliders-h"))
                 
     ),
     useShinyjs()
@@ -194,14 +174,12 @@ body <- dashboardBody(
                                   tabPanel(title = "Data import wizard",
                                            p(
                                                helpText(
-                                                   'Welcome! Click on',
-                                                   tags$strong('Upload a dataset'),
-                                                   'in the task menu ',
-                                                   shiny::icon("tasks"),
-                                                   ' or download one our demo datasets to learn about accepted file formats.'
+                                                   'Welcome! Get started by using the ',
+                                                   tags$strong('Data import wizard'),
+                                                   ' or download one our demo datasets to learn more about accepted file formats.'
                                                )
                                            ), 
-                                           actionButton("ImportWizard", "Start import wizard..."),
+                                           actionButton("ImportWizard", "Data import wizard...", icon = icon("magic")),
                                            
                                            bsModalNoClose(id ="ImportModal1",
                                                    title = "Data import wizard", 
@@ -226,28 +204,14 @@ body <- dashboardBody(
                                                                                    "Rattus norvegicus | RNO | 10116",
                                                                                    "Other")),
                                                                   
-                                                                  # selectInput("organism",
-                                                                  #             "Select organism",
-                                                                  #             list("Homo sapiens|HSA|9606",
-                                                                  #                  "Bos taurus|BTA|9913",
-                                                                  #                  "Caenorhabditis elegans|CEL|6239",
-                                                                  #                  "Danio rerio|DRE|7955",
-                                                                  #                  "Drosophila melanogaster|DME|7227",
-                                                                  #                  "Gallus gallus|GGA|9031",
-                                                                  #                  "Mus musculus|MMU|10090",
-                                                                  #                  "Rattus norvegicus|RNO|10116",
-                                                                  #                  "Saccharomyces cerevisiae|SCE|4932",
-                                                                  #                  "Sus scrofa|SSC|9823",
-                                                                  #                  "Xenopus tropicalis|XTR|8364")),
-                                                                  
                                                                   bsTooltip("organism", "In order to use correct annotation databases, we need to know the species your data is derived from.",
-                                                                            "right", options = list(container = "body")),
-                                                                  
-                                                                  selectInput("DataType", "Type of data",
-                                                                              list("Proteins",
-                                                                                   "Peptides + proteins")),
-                                                                  bsTooltip("DataType", "ProteoMill supports peptide-level and protein-level data.",
                                                                             "right", options = list(container = "body"))
+                                                                  
+                                                                  # selectInput("DataType", "Type of data",
+                                                                  #             list("Proteins",
+                                                                  #                  "Peptides + proteins")),
+                                                                  # bsTooltip("DataType", "ProteoMill supports peptide-level and protein-level data.",
+                                                                  #           "right", options = list(container = "body"))
                                                               )
                                                        ),
                                                        
@@ -285,6 +249,7 @@ body <- dashboardBody(
                                                    tags$head(tags$style("#showHideBox1,#showHideBox2 {display:none}")),
                                                    
                                                    bsAlert("selectAFile"),
+                                                   bsAlert("noneConverted"),
                                                    bsAlert("fileHasError"),
                                                    bsAlert("fileHasWarning"),
                                                    bsAlert("fileFormattingError"),
@@ -762,7 +727,7 @@ body <- dashboardBody(
                     box(
                         width = 6,
                         height = 520,
-                        shinycssloaders::withSpinner(plotlyOutput("volcano_plot2"), type = 5, color = "#e80032dd", id = "volcanoSpinner3", size = 1)
+                        shinycssloaders::withSpinner(plotlyOutput("volcano_plot2", width = "auto"), type = 5, color = "#e80032dd", id = "volcanoSpinner3", size = 1)
                     )
                 ),
                 

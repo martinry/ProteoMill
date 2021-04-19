@@ -46,15 +46,6 @@ require(knitr)
 
 # Generic functions ----
 
-dframe <- function(dt, r){
-    dt <- dt[!is.na(get(r))]                    # Remove NA
-    rn <- dt[, as.character(.SD[[r]])]          # Rownames to vector
-    df <- as.data.frame(dt[,-..convertColumns]) # 
-    rownames(df) <- rn
-    
-    return(df)
-}
-
 separator <- function(s) {
     switch(s,
            "1" = "auto",
@@ -109,7 +100,7 @@ assign("convertColumns", convertColumns, envir = .GlobalEnv)
 # Server ----
 server <- function(session, input, output) {
     
-    options(shiny.maxRequestSize=30*1024^2) 
+    #options(shiny.maxRequestSize=30*1024^2) 
     
     # Remove text "Loading packages, please wait..."
     removeUI(selector = "#notifications-wrapper > span")
@@ -297,8 +288,7 @@ server <- function(session, input, output) {
         
         
         if(input$sidebarmenu == "interactions"){
-            v <- pathways$v
-            if(is.null("v")){
+            if(is.null(pathways$UPREGULATED_pathways)){
                 updateNotifications("Run pathway analysis first.","exclamation-triangle", "danger")
             } else{
                 updateTasks(text = "Run network analysis", value = 100, color = "green", i = 0007)
@@ -344,8 +334,6 @@ server <- function(session, input, output) {
             menuItem("Inspect data", icon = icon("check-circle"), href = NULL,
                      menuSubItem("PCA", tabName = "PCA", href = NULL, newtab = TRUE,
                                  icon = shiny::icon("angle-double-right"), selected = F),
-                     # menuSubItem("UMAP", tabName = "UMAP", href = NULL, newtab = TRUE,
-                     #             icon = shiny::icon("angle-double-right"), selected = F),
                      menuSubItem("Heatmap", tabName = "samplecorr", href = NULL, newtab = TRUE,
                                  icon = shiny::icon("angle-double-right"), selected = F)
             )
@@ -356,8 +344,6 @@ server <- function(session, input, output) {
                                  icon = shiny::icon("angle-double-right"), selected = F),
                      menuSubItem("Differential expression", tabName = "differentialexpression", href = NULL, newtab = TRUE,
                                  icon = shiny::icon("angle-double-right"), selected = F)
-                     # menuSubItem("Confidence intervals", tabName = "diffexpoutput", href = NULL, newtab = TRUE,
-                     #             icon = shiny::icon("angle-double-right"), selected = F)
             )
         })
         
@@ -468,11 +454,8 @@ server <- function(session, input, output) {
         if(dplyr::between(N, 1500, 2999)) updateNumericInput(session = session, "interactionConfidence", label = "Interaction confidence", min = 0, max = 10, value = 7, step = 0.1)
         else if(dplyr::between(N, 3000, 4999)) updateNumericInput(session = session, "interactionConfidence", label = "Interaction confidence", min = 0, max = 10, value = 8, step = 0.1)
         else if(dplyr::between(N, 5000, 8999)) updateNumericInput(session = session, "interactionConfidence", label = "Interaction confidence", min = 0, max = 10, value = 9, step = 0.1)
-        else if(dplyr::between(N, 9000, 14999)) updateNumericInput(session = session, "interactionConfidence", label = "Interaction confidence", min = 0, max = 10, value = 9.5, step = 0.1)
-        else if(N >= 15000) updateNumericInput(session = session, "interactionConfidence", label = "Interaction confidence", min = 0, max = 10, value = 9.9, step = 0.1)
-        
-        # assign("proteins", proteins, envir = .GlobalEnv)
-        #assign("ints", pathways$ints, envir = .GlobalEnv)
+        else if(dplyr::between(N, 9000, 14999)) updateNumericInput(session = session, "interactionConfidence", label = "Interaction confidence", min = 0, max = 10, value = 9.3, step = 0.1)
+        else if(N >= 15000) updateNumericInput(session = session, "interactionConfidence", label = "Interaction confidence", min = 0, max = 10, value = 9.5, step = 0.1)
         
         
     }
@@ -526,7 +509,7 @@ server <- function(session, input, output) {
         
         if(input$LogTransformData) data_wide[, 2:ncol(data_wide)] <- log2(data_wide[, 2:ncol(data_wide)])
         
-        if(input$organism != "other") {
+        if(input$organism != "Other") {
             # 10 first rows for converting IDs
             keys <- data_wide[, as.character(.SD[[1L]])][1:10]
             
@@ -550,50 +533,40 @@ server <- function(session, input, output) {
             
             names(data_wide)[1] <- i
             
+            setkeyv(tr_all, i)
+            
+            setkeyv(data_wide, i)
+            
+            tr_all <- tr_all[data_wide[, ..i], on = i]
+            
+            if(all(tr_all[, lapply(.SD, function(x) sum(is.na(x))), .SDcols = 2:5] == tr_all[, .N])) all_missing <- T
+            else all_missing <- F
+            
+            tr_all$ENTREZID <- as.character(tr_all$ENTREZID)
+            
+            tr_all[is.na(ENTREZID), ENTREZID := paste0("MISSING_", seq(1:length(is.na(ENTREZID))))]
+            tr_all[is.na(SYMBOL), SYMBOL := paste0("MISSING_", seq(1:length(is.na(SYMBOL))))]
+            tr_all[is.na(UNIPROTID), UNIPROTID := paste0("MISSING_", seq(1:length(is.na(UNIPROTID))))]
+            tr_all[is.na(GENEID), GENEID := paste0("MISSING_", seq(1:length(is.na(GENEID))))]
+            tr_all[is.na(PROTEINID), PROTEINID := paste0("MISSING_", seq(1:length(is.na(PROTEINID))))]
+            
+            pdesc <- data.table::fread(paste0("lib/", maindata$taxid, "/", maindata$taxid, ".protein.info.txt.gz"))
+            
+            setkey(tr_all, "UNIPROTID")
+            setkey(pdesc, "UNIPROTID")
+            
+            pdesc <- pdesc[tr_all]
+        } else {
+            pdesc <- data.table()
+            tr_all <- data.table("UNIPROTID" = data_wide[, 1][[1]],
+                                 "ENTREZID" = "",
+                                 "SYMBOL" = "",
+                                 "GENEID" = "",
+                                 "PROTEINID" = "")
+            all_missing <- F
         }
             
-       setkeyv(tr_all, i)
        
-       setkeyv(data_wide, i)
-       
-       tr_all <- tr_all[data_wide[, ..i], on = i]
-       
-       tr_all$ENTREZID <- as.character(tr_all$ENTREZID)
-       
-       tr_all[is.na(ENTREZID), ENTREZID := paste0("MISSING_", seq(1:length(is.na(ENTREZID))))]
-       tr_all[is.na(SYMBOL), SYMBOL := paste0("MISSING_", seq(1:length(is.na(SYMBOL))))]
-       tr_all[is.na(UNIPROTID), UNIPROTID := paste0("MISSING_", seq(1:length(is.na(UNIPROTID))))]
-       tr_all[is.na(GENEID), GENEID := paste0("MISSING_", seq(1:length(is.na(GENEID))))]
-       tr_all[is.na(PROTEINID), PROTEINID := paste0("MISSING_", seq(1:length(is.na(PROTEINID))))]
-       
-       assign("tr_all", tr_all, envir = .GlobalEnv)
-            
-        #     data_wide <- data_wide[tr_all, nomatch = 0]
-        #     
-        #     data_wide$ENTREZID <- as.character(data_wide$ENTREZID)
-        #     
-        #     for(j in seq_along(data_wide)){
-        #         data.table::set(data_wide, i = which(duplicated(data_wide[[j]]) & is.character(data_wide[[j]])), j = j, value = NA)
-        #     }
-        #     
-        #     data_wide[is.na(ENTREZID), ENTREZID := paste0("MISSING_", seq(1:length(is.na(ENTREZID))))]
-        #     data_wide[is.na(SYMBOL), SYMBOL := paste0("MISSING_", seq(1:length(is.na(SYMBOL))))]
-        #     data_wide[is.na(UNIPROTID), UNIPROTID := paste0("MISSING_", seq(1:length(is.na(UNIPROTID))))]
-        #     data_wide[is.na(GENEID), GENEID := paste0("MISSING_", seq(1:length(is.na(GENEID))))]
-        #     data_wide[is.na(PROTEINID), PROTEINID := paste0("MISSING_", seq(1:length(is.na(PROTEINID))))]
-        #     
-        #     setcolorder(data_wide, c(convertColumns, names(maindata$data_origin[,2:ncol(maindata$data_origin)])))
-        # }
-        
-        # maindata$data_wide <- data_wide
-        # maindata$data_origin <- data_wide
-        
-       pdesc <- data.table::fread(paste0("lib/", maindata$taxid, "/", maindata$taxid, ".protein.info.txt.gz"))
-
-       setkey(tr_all, "UNIPROTID")
-       setkey(pdesc, "UNIPROTID")
-       
-       pdesc <- pdesc[tr_all]
         
         udat <- new("userdata",
                    raw            = data_wide[, 2:ncol(data_wide)],
@@ -611,65 +584,32 @@ server <- function(session, input, output) {
         
         sample_data(udat@main)
         
+        if(all_missing) return(T)
+        else return(F)
+        
     }
-    
-    # File input: Main data ----
-    # observeEvent(input$infile, {
-    #     
-    #     maindata$inFile <- input$infile
-    #     
-    #     if (is.null(maindata$inFile))
-    #         return(NULL)
-    # 
-    #     upload_data(maindata$inFile$datapath, separator(input$dataSep), identifier(input$dataIdentiferType))
-    # 
-    #     updateNotifications("Dataset uploaded.","check-circle", "success")
-    #     updateTasks(text = "Upload a dataset", value = 100, color = "green", i = 0001)
-    #     
-    # })
-    
-    # File input: Annotation ----
-    observeEvent(input$anno_infile, {
-        maindata$inFile <- input$anno_infile
-        
-        if (is.null(maindata$inFile))
-            return(NULL)
-        
-        maindata$data_annotation <- data.table::fread(
-            maindata$inFile$datapath,
-            sep = separator(input$annoSep),
-            dec = ".",
-            header = T)
-        
-        
-        updateNotifications("Annotations uploaded.","check-circle", "success")
-        updateTasks(text = "Upload annotation data", value = 100, color = "green", i = 0002)
-        
-        
-    })
-    
+
     # File input: Demo data ----
     observeEvent(input$useDemoData, {
         
         # Sample 1
         
+        updateCheckboxInput(session = session, inputId = "LogTransformData", value = T)
+        
         sample_1_exp <- "data/donors.uniprot.csv"
-        maindata$data_wide <- fread(sample_1_exp, header = T)
-        #sample_1_anno <- "data/donors.uniprot.annotation.tsv"
+        maindata$data_wide_tmp <- fread(sample_1_exp, header = T)
         
         updateNotifications(paste0("Loading human annotation library..."), "info-circle", "info")
         library(EnsDb.Hsapiens.v86)
+        
+        maindata$organism <- EnsDb.Hsapiens.v86
+        maindata$taxid <- 9606
         
         updateNotifications(paste0("Loading human interaction library..."), "info-circle", "info")
         upload_data()
         subset_interactions()
         
-        
-        # maindata$data_annotation <- data.table::fread(
-        #     sample_1_anno,
-        #     sep = "auto",
-        #     dec = ".",
-        #     header = T)
+        app_meta$palette <- brewer.pal(uniqueN(sampleinfo$samples$treatment), "Accent")
         
         updateNotifications("Demo data uploaded.","check-circle", "success")
         updateTasks(text = "Upload a dataset", value = 100, color = "green", i = 0001)
@@ -740,13 +680,13 @@ server <- function(session, input, output) {
         
         if(!is.null(input$includesamples)) {
             if(sum(sapply(levels(sampleinfo$samples$treatment), FUN = function(x) any(startsWith(input$includesamples, x)))) >= 2) {
-                maindata$data_wide <- maindata$data_wide[, c(convertColumns, as.character(input$includesamples)), with = F]
-                maindata$data_wide <- maindata$data_wide[apply(maindata$data_wide[, -convertColumns, with = F], 1, FUN = function(x) !all(is.na(x))),]
+                maindata$udat@main <- maindata$udat@main[, as.character(input$includesamples), with = F]
+                maindata$udat@main <- maindata$udat@main[apply(maindata$udat@main, 1, FUN = function(x) !all(is.na(x))),]
                 
-                maindata$data_origin <- maindata$data_origin[, c(convertColumns, as.character(input$includesamples)), with = F]
-                maindata$data_origin <- maindata$data_origin[apply(maindata$data_origin[, -convertColumns, with = F], 1, FUN = function(x) !all(is.na(x))),]
+                maindata$udat@raw <- maindata$udat@raw[, as.character(input$includesamples), with = F]
+                maindata$udat@raw <- maindata$udat@raw[apply(maindata$udat@raw, 1, FUN = function(x) !all(is.na(x))),]
                 
-                sample_data(maindata$data_wide)
+                sample_data(maindata$udat@main)
                 
             } else {
                 updateNotifications("At least two groups needed for comparison.","exclamation-triangle", "danger")
@@ -770,51 +710,48 @@ server <- function(session, input, output) {
     }, rownames = T, colnames = F)
     
     
+    make_violin <- reactive({
+        
+        dat <- stack(as.data.frame(maindata$udat@main))
+        dat <- dat[!is.na(dat$values), ]
+        dat$sample <- sub("_.*", "", dat$ind)
+        dat$ind <- factor(dat$ind, levels = levels(dat$ind)[order(levels(dat$ind))])
+        dat$values <- dat$values
+        
+        return(dat)
+        
+    })
+    
     # Remake reactive
     output$violinplot <- renderPlot({
         
         if(!is.null(maindata$udat) & !is.null(sampleinfo$samples)){
-            dat <- stack(as.data.frame(maindata$udat@main))
-            dat <- dat[!is.na(dat$values), ]
-            dat$sample <- sub("_.*", "", dat$ind)
-            dat$ind <- factor(dat$ind, levels = levels(dat$ind)[order(levels(dat$ind))])
-            dat$values <- dat$values
+            
+            dat <- make_violin()
             
             if(input$violintype == 1) {
                 
-                plots$violin1 <- ggplot(dat, 
-                                        aes(x = sample, y = values, fill = sample)) + 
+                ggplot(dat, aes(x = sample, y = values, fill = sample)) + 
                     geom_violin(trim = FALSE, scale = "width") +
                     geom_boxplot(width=0.1, fill="white") +
                     ggthemes::theme_clean() +
                     theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust = 1), legend.position = "none") +
                     xlab("") + ylab("Log2 Expression") +
                     scale_fill_brewer(palette = "BuGn")
-                
-                plots$violin1
                 
             } else {
                 
-                plots$violin2 <- ggplot(dat, 
-                                        aes(x = ind, y = values, fill = sample)) + 
+                ggplot(dat, aes(x = ind, y = values, fill = sample)) + 
                     geom_violin(trim = FALSE, scale = "width") +
                     geom_boxplot(width=0.1, fill="white") +
                     ggthemes::theme_clean() +
                     theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust = 1), legend.position = "none") +
                     xlab("") + ylab("Log2 Expression") +
                     scale_fill_brewer(palette = "BuGn")
-                
-                plots$violin2
-                
             }
             
-            
-            
         }
-        
-        
-        
-        
+
     })
     
     # Missing values: frequency plot ----
@@ -840,31 +777,16 @@ server <- function(session, input, output) {
             naf <- nafrequencies()
             
             # Draw plot
-            plots$mv <- ggplot(naf, aes(x = Var1, y = Freq, color = Var1)) +
+            ggplot(naf, aes(x = Var1, y = Freq, color = Var1)) +
                 geom_bar(stat = "identity", width = .9, fill = "white") +
                 labs(x = "Number of missing values in at least one sample", y = "Number of proteins") +
                 ggthemes::theme_clean() +
                 theme(axis.text.x = element_text(vjust = 0.6), legend.position = "none") +
                 scale_color_grey()
-            
-            plots$mv
         
         }
         
     })
-    
-    
-    
-    # observeEvent(input$loadfilterplot, {
-    #     
-    #     data_wide <- maindata$udat@main
-    #     
-    #     if(!is.null(data_wide)){
-    #         renderNAfreq(data_wide)
-    #     } else {
-    #         updateNotifications("Upload a dataset first.","exclamation-triangle", "danger")
-    #     }
-    # })
     
     observeEvent(input$setcutoff, {
         
@@ -931,23 +853,29 @@ server <- function(session, input, output) {
     }
     
     observeEvent(input$setContrast, {
-        output$enrichment <- renderMenu({
-            menuItem("Enrichment analysis", icon = icon("flask"), href = NULL,
-                     menuSubItem("Pathway enrichment", tabName = "pathwayenrichment", href = NULL, newtab = TRUE,
-                                 icon = shiny::icon("angle-double-right"), selected = F),
-                     menuSubItem("Pathway visualization", tabName = "pathwayvisualization", href = NULL, newtab = TRUE,
-                                 icon = shiny::icon("angle-double-right"), selected = F)
-            )
-        })
-        output$network <- renderMenu({
-            menuItem("Network analysis", icon = icon("connectdevelop"),
-                     menuSubItem("Interactions", tabName = "interactions", href = NULL, newtab = TRUE,
-                                 icon = shiny::icon("angle-double-right"), selected = F))
-        })
+        if(!input$organism == "Other") {
+            output$enrichment <- renderMenu({
+                menuItem("Enrichment analysis", icon = icon("flask"), href = NULL,
+                         menuSubItem("Pathway enrichment", tabName = "pathwayenrichment", href = NULL, newtab = TRUE,
+                                     icon = shiny::icon("angle-double-right"), selected = F),
+                         menuSubItem("Pathway visualization", tabName = "pathwayvisualization", href = NULL, newtab = TRUE,
+                                     icon = shiny::icon("angle-double-right"), selected = F)
+                )
+            })
+            output$network <- renderMenu({
+                menuItem("Network analysis", icon = icon("connectdevelop"),
+                         menuSubItem("Interactions", tabName = "interactions", href = NULL, newtab = TRUE,
+                                     icon = shiny::icon("angle-double-right"), selected = F))
+            })
+            
+
+            
+            removeUI(selector = "#enrichrm")
+            removeUI(selector = "#networkrm")
+            removeUI(selector = "#interactionsrm")
+        }
         
         pairing <- input$diffexppairing
-        
-        
         
         contrasts <- paste(input$contrast1,input$contrast2, sep = '-')
         
@@ -956,65 +884,89 @@ server <- function(session, input, output) {
         rcont$contrasts <- contrasts
         rcont$contrast <- contrast
         
-        
-        removeUI(selector = "#enrichrm")
-        removeUI(selector = "#networkrm")
-        removeUI(selector = "#interactionsrm")
         updateNotifications("A DE contrast has been set.","check-circle", "success")
-        updateTasks(text = "Set contrast", value = 100, color = "green", i = 0005)
+        updateTasks(text = "Set contrast", value = 100, color = "green", i = 0005)   
+        
     })
+    
+    observeEvent(input$diffexppairing, {
+        
+        if(input$diffexppairing == 1) {
+            # Paired analysis can only be performed when at least one sample is repeated.
+            sinfo <- sampleinfo$samples
+            sinfo <- as.data.table(sinfo)
+            
+            if(length(Reduce(setdiff, sinfo[, .(list(unique(replicate))), treatment]$V1)) > 0){
+                
+                updateRadioButtons(session = session, inputId = "diffexppairing", selected = 2)
+                
+                updateNotifications("Paired analysis can only be performed when at least one sample is repeated.","exclamation-triangle", "danger")
+            }
+        }
+        
+
+        
+        
+    }, ignoreInit = T)
     
     # Differential expression: DEA function ----
     
     diff_exp <- function(coeff, pairing) {
         
         dw <- maindata$udat@main
-        sinf <- sampleinfo$samples
+        sinfo <- sampleinfo$samples
+        treatment <- sampleinfo$samples$treatment
+        repl <- sampleinfo$samples$replicate
+        
         
         if(input$setDEengine == 2) {
             
-            dw <- maindata$data_wide
+            isolate(updateNotifications(paste0("This process may take a while. Please wait."), "info-circle", "info"))
             
             # Replace NA -> 0
             for(j in seq_along(dw)){
                 set(dw, i = which(is.na(dw[[j]]) & is.numeric(dw[[j]])), j = j, value = 0)
             }
             
+            dw <- as.matrix(dw)
+            
+            sid <- sampleinfo$sID
+            
+            rn <- as.character(maindata$udat@identifiers[, ..sid][[1]])
+            
+            rownames(dw) <- rn
+            
             if(pairing == 1) {
                 # Paired
                 
-                design <- DESeqDataSetFromMatrix(countData  = round(dframe(dw, sampleinfo$sID)),
-                                                 colData    = sinf,
-                                                 design     = ~ 0 + sampleinfo$samples$treatment + sampleinfo$samples$replicate)
+                design <- DESeqDataSetFromMatrix(countData  = round(2**dw),
+                                                 colData    = sinfo,
+                                                 design     = ~ 0 + treatment + replicate)
                 
             } else {
                 # Unpaired
-                design <- DESeqDataSetFromMatrix(countData  = round(dframe(dw, sampleinfo$sID)),
-                                                 colData    = sinf,
-                                                 design     = ~ 0 + sampleinfo$samples$treatment)
+                design <- DESeqDataSetFromMatrix(countData  = round(2**dw),
+                                                 colData    = sinfo,
+                                                 design     = ~ 0 + treatment)
             }
             
             dds <- DESeq(design)
+            
+            assign("dds", dds, envir = .GlobalEnv)
             
             contrast <- results(dds, contrast=c("treatment", sub("treatment", "", input$contrast1), sub("treatment", "", input$contrast2)))
             
             colnames(contrast) <- c("baseMean", "logFC", "logFC.SE", "stat", "P.Value", "adj.P.Val")
             
-            # Confidence intervals used for plot, global var
-            cint <- contrast
-            cint$protein <- rownames(cint)
-            cint$protein <- factor(cint$protein, levels = cint$protein[order(cint$logFC)])
+            contrast <- contrast[, -"stat"]
             
-            rcont$cint <- cint
-            
-            contrast <- contrast[order(contrast$P.Value, decreasing = F),]
             contrast <- data.table::as.data.table(contrast, keep.rownames = T)
             
-            setkeyv(contrast, "rn")
-            setkeyv(maindata$data_wide, sampleinfo$sID)
-            contrast <- contrast[maindata$data_wide[,..convertColumns], nomatch = 0]
-            names(contrast) <- c(sampleinfo$sID, names(contrast[, 2:ncol(contrast)]))
-            setcolorder(contrast, c(convertColumns, "logFC", "logFC.SE", "baseMean", "stat", "P.Value", "adj.P.Val"))
+            setcolorder(contrast, c("rn", "logFC", "logFC.SE", "baseMean", "P.Value", "adj.P.Val"))
+            
+            contrast <- contrast[order(contrast[, 1])]
+            
+            maindata$udat@deoutput <- contrast[, 2:ncol(contrast)]
             
             # Reduce network load
             if(contrast[, .N] > 2000) {
@@ -1036,9 +988,6 @@ server <- function(session, input, output) {
             # Create Annotation data and expression set (Biobase)
             phenoData <- new("AnnotatedDataFrame", data = sampleinfo$samples)
             exampleSet <- ExpressionSet(assayData = dw, phenoData = phenoData)
-            
-            treatment <- sampleinfo$samples$treatment
-            repl <- sampleinfo$samples$replicate
             
             unpaired <- model.matrix( ~ 0 + treatment )
             paired <- model.matrix( ~ 0 + treatment + repl )
@@ -1069,14 +1018,6 @@ server <- function(session, input, output) {
             
             assign("contrast", contrast, envir = .GlobalEnv)
             
-            # Confidence intervals used for plot, global var
-            cint <- contrast
-            cint$protein <- rownames(cint)
-            cint$protein <- factor(cint$protein, levels = cint$protein[order(cint$logFC)])
-            
-            rcont$cint <- cint
-            
-            contrast <- contrast[order(contrast$P.Value, decreasing = F),]
             contrast <- data.table::as.data.table(contrast, keep.rownames = T)
             #names(contrast) <- c(sampleinfo$sID, names(contrast[, 2:ncol(contrast)]))
             
@@ -1086,22 +1027,8 @@ server <- function(session, input, output) {
             
             assign("udat", maindata$udat, envir = .GlobalEnv)
             
-            # assign("contrast2", contrast, envir = .GlobalEnv)
-            # 
-            # data_wide <- cbind(maindata$udat@identifiers, maindata$udat@main)
-            
-            # setkeyv(contrast, "rn")
-            # setkeyv(data_wide, sampleinfo$sID)
-            # contrast <- contrast[data_wide, nomatch = 0]
-            # names(contrast) <- c(sampleinfo$sID, names(contrast[, 2:ncol(contrast)]))
-            # setcolorder(contrast, c(convertColumns, "logFC", "t", "P.Value", "adj.P.Val", "B"))
-            
             # Reduce network load
-            if(contrast[, .N] > 2000) {
-                # x <- unname(quantile(abs(contrast$logFC)))
-                # x <- round(x[5] - x[4])
-                updateNumericInput(session = session, "fccutoff", value = 2)
-            }
+            if(contrast[, .N] > 2000) updateNumericInput(session = session, "fccutoff", value = 2)
             
         }
         
@@ -1273,11 +1200,9 @@ server <- function(session, input, output) {
                 
                 return(T)
                 
-                # updateTasks(text = "Run pathway enrichment", value = 100, color = "green", i = 0006)
-                # updateNotifications("Pathway analysis complete.","check-circle", "success")
-                
-                # return(list("UPREGULATED_pathways" = UPREGULATED_pathways,
-                #             "DOWNREGULATED_pathways" = DOWNREGULATED_pathways))
+                isolate(updateTasks(text = "Run pathway enrichment", value = 100, color = "green", i = 0006))
+                isolate(updateNotifications("Pathway analysis complete.","check-circle", "success"))
+
             }
         }
     })
@@ -1362,9 +1287,13 @@ server <- function(session, input, output) {
             
             diff_df[FDR < 0.05 & abs(`Fold-change`) < 1.5, "group"] <- "Sign."
             
-            diff_df[FDR >= 0.05 & abs(`Fold-change`) > 1.5, "group"] <- "FC"
+            diff_df[FDR >= 0.05 & abs(`Fold-change`) > 1.5, "group"] <- "FC > 1.5"
             
-            diff_df[FDR < 0.05 & abs(`Fold-change`) > 1.5, "group"] <- "Sign. & FC"
+            diff_df[FDR < 0.05 & abs(`Fold-change`) > 1.5, "group"] <- "Sign.  & FC > 1.5"
+            
+            diff_df$group <- as.factor(diff_df$group)
+            
+            diff_df$group <- factor(diff_df$group, levels = c("Sign.  & FC > 1.5", "Sign.", "FC > 1.5", "Not Sign."))
             
             return(diff_df)
             
@@ -1379,7 +1308,7 @@ server <- function(session, input, output) {
                 assign("diff_df", diff_df, envir = .GlobalEnv)
                 
                 nb.cols <- uniqueN(diff_df[, get(input$volcanoAnnotation)])
-                mycolors <- c("gray", colorRampPalette(brewer.pal(8, "Accent"))(nb.cols))
+                mycolors <- c(colorRampPalette(brewer.pal(8, "Accent"))(nb.cols))
                 
                 plot_ly(data = diff_df,
                         type = "scatter",
@@ -1402,7 +1331,7 @@ server <- function(session, input, output) {
                 diff_df <- pathway_vis()
                 
                 nb.cols <- uniqueN(diff_df[, get(input$volcanoAnnotation2)])
-                mycolors <- c("gray", colorRampPalette(brewer.pal(8, "Accent"))(nb.cols))
+                mycolors <- c(colorRampPalette(brewer.pal(8, "Accent"))(nb.cols))
                 
                 sorted_paths <- sort(unique(diff_df[, get(input$volcanoAnnotation2)]))
                 sorted_path_names <- mycolors[seq_along(sorted_paths)]
@@ -1418,7 +1347,7 @@ server <- function(session, input, output) {
                         mode = "markers",
                         color = ~get(input$volcanoAnnotation2),
                         colors = mycolors,
-                        width = 650, height = 500) %>%
+                        height = 500) %>%
                     layout(yaxis = list(type = "log1p",
                                         showgrid = T,
                                         ticks="outside",
@@ -1513,68 +1442,75 @@ server <- function(session, input, output) {
             proteins_ <- contrast[(abs(logFC) >= input$fccutoff)]$UNIPROTID
         }
         
-        ints2 <- pathways$ints[(Interactor1 %in% proteins_) & (Interactor2 %in% proteins_)]
-        ints2 <- ints2[Score > input$interactionConfidence]
-        
-        mynodes <- unlist(event_data("plotly_selected")$key)
-        
-        mynodes <- contrast[get(sID) %in% mynodes, "UNIPROTID"][[1]]
-        
-        interacts <- function(i){
-            return(ints2[(Interactor1 == i & Interactor2 %in% mynodes) | (Interactor2 == i & Interactor1 %in% mynodes), .N])
-        }
-        
-        if(input$interaction_behaviour == 1){
+        if(length(proteins_) <= 1) return(NULL)
+        else {
+            ints2 <- pathways$ints[(Interactor1 %in% proteins_) & (Interactor2 %in% proteins_)]
+            ints2 <- ints2[Score > input$interactionConfidence]
             
-            if(!is.null(mynodes)) {
-                if(sum(unlist(lapply(mynodes, interacts))) > 0){
-                    ints2 <- ints2[Interactor1 %in% mynodes & Interactor2 %in% mynodes]
+            if(ints2[, .N] <= 1) return(NULL)
+            else {
+                mynodes <- unlist(event_data("plotly_selected")$key)
+                
+                mynodes <- contrast[get(sID) %in% mynodes, "UNIPROTID"][[1]]
+                
+                interacts <- function(i){
+                    return(ints2[(Interactor1 == i & Interactor2 %in% mynodes) | (Interactor2 == i & Interactor1 %in% mynodes), .N])
                 }
-            }
-            
-        } else if(input$interaction_behaviour == 2){
-            
-            if(any(mynodes %in% ints2$Interactor1 & mynodes %in% ints2$Interactor2)){
-                ints2 <- ints2[Interactor1 %in% mynodes | Interactor2 %in% mynodes]
+                
+                if(input$interaction_behaviour == 1){
+                    
+                    if(!is.null(mynodes)) {
+                        if(sum(unlist(lapply(mynodes, interacts))) > 0){
+                            ints2 <- ints2[Interactor1 %in% mynodes & Interactor2 %in% mynodes]
+                        }
+                    }
+                    
+                } else if(input$interaction_behaviour == 2){
+                    
+                    if(any(mynodes %in% ints2$Interactor1 & mynodes %in% ints2$Interactor2)){
+                        ints2 <- ints2[Interactor1 %in% mynodes | Interactor2 %in% mynodes]
+                    }
+                    
+                }
+                
+                nodes <- data.table(id = unique(c(ints2$Interactor1, ints2$Interactor2)))
+                nodes$label <- nodes$id
+                
+                
+                edges <-
+                    data.table(
+                        from = ints2$Interactor1,
+                        to = ints2$Interactor2
+                    )
+                
+                g <- igraph::graph_from_data_frame(edges, directed = F, vertices = nodes)
+                
+                diff_df <- pathway_vis()
+                
+                nb.cols <- uniqueN(diff_df[, get(input$volcanoAnnotation2)])
+                mycolors <- c(colorRampPalette(brewer.pal(8, "Accent"))(nb.cols))
+                
+                sorted_paths <- sort(unique(diff_df[, get(input$volcanoAnnotation2)]))
+                sorted_path_names <- mycolors[seq_along(sorted_paths)]
+                names(sorted_path_names) <- sorted_paths
+                diff_df$col <- sorted_path_names[diff_df[, get(input$volcanoAnnotation2)]]
+                
+                diff_df <- diff_df[V(g)$label, on = "UNIPROTID", ]
+                
+                g <- set.vertex.attribute(g, name = "name",  value = as.vector (diff_df[, ..sID][[1]]))
+                g <- set.vertex.attribute(g, name = "color", value = diff_df$col)
+                g <- set.vertex.attribute(g, name = "group", value = diff_df$TopReactomeName)
+                
+                if(exists("g")){
+                    V(g)$name <- diff_df[V(g)$name, on = sID, ..sID][[1]]
+                } else {
+                    names(V(g)) <- diff_df[V(g)$name, on = "UNIPROTID", "UNIPROTID"][[1]]
+                }
+                
+                return(g)
             }
             
         }
-        
-        nodes <- data.table(id = unique(c(ints2$Interactor1, ints2$Interactor2)))
-        nodes$label <- nodes$id
-        
-        
-        edges <-
-            data.table(
-                from = ints2$Interactor1,
-                to = ints2$Interactor2
-            )
-        
-        g <- igraph::graph_from_data_frame(edges, directed = F, vertices = nodes)
-        
-        diff_df <- pathway_vis()
-        
-        nb.cols <- uniqueN(diff_df[, get(input$volcanoAnnotation2)])
-        mycolors <- c("gray", colorRampPalette(brewer.pal(8, "Accent"))(nb.cols))
-        
-        sorted_paths <- sort(unique(diff_df[, get(input$volcanoAnnotation2)]))
-        sorted_path_names <- mycolors[seq_along(sorted_paths)]
-        names(sorted_path_names) <- sorted_paths
-        diff_df$col <- sorted_path_names[diff_df[, get(input$volcanoAnnotation2)]]
-        
-        diff_df <- diff_df[V(g)$label, on = "UNIPROTID", ]
-        
-        g <- set.vertex.attribute(g, name = "name",  value = as.vector (diff_df[, ..sID][[1]]))
-        g <- set.vertex.attribute(g, name = "color", value = diff_df$col)
-        g <- set.vertex.attribute(g, name = "group", value = diff_df$TopReactomeName)
-        
-        if(exists("g")){
-            V(g)$name <- diff_df[V(g)$name, on = sID, ..sID][[1]]
-        } else {
-            names(V(g)) <- diff_df[V(g)$name, on = "UNIPROTID", "UNIPROTID"][[1]]
-        }
-        
-        return(g)
         
     })
     
@@ -1582,22 +1518,27 @@ server <- function(session, input, output) {
         
         if(!is.null(pathways$UPREGULATED_pathways)){
             
-        g <- make_network()
+            g <- make_network()
+            
+            if(is.null(g)) isolate(updateNotifications(paste0("No data to display. Review network options."), "info-circle", "info"))
+            else {
+                visNetwork::visIgraph(g) %>%
+                    visInteraction(hover = TRUE) %>%
+                    visIgraphLayout(layout = "layout_nicely", randomSeed = 1) %>%
+                    visOptions(selectedBy = list(variable = "group"), height = "475px") %>%
+                    visEvents(
+                        click = "function(nodes) {
+                    Shiny.onInputChange('clicked_node', {node : nodes.node});
+                    ;}",
+                        hoverNode = "function(nodes) {
+                    console.info('hover')
+                    console.info(nodes)
+                    Shiny.onInputChange('hovered_node', {node : nodes.node});
+                    ;}"
+                    )
+            }
+    
 
-        visNetwork::visIgraph(g) %>%
-            visInteraction(hover = TRUE) %>%
-            visIgraphLayout(layout = "layout_nicely", randomSeed = 1) %>%
-            visOptions(selectedBy = list(variable = "group"), height = "475px") %>%
-            visEvents(
-                click = "function(nodes) {
-                Shiny.onInputChange('clicked_node', {node : nodes.node});
-                ;}",
-                hoverNode = "function(nodes) {
-                console.info('hover')
-                console.info(nodes)
-                Shiny.onInputChange('hovered_node', {node : nodes.node});
-                ;}"
-            )
         }
     })
     
@@ -1687,25 +1628,19 @@ server <- function(session, input, output) {
     
     observeEvent(input$listCandidates, {
         
-        data_wide <- maindata$data_wide
+        identifiers <- udat@rawidentifiers
         
-        if(!is.null(data_wide)){
+        if(!is.null(identifiers)){
             
             updateNotifications(paste0("Checking for outdated IDs. Please wait."), "info-circle", "info")
             
-            candidates <- data_wide[apply(
-                data_wide[, ..convertColumns],
+            candidates <- identifiers[apply(
+                identifiers,
                 1,
                 FUN = function(x)
                     all(startsWith(x[2:5], "MISSING"))
             ), "UNIPROTID"]
             
-            # EventTime <- Sys.time() + candidates[, .N] * 5
-            # output$eventTimeRemaining <- renderText({
-            #     invalidateLater(1000, session)
-            #     paste("Estimated time remaining:", 
-            #           round(difftime(EventTime, Sys.time(), units='secs')), 'secs')
-            # })
             
             status <- history(candidates$UNIPROTID)
             status <- as.data.table(status)
@@ -1798,101 +1733,7 @@ server <- function(session, input, output) {
     })
     
     # Generate report ----
-    
-    # getOverview <- reactive({
-    #     data.table(
-    #         "Variable" = c("Total proteins", "DE proteins (adj. P. < 0.05)"),
-    #         "Value" = c(maindata$data_origin[, .N], contrast[adj.P.Val < 0.05, .N])
-    #         
-    #     )
-    #     
-    # })
-    # 
-    # 
-    # getDT <- reactive({
-    #     maindata$data_wide
-    #     
-    # })
-    # 
-    # 
-    # getpca2d <- reactive({
-    #     pca2d
-    # })
-    # 
-    # 
-    # getUpPathways <- reactive({
-    #     UPREGPATH <- UPREGULATED_pathways[, -c("ReactomeID", "background")]
-    #     data.table::setcolorder(UPREGPATH, c("Pathway_name", "TopReactomeName", "q", "m", "p", "p.adj", "genes"))
-    #     UPREGPATH
-    # })
-    # 
-    # getDownPathways <- reactive({
-    #     DOWNREGPATH <- DOWNREGULATED_pathways[, -c("ReactomeID", "background")]
-    #     data.table::setcolorder(DOWNREGPATH, c("Pathway_name", "TopReactomeName", "q", "m", "p", "p.adj", "genes"))
-    #     DOWNREGPATH
-    # })
-    # 
-    # getVolcano <- reactive({
-    #     res <- enrichment_results(UPREGULATED_pathways, DOWNREGULATED_pathways)
-    #     
-    #     tba <- contrast[!(UNIPROTID %in% res$Gene), c("UNIPROTID", "logFC", "CI.L", "CI.R", "P.Value")]
-    #     colnames(tba) <- c("Gene", "logFC", "CI.L", "CI.R", "P.Value")
-    #     
-    #     tba <- tba[!is.na(logFC)]
-    #     
-    #     tba[, c("ReactomeID", "P.Adj")] <- NA
-    #     
-    #     tba[, "TopReactomeName"] <- "[No significant over-representation]"
-    #     tba[, "Pathway_name"] <- "[No significant over-representation]"
-    #     
-    #     setcolorder(tba, colnames(res))
-    #     
-    #     res <- rbindlist(list(res, tba))
-    #     
-    #     res$Pathway_name <- stringr::str_wrap(res$Pathway_name, 50)
-    #     
-    #     setkeyv(res, "Gene")
-    #     setkeyv(contrast, "UNIPROTID")
-    #     res <- res[contrast[,..convertColumns], nomatch = 0]
-    #     names(res) <- c("UNIPROTID", names(tba[,2:ncol(tba)]), convertColumns[-1])
-    #     
-    #     setcolorder(res, c(convertColumns, names(tba[,2:ncol(tba)])))
-    # 
-    #     v <- volcano(res, abstraction = input$abstractionlevel)
-    #     
-    # })
-    # 
-    # getReg <- reactive({
-    #     data.table("Upregulated" = contrast[logFC <= 0 & adj.P.Val < 0.05, .N], "Downregulated" = contrast[logFC > 0 & adj.P.Val < 0.05, .N])
-    #     
-    # })
-    
-    
-    
-    
-    
-    
-    output$download <- downloadHandler(
-        filename = function(){
-            if(!is.null(maindata$inFile$name)) paste(gsub("treatment", "", rcont$contrasts), gsub(".csv", "", maindata$inFile$name), "csv", sep = ".")
-            else paste0(gsub("treatment", "", rcont$contrasts), ".csv")
-        }, 
-        content = function(fname){
-            fwrite(rcont$contrast, fname, sep = ";")
-        }
-    )
-    
-    # output$downloadDemo <- downloadHandler(
-    #     filename = function(){
-    #         if(!is.null(maindata$inFile$name)) paste(gsub("condition", "", rcont$contrasts), gsub(".csv", "", maindata$inFile$name), "csv", sep = ".")
-    #         else paste0(input$selectDemoData, ".csv")
-    #     }, 
-    #     content = function(fname){
-    #         sample_1_exp <- "data/donors.uniprot.csv"
-    #         fwrite(sample_1_exp, fname, sep = ";")
-    #     }
-    # )
-    
+
     output$downloadDemo <- downloadHandler(
         filename <- function() {
             paste0("Sample dataset ", input$selectDemoData, ".csv")
@@ -1908,7 +1749,6 @@ server <- function(session, input, output) {
     output$downloadReport <- downloadHandler(
         
         filename = function() {
-            #paste(gsub("condition", "", rcont$contrasts), gsub(".csv", "", maindata$inFile$name), "html", sep = ".")
             paste("proteomill-report.html")
         },
         content = function(file) {
@@ -1916,13 +1756,6 @@ server <- function(session, input, output) {
             cat(file=stderr(), paste0(getwd()))
             
             src <- normalizePath('reports/report.rmd')
-            
-            # temporarily switch to the temp dir, in case you do not have write
-            # permission to the current working directory
-            # owd <- setwd(tempdir())
-            # on.exit(setwd(owd))
-            
-            # cat(file=stderr(), paste0(getwd()))
             
             file.copy('reports/report.rmd', 'reports/tmp/report.rmd', overwrite = TRUE) 
             
@@ -1943,31 +1776,15 @@ server <- function(session, input, output) {
     
     # File input: Main data ----
     
-    # myData <- reactive({
-    #     inFile <- input$file1
-    #     if (is.null(inFile)) return(NULL)
-    #     maindata$data_wide <- fread(inFile$datapath, header = T)
-    #     
-    #     maindata$data_wide
-    # })
-    
-    
-    
     observeEvent(input$file1, {
         
         inFile <- input$file1
         
         if (is.null(inFile)) return(NULL)
-        #maindata$data_wide <- fread(inFile$datapath, header = T)
         
         dw <- tryCatch({fread(input=inFile$datapath);},
                        error = function(err){return(err)} ,
                        warning = function(war){return(war)} ,silent=F)
-        
-        # dw <- tryCatch({fread(input="files/E-PROT-45-query-results.tsv");},
-        #                error = function(err){return(err)} ,
-        #                warning = function(war){return(war)} ,silent=F)
-        
         
         if("error" %in% class(dw)) {
             
@@ -1989,14 +1806,12 @@ server <- function(session, input, output) {
             
             maindata$data_wide_tmp <- dw
             
-            print("hello")
             shinyjs::show("previewDTInfo")
             shinyjs::show("dataDetailsWrapper")
             
             maindata$isValid <- validate_data_format(dw)
             
         }
-        
         
     })
     
@@ -2044,9 +1859,6 @@ server <- function(session, input, output) {
         
         shinyjs::show("Modal1Spinner")
         
-        #maindata$organism <- org_lib(input$organism)
-        
-        
         if(input$organism == "Homo sapiens | HSA | 9606") {
             
             library(EnsDb.Hsapiens.v86)
@@ -2084,9 +1896,7 @@ server <- function(session, input, output) {
     
     
     observeEvent(input$EndStep2, {
-        
-        
-        
+
         if(is.null(maindata$data_wide_tmp)) {
             createAlert(session, "selectAFile", "exampleAlert",
                         content = "Please select a file.", append = FALSE,
@@ -2098,8 +1908,14 @@ server <- function(session, input, output) {
                 
                 shinyjs::show("Modal2Spinner")
                 
-                upload_data(i = "auto")
+                all_missing <- upload_data(i = "auto")
                 
+                if(all_missing) {
+                    createAlert(session, "noneConverted", "exampleAlert",
+                                content = "Couldn't convert any IDs. Did you choose the correct organism?", append = FALSE,
+                                style = "warning")
+                }
+
                 if(uniqueN(sampleinfo$samples$treatment) > 8) {
                     app_meta$palette <- colorRampPalette(brewer.pal(8, "Accent"))(uniqueN(sampleinfo$samples$treatment))
                 } else if (uniqueN(sampleinfo$samples$treatment) <= 8) {
@@ -2108,27 +1924,20 @@ server <- function(session, input, output) {
                 
                 toggleModal(session, "ImportModal2", toggle = "toggle")
                 
-                subset_interactions()
+                if(input$organism != "Other") subset_interactions()
                 
                 shinyjs::hide("Modal2Spinner")
                 
                 updateNotifications("Dataset uploaded.","check-circle", "success")
                 updateTasks(text = "Upload a dataset", value = 100, color = "green", i = 0001)
                 
-                
-                
             } else {
                 
                 createAlert(session, "checkRequirements", "exampleAlert1",
                             content = "File format is not valid. Please make sure dataset fulfills checklist requirements.", append = F,
                             style = "info")
-                
             }
-            
-            
-            
         }
-        
     })
 
     
@@ -2255,7 +2064,6 @@ server <- function(session, input, output) {
                                  text = rownames(p.pca$x),
                                  hoverinfo = "text",
                                  color = sampleinfo$samples$treatment,
-                                 #colors = c("red","green","blue"),
                                  colors = brewer.pal(length(unique(sampleinfo$samples$treatment)), "Accent")
             ) %>%
                 plotly::add_markers(marker=list(size = 15, line=list(width = 1, color = "black"))) %>%
@@ -2291,35 +2099,9 @@ server <- function(session, input, output) {
     
     observeEvent(input$pcaDims, {
         
-        print(input$pcaDims)
-        
         if( (input$pcaDims[2] - input$pcaDims[1] > 2) | (input$pcaDims[2] - input$pcaDims[1] < 1)) {
             updateSliderInput(session = session, inputId = "pcaDims", value = c(input$pcaDims[1], (input$pcaDims[1] + 2)))
         }
-        
-    })
-    
-    observeEvent(input$checkMemory, {
-        
-        print(ls())
-        
-        
-        
-        #print(ls())
-        
-        #updateNotifications(as.numeric(mem_used() / 1000000),"info-circle", "info")
-        
-        # env <- environment()
-        # 
-        # print(ls(env))
-        # 
-        # data.frame(
-        #     object = ls(env),
-        #     size = unlist(lapply(ls(env), function(x) {
-        #         object.size(get(x, envir = env, inherits = FALSE))
-        #     }))
-        # )
-        
         
     })
     
@@ -2334,15 +2116,19 @@ server <- function(session, input, output) {
         if(maindata$udat@deoutput[, .N] > 0) {
             
             diff_df <- contrast[, c(1, 2, 5)]
-            colnames(diff_df) <- c("external_gene_name", "Fold", "FDR")
+            colnames(diff_df)[2:3] <- c("Fold-change", "FDR")
             
             diff_df$group <- "Not Sign."
             
-            diff_df[FDR < 0.05 & abs(Fold) < 1.5, "group"] <- "Sign."
+            diff_df[FDR < 0.05 & abs(`Fold-change`) < 1.5, "group"] <- "Sign."
             
-            diff_df[FDR >= 0.05 & abs(Fold) > 1.5, "group"] <- "FC"
+            diff_df[FDR >= 0.05 & abs(`Fold-change`) > 1.5, "group"] <- "FC > 1.5"
             
-            diff_df[FDR < 0.05 & abs(Fold) > 1.5, "group"] <- "Sign. & FC"
+            diff_df[FDR < 0.05 & abs(`Fold-change`) > 1.5, "group"] <- "Sign.  & FC > 1.5"
+            
+            diff_df$group <- as.factor(diff_df$group)
+            
+            diff_df$group <- factor(diff_df$group, levels = c("Sign.  & FC > 1.5", "Sign.", "FC > 1.5", "Not Sign."))
             
             as.data.frame(diff_df)
         }
@@ -2353,30 +2139,23 @@ server <- function(session, input, output) {
         if(maindata$udat@deoutput[, .N] > 0) {
             diff_df <- diffv()
             
+            nb.cols <- uniqueN(diff_df[, "group"])
+            mycolors <- c(colorRampPalette(brewer.pal(8, "Accent"))(nb.cols))
+            
             p <- plot_ly(data = diff_df,
                          type = "scatter",
-                         x = ~Fold,
+                         x = ~`Fold-change`,
                          y = ~(-log10(FDR)),
-                         text = ~external_gene_name,
+                         text = ~get(sampleinfo$sID),
                          mode = "markers",
                          color = ~group,
-                         colors = brewer.pal(uniqueN(sic), "Accent")) %>%
-                layout(yaxis = list(type = "log1p", showgrid=T,  ticks="outside", autorange=TRUE))
+                         colors = mycolors) %>%
+                layout(yaxis = list(type = "log1p", showgrid = T,  ticks = "outside", autorange = T))
             p
         }
 
     })
-    
-    # output$dea_boxplot <- renderPlotly({
-    #     
-    #     diff_df <- diffv()
-    #     
-    #     
-    #     
-    #     
-    # })
-    
-    
+
     
     # Data validation ----
     
@@ -2398,6 +2177,8 @@ server <- function(session, input, output) {
         test_mult_treat <- length(unique(treatment)) >= 2
         test_mult_reps <- all(summary(treatment) >= 2 )
         
+        test_dupl_acc <- uniqueN(dt[, 1]) == dt[, .N]
+        
         test_res <- data.table(
             Test = c(
                 "Number of columns",
@@ -2407,7 +2188,8 @@ server <- function(session, input, output) {
                 "Starts alpha-numeric",
                 "Ends alpha-numeric",
                 "Multiple treatments exist",
-                "Multiple replicates exist"
+                "Multiple replicates exist",
+                "Duplicate accessions"
             ),
             ErrMsg = c(
                 "The dataset has too few (<5) or too many (>150) columns for ProteoMill's capacity.",
@@ -2417,7 +2199,8 @@ server <- function(session, input, output) {
                 "First character in column names must be alpha-numeric",
                 "Last character in column names must be alpha-numeric",
                 "Multiple treatments/groups required for differential analysis.",
-                "Multiple replicates needed to estimate variance."
+                "Multiple replicates needed to estimate variance.",
+                "The dataset has duplicate identifiers."
                 
             ),
             Passed = c(
@@ -2428,7 +2211,8 @@ server <- function(session, input, output) {
                 test_starts_with,
                 test_ends_with,
                 test_mult_treat,
-                test_mult_reps
+                test_mult_reps,
+                test_dupl_acc
             )
         )
         

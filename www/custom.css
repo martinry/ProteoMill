@@ -4,6 +4,11 @@
 
 /* text hover effect */
 
+#shiny-tab-interactions > div:nth-child(2) > div:nth-child(1) > div > div {
+	height: 255px !important;
+	overflow-y: scroll;
+}
+
 .no-touch {
 	-webkit-touch-callout: none;
     -webkit-user-select: none;
