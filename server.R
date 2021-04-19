@@ -1162,25 +1162,37 @@ server <- function(session, input, output) {
         } else {
             contrast <- cbind(maindata$udat@identifiers[, "UNIPROTID"], maindata$udat@deoutput)
             
-            if(contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval, .N] < 3 | contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval, .N] < 3) {
+            
+            # In future updates, have all id types for reactome db
+            if(contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval & !startsWith(UNIPROTID, "MISSING"), .N] < 3 | contrast[logFC < (input$min_fc * -1) & adj.P.Val < input$min_pval & !startsWith(UNIPROTID, "MISSING"), .N] < 3) {
                 isolate(updateNotifications("Too few differential proteins.","exclamation-triangle", "danger"))
                 return(F)
             } else {
                 
+                assign("contrast", contrast, envir = .GlobalEnv)
+                
                 UPREGULATED_genes <- contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval, UNIPROTID]
                 DOWNREGULATED_genes <- contrast[logFC < (input$min_fc * -1) & adj.P.Val < input$min_pval, UNIPROTID]
                 
-                UPREGULATED_pathways <- ora(UPREGULATED_genes)@output
-                pathways$UPREGULATED_pathways <- UPREGULATED_pathways
+                UPREGULATED_pathways <- ora(UPREGULATED_genes)
+                DOWNREGULATED_pathways<- ora(DOWNREGULATED_genes)
                 
-                DOWNREGULATED_pathways<- ora(DOWNREGULATED_genes)@output
-                pathways$DOWNREGULATED_pathways <- DOWNREGULATED_pathways
+                if(!is.null(DOWNREGULATED_pathways) & !is.null(UPREGULATED_pathways)) {
+                    UPREGULATED_pathways <- ora(UPREGULATED_genes)@output
+                    pathways$UPREGULATED_pathways <- UPREGULATED_pathways
+                    
+                    DOWNREGULATED_pathways<- ora(DOWNREGULATED_genes)@output
+                    pathways$DOWNREGULATED_pathways <- DOWNREGULATED_pathways
+                    
+                    isolate(updateTasks(text = "Run pathway enrichment", value = 100, color = "green", i = 0006))
+                    isolate(updateNotifications("Pathway analysis complete.","check-circle", "success"))
+                    
+                    return(T)
+                    
+                } else {
+                    return(F)
+                }
                 
-                return(T)
-                
-                isolate(updateTasks(text = "Run pathway enrichment", value = 100, color = "green", i = 0006))
-                isolate(updateNotifications("Pathway analysis complete.","check-circle", "success"))
-
             }
         }
     })

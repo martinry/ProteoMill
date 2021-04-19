@@ -702,7 +702,8 @@ body <- dashboardBody(
                                             choices = list("Differential expression groups" = "group",
                                                            "Enriched pathway (top-level)" = "TopReactomeName",
                                                            "Enriched pathway" = "Pathway_name"
-                                                           ))
+                                                           ),
+                                            selected = "Pathway_name")
                            ),
                     ),
                     column(width = 9,
