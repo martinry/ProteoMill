@@ -829,11 +829,11 @@ body <- dashboardBody(
     ),
     div(class = "footer_wrapper",
         div(class = "sticky_footer",
-            div(span(shiny::icon("github", style = "padding: 5px;"),
-                     shiny::icon("twitter", style = "padding: 5px;"),
-                     shiny::icon("linkedin", style = "padding: 5px;"),
-                     shiny::icon("youtube", style = "padding: 5px;"),
-                     shiny::icon("at", style = "padding: 5px;"),
+            div(span(shiny::icon("github", class = "padded-icons"),
+                     shiny::icon("twitter", class = "padded-icons"),
+                     shiny::icon("linkedin", class = "padded-icons"),
+                     shiny::icon("youtube", class = "padded-icons"),
+                     shiny::icon("at", class = "padded-icons"),
                      style = "font-size: 14pt; line-height: 50px;")),
             div(class = "gradient no-touch", span("© 2021 · ProteoMill | Martin Rydén", style = "font-size: 12pt; line-height: 50px; padding-left: 25px;"))))
 )

@@ -4,6 +4,10 @@
 
 /* text hover effect */
 
+.padded-icons {
+	 padding: 5px;
+}
+
 #shiny-tab-interactions > div:nth-child(2) > div:nth-child(1) > div > div {
 	height: 255px !important;
 	overflow-y: scroll;
