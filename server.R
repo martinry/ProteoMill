@@ -100,7 +100,7 @@ assign("convertColumns", convertColumns, envir = .GlobalEnv)
 # Server ----
 server <- function(session, input, output) {
     
-    #options(shiny.maxRequestSize=30*1024^2) 
+    options(shiny.maxRequestSize=30*1024^2) 
     
     # Remove text "Loading packages, please wait..."
     removeUI(selector = "#notifications-wrapper > span")
