@@ -449,7 +449,7 @@ server <- function(session, input, output) {
         
         pathways$ints <- interactions[(Interactor1 %in% all_proteins) & (Interactor2 %in% all_proteins)]
         
-        N <- udat@main[, .N]
+        N <- maindata$udat@main[, .N]
        
         if(dplyr::between(N, 1500, 2999)) updateNumericInput(session = session, "interactionConfidence", label = "Interaction confidence", min = 0, max = 10, value = 7, step = 0.1)
         else if(dplyr::between(N, 3000, 4999)) updateNumericInput(session = session, "interactionConfidence", label = "Interaction confidence", min = 0, max = 10, value = 8, step = 0.1)
@@ -575,10 +575,6 @@ server <- function(session, input, output) {
                    identifiers    = tr_all,
                    descriptions   = pdesc,
                    deoutput       = data.table())
-        
-        
-        
-        assign("udat", udat, envir = .GlobalEnv)
         
         maindata$udat <- udat
         
@@ -806,14 +802,6 @@ server <- function(session, input, output) {
             
             maindata$udat@main <- data_wide
             maindata$udat@identifiers <- ids
-            
-            assign("udat", maindata$udat, envir = .GlobalEnv)
-            assign("sic", sampleinfo$samples$treatment, envir = .GlobalEnv)
-            assign("sir", sampleinfo$samples$replicate, envir = .GlobalEnv)
-            assign("sis", sampleinfo$samples, envir = .GlobalEnv)
-            assign("siSID", sampleinfo$sID, envir = .GlobalEnv)
-            assign("sgroup", sampleinfo$group, envir = .GlobalEnv)
-            
 
             updateTasks(text = "Set a filter", value = 100, color = "green", i = 0003)
             updateNotifications(paste0("NA cutoff set to ", input$missingvalues, ".") ,"check-circle", "success")
@@ -952,8 +940,6 @@ server <- function(session, input, output) {
             
             dds <- DESeq(design)
             
-            assign("dds", dds, envir = .GlobalEnv)
-            
             contrast <- results(dds, contrast=c("treatment", sub("treatment", "", input$contrast1), sub("treatment", "", input$contrast2)))
             
             colnames(contrast) <- c("baseMean", "logFC", "logFC.SE", "stat", "P.Value", "adj.P.Val")
@@ -1016,8 +1002,6 @@ server <- function(session, input, output) {
             # Generate data frame with results from linear model fit, with confidence intervals.
             contrast <- topTable(fit.cont, number = Inf, coef = coeff)
             
-            assign("contrast", contrast, envir = .GlobalEnv)
-            
             contrast <- data.table::as.data.table(contrast, keep.rownames = T)
             #names(contrast) <- c(sampleinfo$sID, names(contrast[, 2:ncol(contrast)]))
             
@@ -1025,14 +1009,10 @@ server <- function(session, input, output) {
             
             maindata$udat@deoutput <- contrast[, 2:ncol(contrast)]
             
-            assign("udat", maindata$udat, envir = .GlobalEnv)
-            
             # Reduce network load
             if(contrast[, .N] > 2000) updateNumericInput(session = session, "fccutoff", value = 2)
             
         }
-        
-        #assign("contrast", contrast, envir = .GlobalEnv)
         
         return( contrast )
         
@@ -1153,8 +1133,6 @@ server <- function(session, input, output) {
         i = input$upregulated_pathways_table_rows_selected[1]
         up <- UPREGULATED_pathways[i,]
         p <- paste("<b>", up[,Pathway_name], "</b>")
-        #assign("up", up, envir = .GlobalEnv)
-        #g <- paste(unlist(up[,genes]), collapse = ", ")
         sID <- sampleinfo$sID
         g <- paste(udat@identifiers[UNIPROTID %in% unlist(up[, genes]), ..sID][[1]], collapse = ", ")
         
@@ -1213,7 +1191,6 @@ server <- function(session, input, output) {
             gp <- generate_pathways()
             if(gp){
                 UPREGULATED_pathways <- pathways$UPREGULATED_pathways
-                assign("UPREGULATED_pathways", UPREGULATED_pathways, envir = .GlobalEnv)
                 DT::datatable(UPREGULATED_pathways[, -c("genes", "background")],
                               selection = 'single',
                               options = list(autoWidth = TRUE,
@@ -1234,8 +1211,6 @@ server <- function(session, input, output) {
             if(gp){
             
                 DOWNREGULATED_pathways <- pathways$DOWNREGULATED_pathways
-                assign("DOWNREGULATED_pathways", DOWNREGULATED_pathways, envir = .GlobalEnv)
-                
                 DT::datatable(DOWNREGULATED_pathways[, -c("genes", "background")],
                               selection = 'single',
                               options = list(autoWidth = TRUE,
@@ -1304,8 +1279,6 @@ server <- function(session, input, output) {
         {
             if(!is.null(pathways$UPREGULATED_pathways)){
                 diff_df <- pathway_vis()
-                
-                assign("diff_df", diff_df, envir = .GlobalEnv)
                 
                 nb.cols <- uniqueN(diff_df[, get(input$volcanoAnnotation)])
                 mycolors <- c(colorRampPalette(brewer.pal(8, "Accent"))(nb.cols))
@@ -1628,7 +1601,7 @@ server <- function(session, input, output) {
     
     observeEvent(input$listCandidates, {
         
-        identifiers <- udat@rawidentifiers
+        identifiers <- maindata$udat@rawidentifiers
         
         if(!is.null(identifiers)){
             
