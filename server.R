@@ -1429,9 +1429,6 @@ server <- function(session, input, output) {
                 
                 mynodes <- contrast[get(sID) %in% mynodes, "UNIPROTID"][[1]]
                 
-                assign("mynodes", mynodes, envir = .GlobalEnv)
-                assign("ints2", ints2, envir = .GlobalEnv)
-                
                 # interacts <- function(i){
                 #     return(ints2[(Interactor1 == i & Interactor2 %in% mynodes) | (Interactor2 == i & Interactor1 %in% mynodes), .N])
                 # }
