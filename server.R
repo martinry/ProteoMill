@@ -1987,9 +1987,7 @@ server <- function(session, input, output) {
                 
                 ndim <- input$pcaDims[2] - input$pcaDims[1] + 1
                 p.pca = mixOmics::pca(X = t(pca.data), ncomp = NULL, multilevel = sampleinfo$samples$replicate, logratio = 'none', scale = F, center = T)
-                
-                cat(file=stderr(), ndim)
-                cat(file=stderr(), p.pca)
+                fwrite("p.pca", p.pca)
                 
             } else {
                 
@@ -2002,6 +2000,8 @@ server <- function(session, input, output) {
     pca2d <- reactive({
         
         p.pca <- prepare_pca()
+        
+        fwrite("p.pca2", p.pca)
         
         si_treatment <- sampleinfo$samples$treatment
         si_replicate <- sampleinfo$samples$replicate
