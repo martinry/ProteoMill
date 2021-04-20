@@ -1988,8 +1988,8 @@ server <- function(session, input, output) {
                 ndim <- input$pcaDims[2] - input$pcaDims[1] + 1
                 p.pca = mixOmics::pca(X = t(pca.data), ncomp = NULL, multilevel = sampleinfo$samples$replicate, logratio = 'none', scale = F, center = T)
                 
-                print(ndim)
-                print(p.pca)
+                cat(file=stderr(), ndim)
+                cat(file=stderr(), p.pca)
                 
             } else {
                 
