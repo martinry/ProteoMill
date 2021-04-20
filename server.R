@@ -471,11 +471,11 @@ server <- function(session, input, output) {
         
         # Guess input ID based on successful conversions on small sample
         
-        tr1 <- AnnotationDbi::mapIds(d, keys = k, column = "SYMBOL", keytype = "UNIPROTID", multiVals = "first")
-        tr2 <- AnnotationDbi::mapIds(d, keys = k, column = "UNIPROTID", keytype = "ENTREZID", multiVals = "first")
-        tr3 <- AnnotationDbi::mapIds(d, keys = k, column = "UNIPROTID", keytype = "SYMBOL", multiVals = "first")
-        tr4 <- AnnotationDbi::mapIds(d, keys = k, column = "UNIPROTID", keytype = "GENEID", multiVals = "first")
-        tr5 <- AnnotationDbi::mapIds(d, keys = k, column = "UNIPROTID", keytype = "PROTEINID", multiVals = "first")
+        tr1 <- suppressWarnings(AnnotationDbi::mapIds(d, keys = k, column = "SYMBOL", keytype = "UNIPROTID", multiVals = "first"))
+        tr2 <- suppressWarnings(AnnotationDbi::mapIds(d, keys = k, column = "UNIPROTID", keytype = "ENTREZID", multiVals = "first"))
+        tr3 <- suppressWarnings(AnnotationDbi::mapIds(d, keys = k, column = "UNIPROTID", keytype = "SYMBOL", multiVals = "first"))
+        tr4 <- suppressWarnings(AnnotationDbi::mapIds(d, keys = k, column = "UNIPROTID", keytype = "GENEID", multiVals = "first"))
+        tr5 <- suppressWarnings(AnnotationDbi::mapIds(d, keys = k, column = "UNIPROTID", keytype = "PROTEINID", multiVals = "first"))
         
         trs <- list(tr1[!is.na(tr1)],
                     tr2[!is.na(tr2)],
@@ -906,6 +906,12 @@ server <- function(session, input, output) {
         treatment <- sampleinfo$samples$treatment
         repl <- sampleinfo$samples$replicate
         
+        assign("dw", dw, envir = .GlobalEnv)
+        assign("sinfo", sinfo, envir = .GlobalEnv)
+        assign("treatment", treatment, envir = .GlobalEnv)
+        assign("repl", repl, envir = .GlobalEnv)
+        assign("sid", sampleinfo$sID, envir = .GlobalEnv)
+        
         
         if(input$setDEengine == 2) {
             
@@ -921,6 +927,8 @@ server <- function(session, input, output) {
             sid <- sampleinfo$sID
             
             rn <- as.character(maindata$udat@identifiers[, ..sid][[1]])
+            
+            assign("rn", rn, envir = .GlobalEnv)
             
             rownames(dw) <- rn
             
@@ -944,9 +952,9 @@ server <- function(session, input, output) {
             
             colnames(contrast) <- c("baseMean", "logFC", "logFC.SE", "stat", "P.Value", "adj.P.Val")
             
-            contrast <- contrast[, -"stat"]
+            contrast <- suppressWarnings(data.table::as.data.table(contrast, keep.rownames = T))
             
-            contrast <- data.table::as.data.table(contrast, keep.rownames = T)
+            contrast <- contrast[, -"stat"]
             
             setcolorder(contrast, c("rn", "logFC", "logFC.SE", "baseMean", "P.Value", "adj.P.Val"))
             
@@ -1168,8 +1176,6 @@ server <- function(session, input, output) {
                 isolate(updateNotifications("Too few differential proteins.","exclamation-triangle", "danger"))
                 return(F)
             } else {
-                
-                assign("contrast", contrast, envir = .GlobalEnv)
                 
                 UPREGULATED_genes <- contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval, UNIPROTID]
                 DOWNREGULATED_genes <- contrast[logFC < (input$min_fc * -1) & adj.P.Val < input$min_pval, UNIPROTID]
@@ -1967,7 +1973,7 @@ server <- function(session, input, output) {
         sinfo <- sampleinfo$samples
         sinfo <- as.data.table(sinfo)
         
-        if(length(Reduce(setdiff, sinfo[, .(list(unique(replicate))), treatment]$V1)) > 0){
+        if(length(Reduce(setdiff, sinfo[, .(list(unique(sinfo$replicate))), sinfo$treatment]$V1)) > 0){
             
             updateCheckboxInput(session = session, inputId = "multilevelPCA", value = F)
             
@@ -1993,13 +1999,8 @@ server <- function(session, input, output) {
             } else {
                 
                 p.pca <- prcomp(t(pca.data), center = TRUE, scale. = F)
-                
             }
-            
             p.pca
-            
-            
-            
         }
     })
     
@@ -2019,20 +2020,22 @@ server <- function(session, input, output) {
             do(.[chull(.$pc1, .$pc2),]) 
         
         if(input$showPolygons) {
-            ggplot(mydf, aes(pc1, pc2, colour = as.factor(si_treatment))) +
-                geom_polygon(data = poly.df, fill = "grey", alpha = .15) +
-                geom_point(size = 5, aes(text = rownames(mydf))) +
-                xlab(paste0("PC", input$pcaDims[1])) +
-                ylab(paste0("PC", input$pcaDims[2])) +
-                scale_color_manual(values = app_meta$palette) +
-                theme_light() + theme(legend.title = element_blank()) -> p
+            suppressWarnings(
+                ggplot(mydf, aes(pc1, pc2, colour = as.factor(si_treatment))) +
+                    geom_polygon(data = poly.df, fill = "grey", alpha = .15) +
+                    geom_point(size = 5, aes(text = rownames(mydf))) +
+                    xlab(paste0("PC", input$pcaDims[1])) +
+                    ylab(paste0("PC", input$pcaDims[2])) +
+                    scale_color_manual(values = app_meta$palette) +
+                    theme_light() + theme(legend.title = element_blank())) -> p
         } else {
-            ggplot(mydf, aes(pc1, pc2, colour = as.factor(si_treatment))) +
-                geom_point(size = 5, aes(text = rownames(mydf))) +
-                xlab(paste0("PC", input$pcaDims[1])) +
-                ylab(paste0("PC", input$pcaDims[2])) +
-                scale_color_manual(values = app_meta$palette) +
-                theme_light() + theme(legend.title = element_blank()) -> p
+            suppressWarnings(
+                ggplot(mydf, aes(pc1, pc2, colour = as.factor(si_treatment))) +
+                    geom_point(size = 5, aes(text = rownames(mydf))) +
+                    xlab(paste0("PC", input$pcaDims[1])) +
+                    ylab(paste0("PC", input$pcaDims[2])) +
+                    scale_color_manual(values = app_meta$palette) +
+                    theme_light() + theme(legend.title = element_blank())) -> p
         }
     })
     
