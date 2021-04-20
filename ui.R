@@ -368,8 +368,13 @@ body <- dashboardBody(
                                       title = 'Demo data',
                                       p("Explore ProteoMill with a demo datasets. You can also download a dataset to learn how to properly format your own datasets for use in ProteoMill."),
                                       selectInput("selectDemoData", label = "Select a dataset",
-                                                  list(`Proteomics` = 
-                                                           list("Sample dataset 1" = 1))),
+                                                  list(`LCMS Proteomics` = 
+                                                           list("Human meniscus donors" = 1),
+                                                       `Microarray` =
+                                                           list("E-GEOD-1675" = 2,
+                                                                "E-GEOD-14226" = 3),
+                                                       `RNA-seq` =
+                                                           list())),
                                       actionButton("useDemoData", label = "Use demo data"),
                                       downloadButton('downloadDemo',"Download")
                                   )
@@ -747,7 +752,7 @@ body <- dashboardBody(
                                       numericInput(
                                           "fccutoff",
                                           label = "Minimum abs. log2FC",
-                                          min = 0, max = 100, value = 0, step = 0.1
+                                          min = 0, max = 100, value = .1, step = 0.1
                                       ),
                                       
                                       numericInput(

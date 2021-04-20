@@ -575,32 +575,72 @@ server <- function(session, input, output) {
         else return(F)
         
     }
-
-    # File input: Demo data ----
-    observeEvent(input$useDemoData, {
+    
+    demoData <- function(f = "1", taxid = 9606, logTransformData = T) {
         
-        # Sample 1
+        fpaths <- function(s) {
+            switch(s,
+                   "1" = "data/donors.uniprot.csv",
+                   "2" = "data/E-GEOD-1675-A-AFFY-18-normalized-expressions.txt",
+                   "3" = "data/E-GEOD-14226-A-AFFY-23-normalized-expressions.txt"
+                   )
+            }
         
-        updateCheckboxInput(session = session, inputId = "LogTransformData", value = T)
+        updateCheckboxInput(session = session, inputId = "LogTransformData", value = logTransformData)
+        maindata$data_wide_tmp <- fread(fpaths(f), header = T)
         
-        sample_1_exp <- "data/donors.uniprot.csv"
-        maindata$data_wide_tmp <- fread(sample_1_exp, header = T)
         
-        updateNotifications(paste0("Loading human annotation library..."), "info-circle", "info")
-        library(EnsDb.Hsapiens.v86)
         
-        maindata$organism <- EnsDb.Hsapiens.v86
-        maindata$taxid <- 9606
-        
-        updateNotifications(paste0("Loading human interaction library..."), "info-circle", "info")
-        upload_data()
-        subset_interactions()
+        if(taxid == 9606) {
+            updateNotifications(paste0("Loading human annotation library..."), "info-circle", "info")
+            
+            library(EnsDb.Hsapiens.v86)
+            maindata$organism <- EnsDb.Hsapiens.v86
+            maindata$taxid <- taxid
+            
+            updateNotifications(paste0("Loading human interaction library..."), "info-circle", "info")
+            upload_data()
+            subset_interactions()
+            
+        } else if(taxid == 10090) {
+            updateNotifications(paste0("Loading mouse annotation library..."), "info-circle", "info")
+            
+            library(EnsDb.Mmusculus.v79)
+            maindata$organism <- EnsDb.Mmusculus.v79
+            maindata$taxid <- taxid
+            
+            updateNotifications(paste0("Loading mouse interaction library..."), "info-circle", "info")
+            upload_data()
+            subset_interactions()
+            
+        } else if(taxid == 10116) {
+            updateNotifications(paste0("Loading rat annotation library..."), "info-circle", "info")
+            
+            library(EnsDb.Rnorvegicus.v79)
+            maindata$organism <- EnsDb.Rnorvegicus.v79
+            maindata$taxid <- taxid
+            
+            updateNotifications(paste0("Loading rat interaction library..."), "info-circle", "info")
+            upload_data()
+            subset_interactions()
+            
+        }
         
         app_meta$palette <- brewer.pal(uniqueN(sampleinfo$samples$treatment), "Accent")
         
         updateNotifications("Demo data uploaded.","check-circle", "success")
         updateTasks(text = "Upload a dataset", value = 100, color = "green", i = 0001)
         updateTasks(text = "Upload annotation data", value = 100, color = "green", i = 0002)
+
+
+    }
+
+    # File input: Demo data ----
+    observeEvent(input$useDemoData, {
+        
+        if(input$selectDemoData == 1) demoData(f = "1", taxid = 9606, logTransformData = T)
+        else if(input$selectDemoData == 2) demoData(f = "2", taxid = 10116, logTransformData = F)
+        else if(input$selectDemoData == 3) demoData(f = "3", taxid = 10090, logTransformData = F)
         
     })
     
