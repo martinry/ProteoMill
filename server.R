@@ -449,15 +449,6 @@ server <- function(session, input, output) {
         
         pathways$ints <- interactions[(Interactor1 %in% all_proteins) & (Interactor2 %in% all_proteins)]
         
-        N <- maindata$udat@main[, .N]
-       
-        if(dplyr::between(N, 1500, 2999)) updateNumericInput(session = session, "interactionConfidence", label = "Interaction confidence", min = 0, max = 10, value = 7, step = 0.1)
-        else if(dplyr::between(N, 3000, 4999)) updateNumericInput(session = session, "interactionConfidence", label = "Interaction confidence", min = 0, max = 10, value = 8, step = 0.1)
-        else if(dplyr::between(N, 5000, 8999)) updateNumericInput(session = session, "interactionConfidence", label = "Interaction confidence", min = 0, max = 10, value = 9, step = 0.1)
-        else if(dplyr::between(N, 9000, 14999)) updateNumericInput(session = session, "interactionConfidence", label = "Interaction confidence", min = 0, max = 10, value = 9.3, step = 0.1)
-        else if(N >= 15000) updateNumericInput(session = session, "interactionConfidence", label = "Interaction confidence", min = 0, max = 10, value = 9.5, step = 0.1)
-        
-        
     }
     
     
@@ -954,13 +945,6 @@ server <- function(session, input, output) {
             
             maindata$udat@deoutput <- contrast[, 2:ncol(contrast)]
             
-            # Reduce network load
-            if(contrast[, .N] > 2000) {
-                # x <- unname(quantile(abs(contrast$logFC)))
-                # x <- round(x[5] - x[4])
-                updateNumericInput(session = session, "fccutoff", value = 2)
-            }
-            
         } else if(input$setDEengine == 1) {
             
             dw <- as.matrix(dw)
@@ -1008,9 +992,6 @@ server <- function(session, input, output) {
             contrast <- contrast[order(contrast[, 1])]
             
             maindata$udat@deoutput <- contrast[, 2:ncol(contrast)]
-            
-            # Reduce network load
-            if(contrast[, .N] > 2000) updateNumericInput(session = session, "fccutoff", value = 2)
             
         }
         
@@ -1172,14 +1153,14 @@ server <- function(session, input, output) {
                 UPREGULATED_genes <- contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval, UNIPROTID]
                 DOWNREGULATED_genes <- contrast[logFC < (input$min_fc * -1) & adj.P.Val < input$min_pval, UNIPROTID]
                 
-                UPREGULATED_pathways <- ora(UPREGULATED_genes)
-                DOWNREGULATED_pathways<- ora(DOWNREGULATED_genes)
+                UPREGULATED_pathways <- ora(UPREGULATED_genes, taxid = maindata$taxid)
+                DOWNREGULATED_pathways<- ora(DOWNREGULATED_genes, taxid = maindata$taxid)
                 
                 if(!is.null(DOWNREGULATED_pathways) & !is.null(UPREGULATED_pathways)) {
-                    UPREGULATED_pathways <- ora(UPREGULATED_genes)@output
+                    UPREGULATED_pathways <- UPREGULATED_pathways@output
                     pathways$UPREGULATED_pathways <- UPREGULATED_pathways
                     
-                    DOWNREGULATED_pathways<- ora(DOWNREGULATED_genes)@output
+                    DOWNREGULATED_pathways<- DOWNREGULATED_pathways@output
                     pathways$DOWNREGULATED_pathways <- DOWNREGULATED_pathways
                     
                     isolate(updateTasks(text = "Run pathway enrichment", value = 100, color = "green", i = 0006))
@@ -1294,7 +1275,7 @@ server <- function(session, input, output) {
                 mycolors <- c(colorRampPalette(brewer.pal(8, "Accent"))(nb.cols))
                 
                 plot_ly(data = diff_df,
-                        type = "scatter",
+                        type = "scattergl",
                         x = ~`Fold-change`,
                         y = ~-log10(FDR),
                         text = ~get(sampleinfo$sID),
@@ -1321,8 +1302,10 @@ server <- function(session, input, output) {
                 names(sorted_path_names) <- sorted_paths
                 diff_df$col <- sorted_path_names[diff_df[, get(input$volcanoAnnotation2)]]
                 
+                pathways$diff_df <- diff_df
+                
                 plot_ly(data = diff_df,
-                        type = "scatter",
+                        type = "scattergl",
                         x = ~`Fold-change`,
                         y = ~-log10(FDR),
                         text = ~get(sampleinfo$sID),
@@ -1408,94 +1391,120 @@ server <- function(session, input, output) {
         
     })
 
-    
+
     make_network <- reactive({
         sID <- sampleinfo$sID
         contrast <- cbind(maindata$udat@identifiers, maindata$udat@deoutput)
         
         dir <- input$network_regulation
+        # 
+        # assign("sID", sID, envir = .GlobalEnv)
+        # assign("contrast", contrast, envir = .GlobalEnv)
+        # assign("interactions", pathways$ints, envir = .GlobalEnv)
+        
         
         if(dir == 1){
             proteins_ <- contrast[(abs(logFC) >= input$fccutoff) &
-                                     (logFC > 0)]$UNIPROTID
+                                      (logFC > 0)]$UNIPROTID
         } else if(dir == 2){
             proteins_ <- contrast[(abs(logFC) >= input$fccutoff) &
-                                     (logFC <= 0)]$UNIPROTID
+                                      (logFC <= 0)]$UNIPROTID
         } else {
             proteins_ <- contrast[(abs(logFC) >= input$fccutoff)]$UNIPROTID
         }
         
-        if(length(proteins_) <= 1) return(NULL)
+        if(length(proteins_) <= 1) {
+            isolate(updateNotifications(paste0("No data to display. Review network options."), "info-circle", "info"))
+            return(NULL)
+        }
         else {
             ints2 <- pathways$ints[(Interactor1 %in% proteins_) & (Interactor2 %in% proteins_)]
             ints2 <- ints2[Score > input$interactionConfidence]
             
-            if(ints2[, .N] <= 1) return(NULL)
-            else {
+            if(ints2[, .N] < 1) {
+                isolate(updateNotifications(paste0("No data to display. Review network options."), "info-circle", "info"))
+                return(NULL)
+            } else {
                 mynodes <- unlist(event_data("plotly_selected")$key)
                 
                 mynodes <- contrast[get(sID) %in% mynodes, "UNIPROTID"][[1]]
                 
-                interacts <- function(i){
-                    return(ints2[(Interactor1 == i & Interactor2 %in% mynodes) | (Interactor2 == i & Interactor1 %in% mynodes), .N])
-                }
+                assign("mynodes", mynodes, envir = .GlobalEnv)
+                assign("ints2", ints2, envir = .GlobalEnv)
                 
+                # interacts <- function(i){
+                #     return(ints2[(Interactor1 == i & Interactor2 %in% mynodes) | (Interactor2 == i & Interactor1 %in% mynodes), .N])
+                # }
+                # 
                 if(input$interaction_behaviour == 1){
                     
-                    if(!is.null(mynodes)) {
-                        if(sum(unlist(lapply(mynodes, interacts))) > 0){
-                            ints2 <- ints2[Interactor1 %in% mynodes & Interactor2 %in% mynodes]
+                    if(!is.null(mynodes) & length(mynodes) > 0) {
+                        
+                        ints2 <- ints2[Interactor1 %in% mynodes & Interactor2 %in% mynodes]
+                        
+                        if(ints2[, .N] < 1) {
+                            isolate(updateNotifications(paste0("No interaction data for selected proteins."), "info-circle", "info"))
+                            
+                            return(NULL)
                         }
-                    }
+                        
+                        
+                        
+                        # if(sum(unlist(lapply(mynodes, interacts))) > 0){
+                        #     ints2 <- ints2[Interactor1 %in% mynodes & Interactor2 %in% mynodes]
+                        # }
+                    } 
                     
                 } else if(input$interaction_behaviour == 2){
                     
                     if(any(mynodes %in% ints2$Interactor1 & mynodes %in% ints2$Interactor2)){
                         ints2 <- ints2[Interactor1 %in% mynodes | Interactor2 %in% mynodes]
+                    } else {
+                        return(NULL)
                     }
                     
                 }
                 
-                nodes <- data.table(id = unique(c(ints2$Interactor1, ints2$Interactor2)))
-                nodes$label <- nodes$id
-                
-                
-                edges <-
-                    data.table(
-                        from = ints2$Interactor1,
-                        to = ints2$Interactor2
-                    )
-                
-                g <- igraph::graph_from_data_frame(edges, directed = F, vertices = nodes)
-                
-                diff_df <- pathway_vis()
-                
-                nb.cols <- uniqueN(diff_df[, get(input$volcanoAnnotation2)])
-                mycolors <- c(colorRampPalette(brewer.pal(8, "Accent"))(nb.cols))
-                
-                sorted_paths <- sort(unique(diff_df[, get(input$volcanoAnnotation2)]))
-                sorted_path_names <- mycolors[seq_along(sorted_paths)]
-                names(sorted_path_names) <- sorted_paths
-                diff_df$col <- sorted_path_names[diff_df[, get(input$volcanoAnnotation2)]]
-                
-                diff_df <- diff_df[V(g)$label, on = "UNIPROTID", ]
-                
-                g <- set.vertex.attribute(g, name = "name",  value = as.vector (diff_df[, ..sID][[1]]))
-                g <- set.vertex.attribute(g, name = "color", value = diff_df$col)
-                g <- set.vertex.attribute(g, name = "group", value = diff_df$TopReactomeName)
-                
-                if(exists("g")){
-                    V(g)$name <- diff_df[V(g)$name, on = sID, ..sID][[1]]
+                if(ints2[, .N] > 100000){
+                    isolate(updateNotifications(paste0("Too many interactions to display. Review network options."), "info-circle", "info"))
+                    return(NULL)
                 } else {
-                    names(V(g)) <- diff_df[V(g)$name, on = "UNIPROTID", "UNIPROTID"][[1]]
+                    nodes <- data.table(id = unique(c(ints2$Interactor1, ints2$Interactor2)))
+                    nodes$label <- nodes$id
+                    
+                    
+                    edges <-
+                        data.table(
+                            from = ints2$Interactor1,
+                            to = ints2$Interactor2
+                        )
+                    
+                    g <- igraph::graph_from_data_frame(edges, directed = F, vertices = nodes)
+                    
+                    diff_df <- pathways$diff_df
+                    
+                    diff_df <- diff_df[V(g)$label, on = "UNIPROTID", ]
+                    
+                    g <- set.vertex.attribute(g, name = "name",  value = as.vector (diff_df[, ..sID][[1]]))
+                    g <- set.vertex.attribute(g, name = "color", value = diff_df$col)
+                    g <- set.vertex.attribute(g, name = "group", value = diff_df$TopReactomeName)
+                    
+                    if(exists("g")){
+                        V(g)$name <- diff_df[V(g)$name, on = sID, ..sID][[1]]
+                    } else {
+                        names(V(g)) <- diff_df[V(g)$name, on = "UNIPROTID", "UNIPROTID"][[1]]
+                    }
+                    
+                    return(g)
                 }
                 
-                return(g)
             }
             
         }
         
     })
+
+
     
     output$interaction_network <- renderVisNetwork({
         
@@ -1503,8 +1512,8 @@ server <- function(session, input, output) {
             
             g <- make_network()
             
-            if(is.null(g)) isolate(updateNotifications(paste0("No data to display. Review network options."), "info-circle", "info"))
-            else {
+            # if(is.null(g)) isolate(updateNotifications(paste0("No data to display. Review network options."), "info-circle", "info"))
+            if(!is.null(g)) {
                 visNetwork::visIgraph(g) %>%
                     visInteraction(hover = TRUE) %>%
                     visIgraphLayout(layout = "layout_nicely", randomSeed = 1) %>%
@@ -2090,7 +2099,7 @@ server <- function(session, input, output) {
     
     diffv <- reactive({
         
-        if(c("t", "B") %in% colnames(maindata$udat@deoutput)) contrast <- maindata$udat@deoutput[, -c("t", "B")]
+        if(all(c("t", "B") %in% colnames(maindata$udat@deoutput))) contrast <- maindata$udat@deoutput[, -c("t", "B")]
         else contrast <- maindata$udat@deoutput
         
         sID <- sampleinfo$sID
@@ -2126,7 +2135,7 @@ server <- function(session, input, output) {
             mycolors <- c(colorRampPalette(brewer.pal(8, "Accent"))(nb.cols))
             
             p <- plot_ly(data = diff_df,
-                         type = "scatter",
+                         type = "scattergl",
                          x = ~`Fold-change`,
                          y = ~(-log10(FDR)),
                          text = ~get(sampleinfo$sID),
