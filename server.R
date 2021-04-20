@@ -905,13 +905,7 @@ server <- function(session, input, output) {
         sinfo <- sampleinfo$samples
         treatment <- sampleinfo$samples$treatment
         repl <- sampleinfo$samples$replicate
-        
-        assign("dw", dw, envir = .GlobalEnv)
-        assign("sinfo", sinfo, envir = .GlobalEnv)
-        assign("treatment", treatment, envir = .GlobalEnv)
-        assign("repl", repl, envir = .GlobalEnv)
-        assign("sid", sampleinfo$sID, envir = .GlobalEnv)
-        
+
         
         if(input$setDEengine == 2) {
             
@@ -927,8 +921,6 @@ server <- function(session, input, output) {
             sid <- sampleinfo$sID
             
             rn <- as.character(maindata$udat@identifiers[, ..sid][[1]])
-            
-            assign("rn", rn, envir = .GlobalEnv)
             
             rownames(dw) <- rn
             
@@ -1996,6 +1988,9 @@ server <- function(session, input, output) {
                 ndim <- input$pcaDims[2] - input$pcaDims[1] + 1
                 p.pca = mixOmics::pca(X = t(pca.data), ncomp = NULL, multilevel = sampleinfo$samples$replicate, logratio = 'none', scale = F, center = T)
                 
+                print(ndim)
+                print(p.pca)
+                
             } else {
                 
                 p.pca <- prcomp(t(pca.data), center = TRUE, scale. = F)
@@ -2097,7 +2092,9 @@ server <- function(session, input, output) {
     
     diffv <- reactive({
         
-        contrast <- maindata$udat@deoutput[, -c("t", "B")]
+        if(c("t", "B") %in% colnames(maindata$udat@deoutput)) contrast <- maindata$udat@deoutput[, -c("t", "B")]
+        else contrast <- maindata$udat@deoutput
+        
         sID <- sampleinfo$sID
         contrast <- cbind(maindata$udat@identifiers[, ..sID], contrast)
         
