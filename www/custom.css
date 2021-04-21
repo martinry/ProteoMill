@@ -4,6 +4,11 @@
 
 /* text hover effect */
 
+.videoWrapper {
+	margin-top: 55px;
+	opacity: 0;
+}
+
 .padded-icons {
 	 padding: 5px;
 }
@@ -564,25 +569,35 @@ hr {
 
 
 .ml9 {
-  position: relative !important;
-  font-weight: 200 !important;
-  font-size: 3.5em !important;
-  margin-top: -45px;
+  position: relative;
+  
+  /*
+  font-weight: 200;
+  font-size: 65px;
+  */
+  font-weight: 900;
+  font-size: 9rem;
+  color: #2c3e50;
+  
+  transition: font-weight .4s ease-in-out;
 }
 
+
+
 .ml9 .text-wrapper {
-  position: relative !important;
-  display: inline-block !important;
-  padding-top: 2.2em !important;
-  padding-right: 0.05em !important;
-  padding-bottom: 0.1em !important;
-  overflow: hidden !important;
+  position: relative;
+  display: inline-block;
+  padding-top: 0.5em;
+  padding-right: 0.05em;
+  padding-bottom: 0.1em;
+  overflow: hidden;
 }
 
 .ml9 .letter {
-  transform-origin: 50% 100% !important;
-  display: inline-block !important;
-  line-height: 1em !important;
+  transform: scale(0);
+  transform-origin: 50% 100%;
+  display: inline-block;
+  line-height: 1em;
 }
 
 .slider-animate-container {

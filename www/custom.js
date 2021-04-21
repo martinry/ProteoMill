@@ -6,19 +6,31 @@ $('.ml9 .letters').each(function(){
   $(this).html($(this).text().replace(/([^\x00-\x80]|\w)/g, "<span class='letter'>$&</span>"));
 });
 
-anime.timeline({loop: false})
-  .add({
-    targets: '.ml9 .letter',
-    scale: [0, 1],
-    duration: 1200,
-    elasticity: 600,
-    delay: function(el, i) {
-      return 45 * (i+1)
-    }
-  })
+var targetElm = document.querySelector('.ml9');
+
+$( window ).ready(function() {
+  setTimeout(function() {
+    anime.timeline({loop: false})
+      .add({
+        targets: '.ml9 .letter',
+        scale: [0.25, 1],
+        easing: "easeInOutQuart",
+        duration: 1400,
+        elasticity: 500,
+        delay: function(el, i) {
+          return 55 * (i+1);
+        }
+      });
+  }, 25);
+});
 
 $('.begindiv').delay(1650).queue(function (next) {
     $(this).fadeTo( 1500 , 1);
+    next();
+});
+
+$('.videoWrapper').delay(800).queue(function (next) {
+    $(this).fadeTo( 1500 , 0.85);
     next();
 });
 

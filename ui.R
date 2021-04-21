@@ -120,9 +120,10 @@ body <- dashboardBody(
     # Import css and js
     tags$head(
         tags$meta(name="google-site-verification", content="JC0Ph8rzlXWiAL6lWXnusIUEOhJSqf8u2yVzK5g2P04"),
-        tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"),
+        tags$link(rel = "stylesheet", type = "text/css", href = "custom.css?v=1.1"),
         tags$link(rel = "stylesheet", type = "text/css", href = "https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"),
         tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Quicksand"),
+        tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Exo+2:wght@100;900&display=swap"),
         tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Patrick+Hand"),
         tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Spectral+SC"),
         tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Poiret+One"),
@@ -144,8 +145,7 @@ body <- dashboardBody(
                      }")),
     
     
-    tags$script(src = "custom.js"),
-    tags$script(src = "animate-notifs.js"),
+
     
     
     # Intro animation
@@ -157,12 +157,12 @@ body <- dashboardBody(
              tags$div(class = 'begindiv',
                       actionLink('removeBanner', label = 'LAUNCH')
              ),
-             tags$div(style = "margin-top: 55px; opacity: .85;",
+             tags$div(class = "videoWrapper",
                       tags$video(playsinline = "playsinline", loop = "true", autoplay = "autoplay", muted = "muted", width="60%", height="auto",
                                  tags$source(src = "media1.mp4", type="video/mp4")))
     ),
-    tags$script(src = "custom.js"),
-    tags$script(src = "animate-notifs.js"),
+    tags$script(src = "custom.js?v=1.0"),
+    tags$script(src = "animate-notifs.js?v=1.0"),
     
     tabItems(
         # File input ----
@@ -752,7 +752,7 @@ body <- dashboardBody(
                                       numericInput(
                                           "fccutoff",
                                           label = "Minimum abs. log2FC",
-                                          min = 0, max = 100, value = .1, step = 0.1
+                                          min = 0, max = 100, value = .05, step = 0.01
                                       ),
                                       
                                       numericInput(
@@ -763,14 +763,16 @@ body <- dashboardBody(
                                   ),
                                   
                                   tabPanel(
-                                      title = "Selection criteria",
+                                      title = "Selection settings",
                                       
-                                      radioButtons("interaction_behaviour", label = "Selection subset",
+                                      radioButtons("interaction_behaviour", label = "Selection mode",
                                                    choices = list("Strict" = 1,
                                                                   "Extended" = 2),
                                                    inline = T,
                                                    selected = 1),
-                                      textAreaInput("network_proteins", label = "Select proteins"),
+                                      bsTooltip("toggleToolTip", "This is a tooltip and it\\'s currently visible.",
+                                                "right", options = list(container = "body")),
+                                      textAreaInput("network_proteins", label = "Find proteins"),
                                       actionButton("highlight_nodes", label = "Highlight")
                                   )
                            )
@@ -793,9 +795,6 @@ body <- dashboardBody(
                                                            "Enriched pathway (top-level)" = "TopReactomeName",
                                                            "Enriched pathway" = "Pathway_name"
                                             ), selected = "TopReactomeName")
-                               # title = "Protein info", width = NULL,
-                               # uiOutput("clicked_node"),
-                               # uiOutput("hovered_node")
                            )
                     )
                 )
@@ -812,6 +811,9 @@ body <- dashboardBody(
                                radioButtons(inputId = "toggleToolTip", label = "Display tool-tip", choices = list("Yes", "No"), selected = "Yes", inline = T),
                                bsTooltip("toggleToolTip", "This is a tooltip and it\\'s currently visible.",
                                          "right", options = list(container = "body")),
+                               img(src = "/img/palettes.png", width = "75%"),
+                               radioButtons(inputId = "palette", label = "Palette",
+                                            choices = list("Accent", "Dark2", "Paired", "Pastel1", "Pastel2", "Set1", "Set2", "Set3"), inline = T),
                                br(),
                                
                                h6("Identifier type"),

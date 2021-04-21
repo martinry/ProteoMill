@@ -10,11 +10,11 @@ This report was automatically generated using the [ProteoMill](https://proteomil
 ```{r violin1, echo = FALSE, out.width = '60%', out.height= '40%'}
 
 if("Data summary" %in% input$p2){
-	if(!is.null(maindata$udat) & !is.null(sampleinfo$samples)){
+	if(!is.null(maindata$udat)){
             
             dat <- make_violin()
             
-            ggplot(dat, aes(x = sample, y = values, fill = sample)) + 
+            ggplot(dat, aes(x = samplename, y = values, fill = samplename)) + 
                     geom_violin(trim = FALSE, scale = "width") +
                     geom_boxplot(width=0.1, fill="white") +
                     ggthemes::theme_clean() +
@@ -29,11 +29,11 @@ if("Data summary" %in% input$p2){
 ```{r violin2, echo = FALSE, out.width = '60%', out.height= '40%'}
 
 if("Data summary" %in% input$p2){
-	if(!is.null(maindata$udat) & !is.null(sampleinfo$samples)){
+	if(!is.null(maindata$udat)){
             
             dat <- make_violin()
             
-            ggplot(dat, aes(x = ind, y = values, fill = sample)) + 
+            ggplot(dat, aes(x = ind, y = values, fill = samplename)) + 
                 geom_violin(trim = FALSE, scale = "width") +
                 geom_boxplot(width=0.1, fill="white") +
                 ggthemes::theme_clean() +

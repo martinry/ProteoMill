@@ -76,6 +76,19 @@ get_delim <- function(c){
     }
 }
 
+npals <- function(s) {
+    switch(s,
+           "Accent"	= 8,
+           "Dark2" = 8,
+           "Paired" = 12,
+           "Pastel1" = 9,
+           "Pastel2" = 8,
+           "Set1" =	9,
+           "Set2" =	8,
+           "Set3" =	12
+    )
+}
+
 # org_lib <- function(s) {
 #     switch(s,
 #            "Homo sapiens|HSA|9606" = EnsDb("lib/9606/Homo_sapiens.GRCh38.103.sqlite"),
@@ -110,7 +123,7 @@ server <- function(session, input, output) {
     tasks <- reactiveValues()
     sampleinfo <- reactiveValues()
     maindata <- reactiveValues()
-    app_meta <- reactiveValues(palette = "Accent")
+    app_meta <- reactiveValues()
     rcont <- reactiveValues()
     pathways <- reactiveValues()
     plots <- reactiveValues()
@@ -360,15 +373,26 @@ server <- function(session, input, output) {
         
         sampleinfo$sID <- i
         
-        updateNotifications(paste0("Default ID set to ", i),"info-circle", "info")
+        updateNotifications(paste0(i, " set as default identifier."),"info-circle", "info")
         
     })
     
     
+    setPalette <- reactive({
+        
+        n <- npals(input$palette)
+        
+        if(uniqueN(sampleinfo$samples$treatment) > n) {
+            app_meta$palette <- colorRampPalette(brewer.pal(n, input$palette))(uniqueN(sampleinfo$samples$treatment))
+        } else if (uniqueN(sampleinfo$samples$treatment) <= n) {
+            app_meta$palette <- suppressWarnings(brewer.pal(uniqueN(sampleinfo$samples$treatment), input$palette))
+        }
+    })
     
-    
-    
-    # Settings: toggle tooltips
+    observeEvent(input$palette, {
+        setPalette()
+        updateNotifications(paste0(input$palette, " set as default palette."), "info-circle", "info")
+    })
     
     observeEvent(input$toggleToolTip, {
         
@@ -393,12 +417,11 @@ server <- function(session, input, output) {
         group <- sapply(as.character(unique(treatment)), function(x) paste("treatment", x, sep = ''))
         
         sampleinfo$samples <- samples
-        # sampleinfo$treatment <- treatment
-        # sampleinfo$replicate <- replicate
         
         sampleinfo$group <- group
         
         updateContrasts()
+        setPalette()
         
         return (FALSE)
     }
@@ -453,10 +476,6 @@ server <- function(session, input, output) {
     
     
     # File input: upload data function ----
-    
-    undup <- function(genes) {
-        genes[!is.na(genes)]
-    }
     
     infer_id <- function(d, k) {
         
@@ -626,8 +645,6 @@ server <- function(session, input, output) {
             
         }
         
-        app_meta$palette <- brewer.pal(uniqueN(sampleinfo$samples$treatment), "Accent")
-        
         updateNotifications("Demo data uploaded.","check-circle", "success")
         updateTasks(text = "Upload a dataset", value = 100, color = "green", i = 0001)
         updateTasks(text = "Upload annotation data", value = 100, color = "green", i = 0002)
@@ -739,26 +756,25 @@ server <- function(session, input, output) {
     
     make_violin <- reactive({
         
-        dat <- stack(as.data.frame(maindata$udat@main))
-        dat <- dat[!is.na(dat$values), ]
-        dat$sample <- sub("_.*", "", dat$ind)
+        dat <- as.data.table(stack(maindata$udat@main))
+        dat <- dat[!is.na(values), ]
+        dat$samplename <- sub("_.*", "", dat$ind)
         dat$ind <- factor(dat$ind, levels = levels(dat$ind)[order(levels(dat$ind))])
-        dat$values <- dat$values
         
-        return(dat)
+        return(as.data.table(dat))
         
     })
     
     # Remake reactive
     output$violinplot <- renderPlot({
         
-        if(!is.null(maindata$udat) & !is.null(sampleinfo$samples)){
+        if(!is.null(maindata$udat)){
             
             dat <- make_violin()
             
             if(input$violintype == 1) {
                 
-                ggplot(dat, aes(x = sample, y = values, fill = sample)) + 
+                ggplot(dat, aes(x = samplename, y = values, fill = samplename)) + 
                     geom_violin(trim = FALSE, scale = "width") +
                     geom_boxplot(width=0.1, fill="white") +
                     ggthemes::theme_clean() +
@@ -768,7 +784,7 @@ server <- function(session, input, output) {
                 
             } else {
                 
-                ggplot(dat, aes(x = ind, y = values, fill = sample)) + 
+                ggplot(dat, aes(x = ind, y = values, fill = samplename)) + 
                     geom_violin(trim = FALSE, scale = "width") +
                     geom_boxplot(width=0.1, fill="white") +
                     ggthemes::theme_clean() +
@@ -1123,6 +1139,24 @@ server <- function(session, input, output) {
     
     # Pathways ----
     
+    get_top_pathways <- function(pathways){
+        
+        # pathways | "ReactomeID", "genes", "p.adj"
+        
+        pathways$p.adj <- as.numeric(pathways$p.adj)
+        
+        pathways <- pathways[, unlist(genes),
+                             by = .(ReactomeID, Pathway_name, TopReactomeName, p.adj)]
+        
+        
+        pathways <- pathways[, .SD[which.min(p.adj)], by = V1]
+        
+        colnames(pathways) <- c("UNIPROTID", "ReactomeID", "Pathway_name", "TopReactomeName", "Pathway.P.Adj")
+        
+        return(pathways)
+        
+    }
+    
     # User sets minimum fold change from diff exp output to decide which proteins to include in pathway analysis
     observeEvent(input$min_fc, {
         
@@ -1312,7 +1346,7 @@ server <- function(session, input, output) {
                 diff_df <- pathway_vis()
                 
                 nb.cols <- uniqueN(diff_df[, get(input$volcanoAnnotation)])
-                mycolors <- c(colorRampPalette(brewer.pal(8, "Accent"))(nb.cols))
+                mycolors <- c(colorRampPalette(brewer.pal(npals(input$palette), input$palette))(nb.cols))
                 
                 plot_ly(data = diff_df,
                         type = "scattergl",
@@ -1325,6 +1359,7 @@ server <- function(session, input, output) {
                     layout(yaxis = list(type = "log1p", showgrid = T, ticks = "outside", autorange = T))
             }
             
+            
         })
     
     
@@ -1335,7 +1370,7 @@ server <- function(session, input, output) {
                 diff_df <- pathway_vis()
                 
                 nb.cols <- uniqueN(diff_df[, get(input$volcanoAnnotation2)])
-                mycolors <- c(colorRampPalette(brewer.pal(8, "Accent"))(nb.cols))
+                mycolors <- c(colorRampPalette(brewer.pal(npals(input$palette), input$palette))(nb.cols))
                 
                 sorted_paths <- sort(unique(diff_df[, get(input$volcanoAnnotation2)]))
                 sorted_path_names <- mycolors[seq_along(sorted_paths)]
@@ -1944,12 +1979,6 @@ server <- function(session, input, output) {
                                 content = "Couldn't convert any IDs. Did you choose the correct organism?", append = FALSE,
                                 style = "warning")
                 }
-
-                if(uniqueN(sampleinfo$samples$treatment) > 8) {
-                    app_meta$palette <- colorRampPalette(brewer.pal(8, "Accent"))(uniqueN(sampleinfo$samples$treatment))
-                } else if (uniqueN(sampleinfo$samples$treatment) <= 8) {
-                    app_meta$palette <- brewer.pal(uniqueN(sampleinfo$samples$treatment), "Accent")
-                }
                 
                 toggleModal(session, "ImportModal2", toggle = "toggle")
                 
@@ -2091,7 +2120,7 @@ server <- function(session, input, output) {
                                  text = rownames(p.pca$x),
                                  hoverinfo = "text",
                                  color = sampleinfo$samples$treatment,
-                                 colors = brewer.pal(length(unique(sampleinfo$samples$treatment)), "Accent")
+                                 colors = app_meta$palette
             ) %>%
                 plotly::add_markers(marker=list(size = 15, line=list(width = 1, color = "black"))) %>%
                 plotly::layout(scene = list(xaxis = list(title = paste0("PC", input$pcaDims[1])),
@@ -2169,7 +2198,7 @@ server <- function(session, input, output) {
             diff_df <- diffv()
             
             nb.cols <- uniqueN(diff_df[, "group"])
-            mycolors <- c(colorRampPalette(brewer.pal(8, "Accent"))(nb.cols))
+            mycolors <- c(colorRampPalette(brewer.pal(npals(input$palette), input$palette))(nb.cols))
             
             p <- plot_ly(data = diff_df,
                          type = "scattergl",
