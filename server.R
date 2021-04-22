@@ -1040,11 +1040,10 @@ server <- function(session, input, output) {
             fit.cont <- contrasts.fit(fit, cont.matrix)
             fit.cont <- eBayes(fit.cont, robust = T)
             
-            # Generate data frame with results from linear model fit, with confidence intervals.
+            # Generate data frame with results from linear model fit
             contrast <- topTable(fit.cont, number = Inf, coef = coeff)
             
             contrast <- data.table::as.data.table(contrast, keep.rownames = T)
-            #names(contrast) <- c(sampleinfo$sID, names(contrast[, 2:ncol(contrast)]))
             
             contrast <- contrast[order(contrast[, 1])]
             
@@ -1190,7 +1189,7 @@ server <- function(session, input, output) {
         up <- UPREGULATED_pathways[i,]
         p <- paste("<b>", up[,Pathway_name], "</b>")
         sID <- sampleinfo$sID
-        g <- paste(udat@identifiers[UNIPROTID %in% unlist(up[, genes]), ..sID][[1]], collapse = ", ")
+        g <- paste(maindata$udat@identifiers[UNIPROTID %in% unlist(up[, genes]), ..sID][[1]], collapse = ", ")
         
         show_selected(p, g)
         
@@ -1201,9 +1200,8 @@ server <- function(session, input, output) {
         i = input$downregulated_pathways_table_rows_selected[1]
         down <- DOWNREGULATED_pathways[i,]
         p <- paste("<b>", down[,Pathway_name], "</b>")
-        #g <- paste(unlist(down[,genes]), collapse = ", ")
         sID <- sampleinfo$sID
-        g <- paste(udat@identifiers[UNIPROTID %in% unlist(down[, genes]), ..sID][[1]], collapse = ", ")
+        g <- paste(maindata$udat@identifiers[UNIPROTID %in% unlist(down[, genes]), ..sID][[1]], collapse = ", ")
         
         show_selected(p, g)
         
@@ -2031,8 +2029,6 @@ server <- function(session, input, output) {
     prepare_heatmap <- reactive({
         
         dw_cor <- maindata$udat@main
-        
-        assign("dw_cor1", dw_cor, envir = .GlobalEnv)
         
         if(!is.null(dw_cor)){
             dw_cor[is.na(dw_cor)] <- 0 # Impute
