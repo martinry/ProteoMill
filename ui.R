@@ -580,13 +580,10 @@ body <- dashboardBody(
                                width = NULL,
                                status = "warning",
                                selectInput("corMethod", "Corr. method", choices = list("Pearson" = "pearson",
-                                                                                       "Spearman" = "spearman",
-                                                                                       "Kendall" = "kendall"),
+                                                                                       "Spearman" = "spearman"),
                                            selected = "pearson"),
-                               # bsTooltip("corMethod", "if method is 'kendall' or 'spearman', Kendall's tau or Spearman's rho statistic is used to estimate a rank-based measure of association. These are more robust and have been recommended if the data do not necessarily come from a bivariate normal distribution.",
-                               #           placement = "bottom", trigger = "hover", options = list(container = "body")),
                                shiny::checkboxInput("showGrid", "Show grid", value = T),
-                               bsTooltip("corMethod", "If method is \\'kendall\\' or \\'spearman\\', Kendall\\'s tau or Spearman\\'s rho statistic is used to estimate a rank-based measure of association. These are more robust and have been recommended if the data do not necessarily come from a bivariate normal distribution.",
+                               bsTooltip("corMethod", "If method is \\'spearman\\', Spearman\\'s rho statistic is used to estimate a rank-based measure of association. These are more robust and have been recommended if the data do not necessarily come from a bivariate normal distribution.",
                                          "right", options = list(container = "body"))
                            )),
                     

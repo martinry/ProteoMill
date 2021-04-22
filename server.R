@@ -381,11 +381,12 @@ server <- function(session, input, output) {
     setPalette <- reactive({
         
         n <- npals(input$palette)
+        un <- uniqueN(sampleinfo$samples$treatment)
         
         if(uniqueN(sampleinfo$samples$treatment) > n) {
-            app_meta$palette <- colorRampPalette(brewer.pal(n, input$palette))(uniqueN(sampleinfo$samples$treatment))
+            app_meta$palette <- colorRampPalette(brewer.pal(n, input$palette))(un)
         } else if (uniqueN(sampleinfo$samples$treatment) <= n) {
-            app_meta$palette <- suppressWarnings(brewer.pal(uniqueN(sampleinfo$samples$treatment), input$palette))
+            app_meta$palette <- suppressWarnings(brewer.pal(un, input$palette)[1:un])
         }
     })
     
@@ -822,7 +823,7 @@ server <- function(session, input, output) {
             # Draw plot
             ggplot(naf, aes(x = Var1, y = Freq, color = Var1)) +
                 geom_bar(stat = "identity", width = .9, fill = "white") +
-                labs(x = "Number of missing values in at least one sample", y = "Number of proteins") +
+                labs(x = "Number of missing values", y = "Number of proteins") +
                 ggthemes::theme_clean() +
                 theme(axis.text.x = element_text(vjust = 0.6), legend.position = "none") +
                 scale_color_grey()
@@ -1356,7 +1357,23 @@ server <- function(session, input, output) {
                         mode = "markers",
                         color = ~get(input$volcanoAnnotation),
                         colors = mycolors) %>%
-                    layout(yaxis = list(type = "log1p", showgrid = T, ticks = "outside", autorange = T))
+                    layout(yaxis = list(type = "log1p", showgrid = T, ticks = "outside", autorange = T)) %>% 
+                    config(displaylogo = F,
+                           showTips = F,
+                           scrollZoom = T,
+                           modeBarButtonsToRemove = list(
+                               'sendDataToCloud',
+                               'toImage',
+                               'autoScale2d',
+                               'resetScale2d',
+                               'hoverClosestCartesian',
+                               'hoverCompareCartesian',
+                               'pan2d',
+                               'zoomIn2d',
+                               'zoomOut2d'),
+                           modeBarButtonsToAdd = list(
+                               'drawopenpath',
+                               'eraseshape'))
             }
             
             
@@ -1394,7 +1411,22 @@ server <- function(session, input, output) {
                                         ticks="outside",
                                         autorange = T),
                            dragmode = "lasso") %>% 
-                    config(scrollZoom = T)
+                    config(displaylogo = F,
+                           showTips = F,
+                           scrollZoom = T,
+                           modeBarButtonsToRemove = list(
+                               'sendDataToCloud',
+                               'toImage',
+                               'autoScale2d',
+                               'resetScale2d',
+                               'hoverClosestCartesian',
+                               'hoverCompareCartesian',
+                               'pan2d',
+                               'zoomIn2d',
+                               'zoomOut2d'),
+                           modeBarButtonsToAdd = list(
+                               'drawopenpath',
+                               'eraseshape'))
                     
                 
             }
@@ -1472,11 +1504,6 @@ server <- function(session, input, output) {
         contrast <- cbind(maindata$udat@identifiers, maindata$udat@deoutput)
         
         dir <- input$network_regulation
-        # 
-        # assign("sID", sID, envir = .GlobalEnv)
-        # assign("contrast", contrast, envir = .GlobalEnv)
-        # assign("interactions", pathways$ints, envir = .GlobalEnv)
-        
         
         if(dir == 1){
             proteins_ <- contrast[(abs(logFC) >= input$fccutoff) &
@@ -2005,6 +2032,8 @@ server <- function(session, input, output) {
         
         dw_cor <- maindata$udat@main
         
+        assign("dw_cor1", dw_cor, envir = .GlobalEnv)
+        
         if(!is.null(dw_cor)){
             dw_cor[is.na(dw_cor)] <- 0 # Impute
             dw_cor <- round(cor(dw_cor, method = input$corMethod), 2)
@@ -2111,7 +2140,23 @@ server <- function(session, input, output) {
         
         if(input$pcaDims[2] - input$pcaDims[1] == 1) {
             pcaplot <- pca2d()
-            ggplotly(pcaplot, tooltip = "text") %>% layout(legend = list(title=list(text='<b> Treatment </b>')))
+            ggplotly(pcaplot, tooltip = "text") %>% layout(legend = list(title=list(text='<b> Treatment </b>'))) %>% 
+                config(displaylogo = F,
+                       showTips = F,
+                       scrollZoom = F,
+                       modeBarButtonsToRemove = list(
+                           'sendDataToCloud',
+                           'toImage',
+                           'autoScale2d',
+                           'resetScale2d',
+                           'hoverClosestCartesian',
+                           'hoverCompareCartesian',
+                           'pan2d',
+                           'zoomIn2d',
+                           'zoomOut2d'),
+                       modeBarButtonsToAdd = list(
+                           'drawopenpath',
+                           'eraseshape'))
         } else if (input$pcaDims[2] - input$pcaDims[1] == 2) {
             p.pca <- prepare_pca()
             plotly::plot_ly(x = p.pca$x[,input$pcaDims[1]],
@@ -2126,7 +2171,23 @@ server <- function(session, input, output) {
                 plotly::layout(scene = list(xaxis = list(title = paste0("PC", input$pcaDims[1])),
                                             yaxis = list(title = paste0("PC", (input$pcaDims[2] - 1))),
                                             zaxis = list(title = paste0("PC", input$pcaDims[2]))),
-                               legend = list(title=list(text='<b> Treatment </b>')))
+                               legend = list(title=list(text='<b> Treatment </b>'))) %>% 
+                config(displaylogo = F,
+                       showTips = F,
+                       scrollZoom = T,
+                       modeBarButtonsToRemove = list(
+                           'sendDataToCloud',
+                           'toImage',
+                           'autoScale2d',
+                           'resetScale2d',
+                           'hoverClosestCartesian',
+                           'hoverCompareCartesian',
+                           'pan2d',
+                           'zoomIn2d',
+                           'zoomOut2d'),
+                       modeBarButtonsToAdd = list(
+                           'drawopenpath',
+                           'eraseshape'))
         }
         
         
@@ -2200,7 +2261,7 @@ server <- function(session, input, output) {
             nb.cols <- uniqueN(diff_df[, "group"])
             mycolors <- c(colorRampPalette(brewer.pal(npals(input$palette), input$palette))(nb.cols))
             
-            p <- plot_ly(data = diff_df,
+            plot_ly(data = diff_df,
                          type = "scattergl",
                          x = ~`Fold-change`,
                          y = ~(-log10(FDR)),
@@ -2208,8 +2269,23 @@ server <- function(session, input, output) {
                          mode = "markers",
                          color = ~group,
                          colors = mycolors) %>%
-                layout(yaxis = list(type = "log1p", showgrid = T,  ticks = "outside", autorange = T))
-            p
+                layout(yaxis = list(type = "log1p", showgrid = T,  ticks = "outside", autorange = T)) %>% 
+                config(displaylogo = F,
+                       showTips = F,
+                       scrollZoom = T,
+                       modeBarButtonsToRemove = list(
+                           'sendDataToCloud',
+                           'toImage',
+                           'autoScale2d',
+                           'resetScale2d',
+                           'hoverClosestCartesian',
+                           'hoverCompareCartesian',
+                           'pan2d',
+                           'zoomIn2d',
+                           'zoomOut2d'),
+                       modeBarButtonsToAdd = list(
+                           'drawopenpath',
+                           'eraseshape'))
         }
 
     })

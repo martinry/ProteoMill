@@ -13,7 +13,8 @@ $( window ).ready(function() {
     anime.timeline({loop: false})
       .add({
         targets: '.ml9 .letter',
-        scale: [0.25, 1],
+        scale: [0.1, 1],
+        opacity: [0.6, 1],
         easing: "easeInOutQuart",
         duration: 1400,
         elasticity: 500,
