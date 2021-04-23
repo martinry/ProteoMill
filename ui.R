@@ -128,8 +128,8 @@ body <- dashboardBody(
         tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Spectral+SC"),
         tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Poiret+One"),
         tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Open+Sans"),
-        tags$script(src = "https://cdnjs.cloudflare.com/ajax/libs/animejs/2.0.2/anime.min.js") # To do: keep local copy
-        
+        tags$script(src = "https://cdnjs.cloudflare.com/ajax/libs/animejs/2.0.2/anime.min.js"), # To do: keep local copy
+        tags$script(inactivity)
     ),
     
     # Clickable notifications

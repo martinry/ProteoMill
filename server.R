@@ -41,10 +41,10 @@ require(XML)
 require(rmarkdown)
 require(R.utils)
 require(knitr)
+
+# Data encryption
 require(safer)
 require(digest)
-
-
 
 # Generic functions ----
 
@@ -122,6 +122,8 @@ fpaths <- function(s) {
     )
 }
 
+
+
 # org_lib <- function(s) {
 #     switch(s,
 #            "Homo sapiens|HSA|9606" = EnsDb("lib/9606/Homo_sapiens.GRCh38.103.sqlite"),
@@ -148,7 +150,22 @@ server <- function(session, input, output) {
     
     session$allowReconnect(TRUE)
     
-    options(shiny.maxRequestSize=30*1024^2) 
+    options(shiny.maxRequestSize=30*1024^2)
+    
+    observeEvent(input$timeOut, { 
+        print(paste0("Session (", session$token, ") timed out at: ", Sys.time()))
+        showModal(modalDialog(
+            title = "Timeout",
+            paste("Session timeout due to", input$timeOut, "inactivity -", Sys.time()),
+            footer = NULL
+        ))
+        session$close()
+    })
+    
+    points <- eventReactive(input$recalc, {
+        cbind(rnorm(40) * 2 + 13, rnorm(40) + 48)
+    }, ignoreNULL = FALSE)
+    
     
     # Remove text "Loading packages, please wait..."
     removeUI(selector = "#notifications-wrapper > span")
