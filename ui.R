@@ -161,8 +161,8 @@ body <- dashboardBody(
                       tags$video(playsinline = "playsinline", loop = "true", autoplay = "autoplay", muted = "muted", width="60%", height="auto",
                                  tags$source(src = "media1.mp4", type="video/mp4")))
     ),
-    tags$script(src = "custom.js?v=1.0"),
-    tags$script(src = "animate-notifs.js?v=1.0"),
+    tags$script(src = "custom.js?v=1.1"),
+    tags$script(src = "animate-notifs.js?v=1.1"),
     
     tabItems(
         # File input ----
