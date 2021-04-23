@@ -1494,8 +1494,6 @@ server <- function(session, input, output) {
     processSankey <- reactive({
         df <- pathway_vis()
         
-        assign("df2", df, envir = .GlobalEnv)
-        
         df <- df[TopReactomeName != "[No significant over-representation]"]
         
         UPREGULATED_genes <- df[`Fold-change` >= input$min_fc & FDR < input$min_pval]
