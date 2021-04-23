@@ -1494,16 +1494,27 @@ server <- function(session, input, output) {
     processSankey <- reactive({
         df <- pathway_vis()
         
+        assign("df2", df, envir = .GlobalEnv)
+        
         df <- df[TopReactomeName != "[No significant over-representation]"]
         
-        UPREGULATED_genes <- df[`Fold-change` > 0 & FDR <= 0.05]
-        DOWNREGULATED_genes <- df[`Fold-change` < 0 & FDR <= 0.05]
+        UPREGULATED_genes <- df[`Fold-change` >= input$min_fc & FDR < input$min_pval]
+        DOWNREGULATED_genes <- df[`Fold-change` < (input$min_fc * -1) & FDR < input$min_pval]
         
         df <- df[, c("Pathway_name", "TopReactomeName")]
-        df <- rbindlist(list(data.table(Pathway_name = UPREGULATED_genes[, TopReactomeName], TopReactomeName = "Up-regulated"),
-                             data.table(Pathway_name = DOWNREGULATED_genes[, TopReactomeName], TopReactomeName = "Down-regulated"),
-                             df))
         
+        if(UPREGULATED_genes[, .N] == 0 & DOWNREGULATED_genes[, .N] == 0) {
+            return(NULL)
+        } else if(UPREGULATED_genes[, .N] == 0 & DOWNREGULATED_genes[, .N] > 0) {
+            df <- data.table(Pathway_name = UPREGULATED_genes[, TopReactomeName], TopReactomeName = "Up-regulated")
+        } else if(UPREGULATED_genes[, .N] > 0 & DOWNREGULATED_genes[, .N] == 0) {
+            df <- data.table(Pathway_name = DOWNREGULATED_genes[, TopReactomeName], TopReactomeName = "Down-regulated")
+        } else {
+            df <- rbindlist(list(data.table(Pathway_name = UPREGULATED_genes[, TopReactomeName], TopReactomeName = "Up-regulated"),
+                                 data.table(Pathway_name = DOWNREGULATED_genes[, TopReactomeName], TopReactomeName = "Down-regulated"),
+                                 df))
+        }
+
         links <- df[, .N, by = c(names(df))]
         colnames(links) <- c("target", "source", "value")
         
@@ -1513,7 +1524,6 @@ server <- function(session, input, output) {
         links$target <- match(links$target, nodes$name) - 1
         
         return( list("links" = links, "nodes" = nodes) )
-        
         
     })
     
