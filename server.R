@@ -162,9 +162,12 @@ server <- function(session, input, output) {
         session$close()
     })
     
-    points <- eventReactive(input$recalc, {
-        cbind(rnorm(40) * 2 + 13, rnorm(40) + 48)
-    }, ignoreNULL = FALSE)
+    # This code will be run after the client has disconnected to clean up memory
+    session$onSessionEnded(function() {
+        
+        rm( list = ls()[!ls() %in% c("convertColumns", "history", "ora", "inactivity", "timeoutMinutes")] ) 
+        
+    })
     
     
     # Remove text "Loading packages, please wait..."

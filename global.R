@@ -12,7 +12,7 @@ assign("convertColumns", convertColumns, envir = .GlobalEnv)
 
 # User timeout ----
 
-timeoutMinutes <- 5
+timeoutMinutes <- 5/60
 
 inactivity <- sprintf("function idleTimer() {
 var t = setTimeout(logout, %s);
