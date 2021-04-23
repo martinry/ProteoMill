@@ -1491,21 +1491,20 @@ server <- function(session, input, output) {
         }
     })
     
-    output$sankey <- renderSankeyNetwork({
-        res <- pathways$v$res
+    processSankey <- reactive({
+        df <- pathway_vis()
         
-        df <- pathways$v$res[Pathway_name != "[No significant over-representation]"]
+        df <- df[TopReactomeName != "[No significant over-representation]"]
         
-        UPREGULATED_genes <- df[logFC >= 0 & P.Value <= 0.05]
-        DOWNREGULATED_genes <- df[logFC < 0 & P.Value <= 0.05]
-        
+        UPREGULATED_genes <- df[`Fold-change` > 0 & FDR <= 0.05]
+        DOWNREGULATED_genes <- df[`Fold-change` < 0 & FDR <= 0.05]
         
         df <- df[, c("Pathway_name", "TopReactomeName")]
         df <- rbindlist(list(data.table(Pathway_name = UPREGULATED_genes[, TopReactomeName], TopReactomeName = "Up-regulated"),
                              data.table(Pathway_name = DOWNREGULATED_genes[, TopReactomeName], TopReactomeName = "Down-regulated"),
                              df))
         
-        links <- setDT(df)[, .N, by = c(names(df))]
+        links <- df[, .N, by = c(names(df))]
         colnames(links) <- c("target", "source", "value")
         
         nodes <- data.frame(name=unique(c(links$source, links$target)))
@@ -1513,14 +1512,22 @@ server <- function(session, input, output) {
         links$source <- match(links$source, nodes$name) - 1
         links$target <- match(links$target, nodes$name) - 1
         
-        sankeyNetwork(Links = links, Nodes = nodes, Source = "source",
-                      Target = "target", Value = "value", NodeID = "name",
-                      fontFamily = "sans-serif",
-                      fontSize = 10, nodeWidth = 60, sinksRight = F)
+        return( list("links" = links, "nodes" = nodes) )
         
         
+    })
+    
+    output$sankey <- renderSankeyNetwork({
         
+        if(!is.null(pathways$UPREGULATED_pathways)){
         
+            s <- processSankey()
+            
+            sankeyNetwork(Links = s$links, Nodes = s$nodes, Source = "source",
+                          Target = "target", Value = "value", NodeID = "name",
+                          fontFamily = "sans-serif",
+                          fontSize = 10, nodeWidth = 60, sinksRight = F)
+        }
     })
 
 
