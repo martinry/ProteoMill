@@ -422,7 +422,9 @@ body <- dashboardBody(
                            box(title = "Expression levels",
                                width = NULL,
                                shinycssloaders::withSpinner(plotOutput("violinplot"), type = 5, color = "#e80032dd", id = "ViolinSpinner", size = 1),
-                               radioButtons("violintype", "", choices = list("By condition" = 1, "By sample" = 2), inline = T)
+                               radioButtons("violintype", "", choices = list("By treatment" = 1, "By sample" = 2), inline = T),
+                               bsTooltip("violinplot", "Violin plots combine box plots and kernal density plots and describes the distribution patterns of your dataset.",
+                                         "left", options = list(container = "body"))
                            ))
                 )),
         
@@ -440,15 +442,17 @@ body <- dashboardBody(
                                br(),
                                numericInput("missingvalues", label = "",
                                             min = 0, max = 9999, value = 1), # max = number of samples / conditions
+                               bsTooltip("missingvalues", "If a protein has greater number of missing values than set threshold in ANY treatment, it will be removed.",
+                                         "right", options = list(container = "body")),
                                actionButton("setcutoff", "Set cutoff")
                            )
                     ),
                     column(width = 8,
                            box(
                                width = NULL,
-                               status = "warning",
-                               solidHeader = F,
-                               plotOutput("nafreq")
+                               plotOutput("nafreq"),
+                               bsTooltip("nafreq", "This plot informs us of how many proteins (y-axis) are affected by a certain number of missing values (x-axis).",
+                                         "left", options = list(container = "body"))
                            )
                     )
                 )
@@ -594,11 +598,12 @@ body <- dashboardBody(
                            )
                     ),
                     column(width = 9,
-                           shinydashboard::box(
+                           shinydashboard::box(width = NULL,
                                #shinycssloaders::withSpinner(, type = 5, color = "#e80032dd", id = "PCASpinner", size = 1),
                                plotly::plotlyOutput("PCAplots", width = "95%", height = "500px"),
                                shinycssloaders::withSpinner(plotOutput("scree", height = "250px"), type = 5, color = "#e80032dd", id = "ScreeSpinner", size = 1),
-                               width = NULL)
+                               bsTooltip("scree", "This plot tells us the number of components that are of relevance to our PCA. Each principal component in the screen plot is less informative than the previous one in terms of how much variation is explained. What we are typically looking for is a steep drop to be able to determine where which principal components are of value to our analysis.",
+                                         "left", options = list(container = "body")))
                     ))),
         
         tabItem(tabName = "samplecorr",
@@ -653,8 +658,11 @@ body <- dashboardBody(
                                                           "DESeq2 version 3.10" = 2),
                                            selected = 1),
                                bsTooltip("setDEengine", "Limma and DESeq2 are common tools for differential expression. If you are unsure what to choose, a general guideline is that DESeq2 is better suited for RNA-seq data, while limma is more appropriate for MS-proteomics and microarray data.",
-                                         "right", options = list(container = "body")),
-                               radioButtons("diffexppairing", "Pairing", choices = list("Paired" = 1, "Unpaired" = 2), inline = T, selected = 2))
+                                         "left", options = list(container = "body")),
+                               radioButtons("diffexppairing", "Pairing", choices = list("Paired" = 1, "Unpaired" = 2), inline = T, selected = 2),
+                               bsTooltip("diffexppairing", "Should the statistical test adjust for paired samples?",
+                                         "left", options = list(container = "body"))
+                               )
                            )
                 )
                 
@@ -665,33 +673,30 @@ body <- dashboardBody(
                 fluidRow(
                     column(width = 6,
                            box(width = NULL,
-                               helpText("Display only proteins that have:"),
+                               helpText("Filter table by:"),
                                br(),
-                               numericInput("diffexp_limit_fc", "Abs. log2 fold-change greater than or equal to", min = 0, max = 50, value = 0, step = .5),
-                               numericInput("diffexp_limit_pval", "Adj. P-value less than", min = 0, max = 1, value = 1, step = .1),
-                               bsTooltip("diffexp_limit_fc", "Should PCA adjust for paired samples?",
+                               numericInput("diffexp_limit_fc", "Fold-change >=", min = 0, max = 50, value = 0, step = .5),
+                               numericInput("diffexp_limit_pval", "FDR <", min = 0, max = 1, value = 1, step = .1),
+                               bsTooltip("diffexp_limit_fc", "Filter table to only show proteins with an absolute log2 fold-change greater than or equal to set value.",
                                          "right", options = list(container = "body")),
-                               bsTooltip("diffexp_limit_pval", "Should PCA adjust for paired samples?",
+                               bsTooltip("diffexp_limit_pval", "Filter table to only show proteins with adjusted P-value (FDR) less than set value.",
                                          "right", options = list(container = "body"))
                            ),
                            tabBox(width = NULL,
                                   tabPanel("Summary statistics", tableOutput("diffexptable_summary")),
                                   tabPanel("Up-regulated proteins", DT::dataTableOutput("diffexptable_up")),
                                   tabPanel("Down-regulated proteins", DT::dataTableOutput("diffexptable_down")),
-                                  bsTooltip("diffexptable_summary", "Should PCA adjust for paired samples?",
+                                  bsTooltip("diffexptable_summary", "Summary statistics from differential expression.",
                                             "right", options = list(container = "body")),
-                                  bsTooltip("diffexptable_up", "Should PCA adjust for paired samples?",
+                                  bsTooltip("diffexptable_up", "Differential expression results sorted by up-regulation.",
                                             "right", options = list(container = "body")),
-                                  bsTooltip("diffexptable_down", "Should PCA adjust for paired samples?",
+                                  bsTooltip("diffexptable_down", "Differential expression results sorted by down-regulation.",
                                             "right", options = list(container = "body"))
-                                  
                                   )),
                     column(width = 6,
                            box(width = NULL,
                                shinycssloaders::withSpinner(plotlyOutput("dea_volcano", height = "602px"),
-                                                            type = 5, color = "#e80032dd", id = "VolcanoSpinner1", size = 1),
-                               bsTooltip("dea_volcano", "Should PCA adjust for paired samples?",
-                                         "bottom", options = list(container = "body"))
+                                                            type = 5, color = "#e80032dd", id = "VolcanoSpinner1", size = 1)
                            ))
                 )
                 
@@ -706,9 +711,19 @@ body <- dashboardBody(
                                selectInput(inputId = "pathdb", label = "Pathway database",
                                            choices = list("REACTOME" = 'REACTOME'),
                                            selected = 'REACTOME'),
-                               numericInput("min_fc", "Min log2 fold change", value = 0, min = 0, max = 50, step = .5),
-                               numericInput("min_pval", "Max adj. P-value", value = 0.05, min = 0, max = 1, step = .01),
-                               htmlOutput("number_of_genes")
+                               bsTooltip("pathdb", "The pathway we test enrichment against. Future updates may include additional databases, such as KEGG.",
+                                         "right", options = list(container = "body")),
+                               helpText("Include differentially expressed proteins with:"),
+                               numericInput("min_fc", "Fold-change >=", value = 0, min = 0, max = 50, step = .5),
+                               numericInput("min_pval", "FDR <", value = 0.05, min = 0, max = 1, step = .01),
+                               htmlOutput("number_of_genes"),
+                               bsTooltip("min_fc", "Include proteins with an absolute log2 fold-change greater than or equal to set value.",
+                                         "right", options = list(container = "body")),
+                               bsTooltip("min_fc", "Include proteins with an FDR less than set value.",
+                                         "right", options = list(container = "body")),
+                               bsTooltip("number_of_genes", "These are your proteins of interest that are applied in the pathway analysis.",
+                                         "right", options = list(container = "body"))
+                               
                            ),
                            
                            box(title = "Selected pathway info", width = NULL,
@@ -718,7 +733,26 @@ body <- dashboardBody(
                     column(width = 9,
                            tabBox(width = NULL,
                                   tabPanel("Enrichment of up-regulated proteins", DT::dataTableOutput("upregulated_pathways_table")),
-                                  tabPanel("Enrichment of down-regulated proteins", DT::dataTableOutput("downregulated_pathways_table")))
+                                  tabPanel("Enrichment of down-regulated proteins", DT::dataTableOutput("downregulated_pathways_table")),
+                                  bsTooltip("upregulated_pathways_table",
+                                            "ReactomeID - The pathway annotation database used here is called Reactome. ReactomeID is the unique identifier for a given pathway.
+                                             Pathway_name - This column displays the name of the pathway for which we have tested overrepresentation of our protein set.
+                                             TopReactomeName - Reactome organizes their pathways in a hierarchical structure. This column is the top-level parent of Pathway_name in that hierarchy. We include it here as a general biological categorization of the pathway.
+                                             q - This is the number of proteins from our subset (defined on the left) that overlap with proteins annotated to the pathway.
+                                             m - This is the total number of proteins annotated to the pathway.
+                                             p - The p-value is our evidence agains the null hypothesis for this test: there is no association between a pathway\\’s annotated proteins and the studied contrast.
+                                             p.adj - We have to correct for the fact that we repeat this test for each protein, so p.adj is how we decide which pathways are enriched (show association to the studied phenotype).",
+                                            "left", options = list(container = "body")),
+                                  bsTooltip("downregulated_pathways_table",
+                                            "ReactomeID - The pathway annotation database used here is called Reactome. ReactomeID is the unique identifier for a given pathway.
+                                             Pathway_name - This column displays the name of the pathway for which we have tested overrepresentation of our protein set.
+                                             TopReactomeName - Reactome organizes their pathways in a hierarchical structure. This column is the top-level parent of Pathway_name in that hierarchy. We include it here as a general biological categorization of the pathway.
+                                             q - This is the number of proteins from our subset (defined on the left) that overlap with proteins annotated to the pathway.
+                                             m - This is the total number of proteins annotated to the pathway.
+                                             p - The p-value is our evidence agains the null hypothesis for this test: there is no association between a pathway\\’s annotated proteins and the studied contrast.
+                                             p.adj - We have to correct for the fact that we repeat this test for each protein, so p.adj is how we decide which pathways are enriched (show association to the studied phenotype).",
+                                            "left", options = list(container = "body"))
+                                  )
                     )
                 )
                 ,
