@@ -12,7 +12,7 @@ assign("convertColumns", convertColumns, envir = .GlobalEnv)
 
 # User timeout ----
 
-timeoutMinutes <- 5/60
+timeoutMinutes <- 20
 
 inactivity <- sprintf("function idleTimer() {
 var t = setTimeout(logout, %s);
@@ -23,7 +23,7 @@ window.onscroll = resetTimer;    // catches scrolling
 window.onkeypress = resetTimer;  //catches keyboard actions
 
 function logout() {
-Shiny.setInputValue('timeOut', '%sm')
+Shiny.setInputValue('timeOut', '%s minutes of')
 }
 
 function resetTimer() {

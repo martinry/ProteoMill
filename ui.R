@@ -120,7 +120,7 @@ body <- dashboardBody(
     # Import css and js
     tags$head(
         tags$meta(name="google-site-verification", content="JC0Ph8rzlXWiAL6lWXnusIUEOhJSqf8u2yVzK5g2P04"),
-        tags$link(rel = "stylesheet", type = "text/css", href = "custom.css?v=1.1"),
+        tags$link(rel = "stylesheet", type = "text/css", href = "custom.css?v=1.2"),
         tags$link(rel = "stylesheet", type = "text/css", href = "https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"),
         tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Quicksand"),
         tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Exo+2:wght@100;900&display=swap"),

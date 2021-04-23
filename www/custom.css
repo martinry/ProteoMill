@@ -204,6 +204,7 @@
 
 
 #ss-connect-dialog {
+	display: none !important;
 	bottom: 30%!important;
     left: 50%!important;
     width: 460px !important;
@@ -238,6 +239,14 @@
 	
 	color:#000 !important;
 	text-align:center !important;
+}
+
+#ss-overlay {
+	display: none !important;
+}
+
+#shiny-disconnected-overlay {
+	display: none !important;
 }
 	
 .left-side, .main-sidebar, .content-wrapper, .main-footer, .right-side {
