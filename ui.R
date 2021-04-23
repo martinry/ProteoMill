@@ -719,7 +719,7 @@ body <- dashboardBody(
                                htmlOutput("number_of_genes"),
                                bsTooltip("min_fc", "Include proteins with an absolute log2 fold-change greater than or equal to set value.",
                                          "right", options = list(container = "body")),
-                               bsTooltip("min_fc", "Include proteins with an FDR less than set value.",
+                               bsTooltip("min_pval", "Include proteins with an FDR less than set value.",
                                          "right", options = list(container = "body")),
                                bsTooltip("number_of_genes", "These are your proteins of interest that are applied in the pathway analysis.",
                                          "right", options = list(container = "body"))
@@ -733,25 +733,7 @@ body <- dashboardBody(
                     column(width = 9,
                            tabBox(width = NULL,
                                   tabPanel("Enrichment of up-regulated proteins", DT::dataTableOutput("upregulated_pathways_table")),
-                                  tabPanel("Enrichment of down-regulated proteins", DT::dataTableOutput("downregulated_pathways_table")),
-                                  bsTooltip("upregulated_pathways_table",
-                                            "ReactomeID - The pathway annotation database used here is called Reactome. ReactomeID is the unique identifier for a given pathway.
-                                             Pathway_name - This column displays the name of the pathway for which we have tested overrepresentation of our protein set.
-                                             TopReactomeName - Reactome organizes their pathways in a hierarchical structure. This column is the top-level parent of Pathway_name in that hierarchy. We include it here as a general biological categorization of the pathway.
-                                             q - This is the number of proteins from our subset (defined on the left) that overlap with proteins annotated to the pathway.
-                                             m - This is the total number of proteins annotated to the pathway.
-                                             p - The p-value is our evidence agains the null hypothesis for this test: there is no association between a pathway\\’s annotated proteins and the studied contrast.
-                                             p.adj - We have to correct for the fact that we repeat this test for each protein, so p.adj is how we decide which pathways are enriched (show association to the studied phenotype).",
-                                            "left", options = list(container = "body")),
-                                  bsTooltip("downregulated_pathways_table",
-                                            "ReactomeID - The pathway annotation database used here is called Reactome. ReactomeID is the unique identifier for a given pathway.
-                                             Pathway_name - This column displays the name of the pathway for which we have tested overrepresentation of our protein set.
-                                             TopReactomeName - Reactome organizes their pathways in a hierarchical structure. This column is the top-level parent of Pathway_name in that hierarchy. We include it here as a general biological categorization of the pathway.
-                                             q - This is the number of proteins from our subset (defined on the left) that overlap with proteins annotated to the pathway.
-                                             m - This is the total number of proteins annotated to the pathway.
-                                             p - The p-value is our evidence agains the null hypothesis for this test: there is no association between a pathway\\’s annotated proteins and the studied contrast.
-                                             p.adj - We have to correct for the fact that we repeat this test for each protein, so p.adj is how we decide which pathways are enriched (show association to the studied phenotype).",
-                                            "left", options = list(container = "body"))
+                                  tabPanel("Enrichment of down-regulated proteins", DT::dataTableOutput("downregulated_pathways_table"))
                                   )
                     )
                 )
