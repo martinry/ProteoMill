@@ -440,9 +440,9 @@ body <- dashboardBody(
                                br(),
                                helpText("To proceed without removing any proteins with missing values, set the cutoff to a value higher than the number of samples / treatments"),
                                br(),
-                               numericInput("missingvalues", label = "",
+                               numericInput("missingValues", label = "",
                                             min = 0, max = 9999, value = 1), # max = number of samples / conditions
-                               bsTooltip("missingvalues", "If a protein has greater number of missing values than set threshold in ANY treatment, it will be removed.",
+                               bsTooltip("missingValues", "If a protein has greater number of missing values than set threshold in ANY treatment, it will be removed.",
                                          "right", options = list(container = "body")),
                                actionButton("setcutoff", "Set cutoff")
                            )
@@ -636,15 +636,15 @@ body <- dashboardBody(
                            box(width = NULL,
                                title = "Set contrasts", status = "primary", solidHeader = F,
                                helpText("Which treatments should be compared?"),
-                               selectInput("contrast1", label = "Condition 1",
-                                           choices = list("Condition1" = 1,
-                                                          "Condition2" = 2,
-                                                          "Condition3" = 3),
+                               selectInput("contrast1", label = "Treatment 1",
+                                           choices = list("Treatment1" = 1,
+                                                          "Treatment2" = 2,
+                                                          "Treatment3" = 3),
                                            selected = 1),
-                               selectInput("contrast2", label = "Condition 2",
-                                           choices = list("Condition1" = 1,
-                                                          "Condition2" = 2,
-                                                          "Condition3" = 3),
+                               selectInput("contrast2", label = "Treatment 2",
+                                           choices = list("Treatment1" = 1,
+                                                          "Treatment2" = 2,
+                                                          "Treatment3" = 3),
                                            selected = 2),
                                
                                actionButton("setContrast", "Select")

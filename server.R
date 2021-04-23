@@ -146,6 +146,8 @@ assign("convertColumns", convertColumns, envir = .GlobalEnv)
 # Server ----
 server <- function(session, input, output) {
     
+    session$allowReconnect(TRUE)
+    
     options(shiny.maxRequestSize=30*1024^2) 
     
     # Remove text "Loading packages, please wait..."
@@ -867,7 +869,7 @@ server <- function(session, input, output) {
             subsample_data()
             
             d <- cbind(maindata$udat@rawidentifiers, maindata$udat@raw)
-            data_wide <- subset_by_na(dataset = d, treatment = sampleinfo$samples$treatment, threshold = input$missingvalues)
+            data_wide <- subset_by_na(dataset = d, treatment = sampleinfo$samples$treatment, threshold = input$missingValues)
             
             ids <- data_wide[, 1:5]
             data_wide <- data_wide[, 6:ncol(data_wide)]
@@ -879,7 +881,7 @@ server <- function(session, input, output) {
             maindata$udat@identifiers <- ids
 
             updateTasks(text = "Set a filter", value = 100, color = "green", i = 0003)
-            updateNotifications(paste0("NA cutoff set to ", input$missingvalues, ".") ,"check-circle", "success")
+            updateNotifications(paste0("NA cutoff set to ", input$missingValues, ".") ,"check-circle", "success")
         } else {
             updateNotifications("Upload a dataset first.","exclamation-triangle", "danger")
         }
@@ -1843,6 +1845,8 @@ server <- function(session, input, output) {
     
     # Generate report ----
     
+    # Create token
+    
     generateToken <- reactive({
         
         mylist <- list("date" = format(Sys.time(), "%A %B %d %Y"),
@@ -1851,7 +1855,12 @@ server <- function(session, input, output) {
                        "REACTOMEDB" = getFilemd5sum(getlibfPaths(taxid = maindata$taxid, lib = "REACTOMEDB")),
                        "ORGDB" = getlibfPaths(taxid = maindata$taxid, lib = "ORGDB"),
                        "inFilemd5" = getFilemd5sum(maindata$fpath),
-                       "logData" = input$LogTransformData)
+                       "LogTransformData" = input$LogTransformData,
+                       "multilevelPCA" = input$multilevelPCA,
+                       "corMethod" = input$corMethod,
+                       "missingValues" = input$missingValues,
+                       "contrast1" = input$contrast1,
+                       "contrast2" = input$contrast2)
         
         mykey <- paste0(encrypt_object(mylist, key = "proteomill"), collapse = " ")
         
@@ -1909,7 +1918,7 @@ server <- function(session, input, output) {
                     
                     taxid <- token_decrypted$taxid
                     
-                    updateCheckboxInput(session = session, inputId = "LogTransformData", value = token_decrypted$logData)
+                    updateCheckboxInput(session = session, inputId = "LogTransformData", value = token_decrypted$LogTransformData)
                     updateSelectInput(session = session, inputId = "organism", selected = orgs[endsWith(orgs, as.character(taxid))])
                     
                     appMeta$token_decrypted <- token_decrypted
