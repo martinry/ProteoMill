@@ -14,7 +14,7 @@ if("Data summary" %in% input$p2){
             
             dat <- make_violin()
             
-            ggplot(dat, aes(x = sample, y = values, fill = samplename)) + 
+            ggplot(dat, aes(x = samplename, y = values, fill = samplename)) + 
                     geom_violin(trim = FALSE, scale = "width") +
                     geom_boxplot(width=0.1, fill="white") +
                     ggthemes::theme_clean() +
@@ -87,14 +87,14 @@ if("PCA 2D" %in% input$p2) {
                 geom_point(size = 5, aes(text = rownames(mydf))) +
                 xlab(paste0("PC", input$pcaDims[1])) +
                 ylab(paste0("PC", input$pcaDims[2])) +
-                scale_color_manual(values = app_meta$palette) +
+                scale_color_manual(values = appMeta$palette) +
                 theme_light() + theme(legend.title = element_blank()) -> p
         } else {
             ggplot(mydf, aes(pc1, pc2, colour = as.factor(si_treatment))) +
                 geom_point(size = 5, aes(text = rownames(mydf))) +
                 xlab(paste0("PC", input$pcaDims[1])) +
                 ylab(paste0("PC", input$pcaDims[2])) +
-                scale_color_manual(values = app_meta$palette) +
+                scale_color_manual(values = appMeta$palette) +
                 theme_light() + theme(legend.title = element_blank()) -> p
         }
     
@@ -184,7 +184,7 @@ if("Heatmap" %in% input$p2) {
 
 if("Differential expression" %in% input$p2) {
 	
-	cbind(udat@identifiers[, ..sampleinfo$sID], udat@deoutput)
+	cbind(maindata$udat@identifiers[, ..sampleinfo$sID], maindata$udat@deoutput)
 }
 
 

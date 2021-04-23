@@ -187,6 +187,8 @@ body <- dashboardBody(
                                                    size = "large",
                                                    
                                                    bsAlert("unsupportedOrganism"),
+                                                   bsAlert("invalidToken"),
+                                                   bsAlert("validToken"),
                                                    
                                                    fluidRow(
                                                        column(width = 6,
@@ -221,7 +223,12 @@ body <- dashboardBody(
                                                                   
                                                                   checkboxInput("LogTransformData", "Log₂-transform data", value = T),
                                                                   bsTooltip("LogTransformData", "Throughout the analysis, log-transformed data will be used. If your data is already log₂-transformed, uncheck this box.",
-                                                                            "right", options = list(container = "body"))
+                                                                            "left", options = list(container = "body")),
+
+                                                                  textAreaInput("inputToken", "Reproducibility token"),
+                                                                  actionButton("useInputToken", "Load experiment"),
+                                                                  bsTooltip("inputToken", "If you want to load settings from a previous experiment, enter the reproducibility token that was generated for that experiment. You can create a new token under \\'Generate report\\'.",
+                                                                            "left", options = list(container = "body"))
                                                                   
                                                               ))
                                                        
@@ -254,8 +261,7 @@ body <- dashboardBody(
                                                    bsAlert("fileHasWarning"),
                                                    bsAlert("fileFormattingError"),
                                                    bsAlert("checkRequirements"),
-                                                   
-                                                   
+                                                   bsAlert("md5Alert"),
                                                    
                                                    
                                                    fluidRow(
@@ -524,26 +530,48 @@ body <- dashboardBody(
         # Generate report
         
         tabItem(tabName = "file-export",
-                box(
-                    title = "Generate report", status = "primary", solidHeader = F,
-                    p(helpText("Exports generated content to an Rmarkdown document")),
-                    pickerInput(
-                        inputId = "p2",
-                        label = "",
-                        choices = list("Dataset options" = c("Data summary", "Missing values"),
-                                       "Inspect data" = c("PCA 2D", "PCA 3D", "Heatmap"),
-                                       "Differential analysis" = "Differential expression",
-                                       "Enrichment analysis" = c("Pathway enrichment", "Volcano plot", "Sankey diagram")),
-                        multiple = TRUE,
-                        options = list(
-                            `actions-box` = TRUE,
-                            `deselect-all-text` = "Deselect all",
-                            `select-all-text` = "Select all"
-                        )),
-                    
-                    downloadButton("downloadReport", "Generate report")
-                    
+                fluidRow(
+                    column(width = 6,
+                           box(width = NULL,
+                               title = "Generate report",
+                               p(helpText("Exports generated content to an Rmarkdown document")),
+                               pickerInput(
+                                   inputId = "p2",
+                                   label = "",
+                                   choices = list("Dataset options" = c("Data summary", "Missing values"),
+                                                  "Inspect data" = c("PCA 2D", "PCA 3D", "Heatmap"),
+                                                  "Differential analysis" = "Differential expression",
+                                                  "Enrichment analysis" = c("Pathway enrichment", "Volcano plot", "Sankey diagram")),
+                                   multiple = TRUE,
+                                   options = list(
+                                       `actions-box` = TRUE,
+                                       `deselect-all-text` = "Deselect all",
+                                       `select-all-text` = "Select all"
+                                   )),
+                               
+                               downloadButton("downloadReport", "Generate report")
+                               )
+                           ),
+                    column(width = 6,
+                           box(width = NULL,
+                               title = "Reproducibility token",
+                               textAreaInput("repToken", "Token", placeholder = "Your token will appear here."),
+                               actionButton("createToken", "Create token"),
+                               bsModalNoClose(id ="tokenModal",
+                                              title = "Please note", 
+                                              trigger = "noTrigger",
+                                              size = "medium",
+                                              p("This token is a snapshot of your current settings and databases currently used in ProteoMill.
+                                                  If you make any changes to the experiment after this token has been generated, the experiment may not be reproducible.
+                                                  To reproduce the experiment, an identical version of the input file must be used."),
+                                              p("Results may still deviate from the original experiment due to differences in package versions,
+                                                or issues loading the original settings.")
+                                              )
+                               )
+                        
+                    )
                 )
+                
         ),
         
         # Quality control: PCA: 2D, 3D

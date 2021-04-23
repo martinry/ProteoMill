@@ -1,12 +1,10 @@
 
 
 ora <- function(gene,
-                taxid = 9606,
                 database = NULL,
                 pAdjMethod = "BH") {
-
-
-  database <- fread(paste0("lib/", taxid, "/", taxid, "_REACTOME_low.tsv.gz"), sep = '\t', header = T)
+  
+  database <- fread(file.path(database), sep = '\t', header = T)
   
   gene <- gene[gene %in% database$UniprotID]
   

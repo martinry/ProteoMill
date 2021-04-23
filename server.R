@@ -41,6 +41,8 @@ require(XML)
 require(rmarkdown)
 require(R.utils)
 require(knitr)
+require(safer)
+require(digest)
 
 
 
@@ -89,6 +91,37 @@ npals <- function(s) {
     )
 }
 
+getFilemd5sum <- function(fp) {
+    fp <- file.path(fp)
+    return( digest::digest(object = fp, algo = "md5", file = T) )
+}
+
+getlibfPaths <- function(taxid, lib, version = "current", token = NULL) {
+    if(is.null(token)) {
+        if(version == "current") {
+            switch(lib,
+                   "STRINGDB" = paste0("lib/", taxid, "/", taxid, ".string.interactions.txt.gz"),
+                   "REACTOMEDB" = paste0("lib/", taxid, "/", taxid, "_REACTOME_low.tsv.gz"),
+                   "ORGDB" = if(taxid == 9606) {
+                       "EnsDb.Hsapiens.v86"
+                       } else if(taxid == 10090) {
+                       "EnsDb.Mmusculus.v79"
+                       } else if(taxid == 10116) { 
+                           "EnsDb.Rnorvegicus.v79"
+                           })
+        }
+    }
+    
+}
+
+fpaths <- function(s) {
+    switch(s,
+           "1" = "data/donors.uniprot.csv",
+           "2" = "data/E-GEOD-1675-A-AFFY-18-normalized-expressions.txt",
+           "3" = "data/E-GEOD-14226-A-AFFY-23-normalized-expressions.txt"
+    )
+}
+
 # org_lib <- function(s) {
 #     switch(s,
 #            "Homo sapiens|HSA|9606" = EnsDb("lib/9606/Homo_sapiens.GRCh38.103.sqlite"),
@@ -123,12 +156,13 @@ server <- function(session, input, output) {
     tasks <- reactiveValues()
     sampleinfo <- reactiveValues()
     maindata <- reactiveValues()
-    app_meta <- reactiveValues()
+    appMeta <- reactiveValues(hasToken = F)
     rcont <- reactiveValues()
     pathways <- reactiveValues()
-    plots <- reactiveValues()
+    libfPaths <- reactiveValues()
     
     sampleinfo$sID <- identifier(2) # Set UNIPROTID as default
+
     
     # Notifications ----
     
@@ -384,9 +418,9 @@ server <- function(session, input, output) {
         un <- uniqueN(sampleinfo$samples$treatment)
         
         if(uniqueN(sampleinfo$samples$treatment) > n) {
-            app_meta$palette <- colorRampPalette(brewer.pal(n, input$palette))(un)
+            appMeta$palette <- colorRampPalette(brewer.pal(n, input$palette))(un)
         } else if (uniqueN(sampleinfo$samples$treatment) <= n) {
-            app_meta$palette <- suppressWarnings(brewer.pal(un, input$palette)[1:un])
+            appMeta$palette <- suppressWarnings(brewer.pal(un, input$palette)[1:un])
         }
     })
     
@@ -469,7 +503,7 @@ server <- function(session, input, output) {
         
         all_proteins <- maindata$udat@identifiers[, "UNIPROTID"][[1]]
         
-        interactions <- data.table::fread(paste0("lib/", maindata$taxid, "/", maindata$taxid, ".string.interactions.txt.gz"))
+        interactions <- data.table::fread(file.path(getlibfPaths(maindata$taxid, "STRINGDB")))
         
         pathways$ints <- interactions[(Interactor1 %in% all_proteins) & (Interactor2 %in% all_proteins)]
         
@@ -598,16 +632,9 @@ server <- function(session, input, output) {
     
     demoData <- function(f = "1", taxid = 9606, logTransformData = T) {
         
-        fpaths <- function(s) {
-            switch(s,
-                   "1" = "data/donors.uniprot.csv",
-                   "2" = "data/E-GEOD-1675-A-AFFY-18-normalized-expressions.txt",
-                   "3" = "data/E-GEOD-14226-A-AFFY-23-normalized-expressions.txt"
-                   )
-            }
-        
         updateCheckboxInput(session = session, inputId = "LogTransformData", value = logTransformData)
         maindata$data_wide_tmp <- fread(fpaths(f), header = T)
+        maindata$fpath <- fpaths(f)
         
         
         
@@ -1226,8 +1253,8 @@ server <- function(session, input, output) {
                 UPREGULATED_genes <- contrast[logFC >= input$min_fc & adj.P.Val < input$min_pval, UNIPROTID]
                 DOWNREGULATED_genes <- contrast[logFC < (input$min_fc * -1) & adj.P.Val < input$min_pval, UNIPROTID]
                 
-                UPREGULATED_pathways <- ora(UPREGULATED_genes, taxid = maindata$taxid)
-                DOWNREGULATED_pathways<- ora(DOWNREGULATED_genes, taxid = maindata$taxid)
+                UPREGULATED_pathways <- ora(UPREGULATED_genes, database = getlibfPaths(taxid = maindata$taxid, lib = "REACTOMEDB"))
+                DOWNREGULATED_pathways<- ora(DOWNREGULATED_genes, database = getlibfPaths(taxid = maindata$taxid, lib = "REACTOMEDB"))
                 
                 if(!is.null(DOWNREGULATED_pathways) & !is.null(UPREGULATED_pathways)) {
                     UPREGULATED_pathways <- UPREGULATED_pathways@output
@@ -1486,12 +1513,12 @@ server <- function(session, input, output) {
         links$source <- match(links$source, nodes$name) - 1
         links$target <- match(links$target, nodes$name) - 1
         
-        plots$sankey <- sankeyNetwork(Links = links, Nodes = nodes, Source = "source",
-                                      Target = "target", Value = "value", NodeID = "name",
-                                      fontFamily = "sans-serif",
-                                      fontSize = 10, nodeWidth = 60, sinksRight = F)
+        sankeyNetwork(Links = links, Nodes = nodes, Source = "source",
+                      Target = "target", Value = "value", NodeID = "name",
+                      fontFamily = "sans-serif",
+                      fontSize = 10, nodeWidth = 60, sinksRight = F)
         
-        plots$sankey
+        
         
         
     })
@@ -1799,29 +1826,93 @@ server <- function(session, input, output) {
         
     })
     
+    # Generate report ----
     
-    # Contact ----
-    
-    observeEvent(input$sendcomment, {
+    generateToken <- reactive({
         
-        envelope <- paste(sep = "\n",
-                          paste("Date:", date()),
-                          paste("Name:", input$cname),
-                          paste("Email:", input$email),
-                          paste("Comment:", input$suggestion))
+        mylist <- list("date" = format(Sys.time(), "%A %B %d %Y"),
+                       "taxid" = maindata$taxid,
+                       "STRINGDB" = getFilemd5sum(getlibfPaths(taxid = maindata$taxid, lib = "STRINGDB")),
+                       "REACTOMEDB" = getFilemd5sum(getlibfPaths(taxid = maindata$taxid, lib = "REACTOMEDB")),
+                       "ORGDB" = getlibfPaths(taxid = maindata$taxid, lib = "ORGDB"),
+                       "inFilemd5" = getFilemd5sum(maindata$fpath),
+                       "logData" = input$LogTransformData)
         
-        if(nchar(envelope) > 5000){
-            updateNotifications(paste0("Too many characters."), "exclamation-triangle", "danger")
-            
-        } else {
-            fwrite(list(envelope), paste0("contact/", format(as.POSIXct(Sys.time()), "%F.%Hh%Mm%Ss"), ".txt"))
-            
-            updateNotifications(paste0("Contact form submitted. Thanks!"), "thumbs-up", "success") 
-        }
+        mykey <- paste0(encrypt_object(mylist, key = "proteomill"), collapse = " ")
+        
         
     })
     
-    # Generate report ----
+    observeEvent(input$createToken, {
+        
+        if(!is.null(maindata$udat) & !is.null(maindata$taxid)) {
+            
+            toggleModal(session = session, "tokenModal")
+        
+            mykey <- generateToken()
+            
+            updateTextAreaInput(session = session, inputId = "repToken", value = mykey)
+        } else {
+            updateNotifications("Upload a dataset first.","exclamation-triangle", "danger")
+        }
+
+
+    })
+    
+    observeEvent(input$useInputToken, {
+        
+        if(is.null(input$inputToken) | nchar(input$inputToken) < 100) {
+            createAlert(session, "invalidToken",
+                        content = "Invalid token. This token was not recognized.", append = T,
+                        style = "info")
+        } else {
+            
+            token <- input$inputToken
+            
+            token <- tryCatch({as.raw(as.hexmode(unlist(strsplit(token, " "))));},
+                           error = function(err){return(err)} ,
+                           warning = function(war){return(war)}, silent=F)
+            
+            if("error" %in% class(token)) {
+                
+                createAlert(session, "invalidToken",
+                            content = "Invalid token. This token was not recognized.", append = T,
+                            style = "info")
+            } else {
+                token_decrypted <- decrypt_object(token, "proteomill")
+                
+                if(class(token_decrypted) == "list") {
+                    
+                    createAlert(session, "validToken",
+                                content = "Experiment settings have been loaded.", append = T,
+                                style = "success")
+                    
+                    orgs <-     c("Homo sapiens | HSA | 9606",
+                                  "Mus musculus | MMU | 10090",
+                                  "Rattus norvegicus | RNO | 10116",
+                                  "Other")
+                    
+                    taxid <- token_decrypted$taxid
+                    
+                    updateCheckboxInput(session = session, inputId = "LogTransformData", value = token_decrypted$logData)
+                    updateSelectInput(session = session, inputId = "organism", selected = orgs[endsWith(orgs, as.character(taxid))])
+                    
+                    appMeta$token_decrypted <- token_decrypted
+                    appMeta$hasToken <- T
+                    
+                } else {
+                    createAlert(session, "invalidToken", title = "Invalid token",
+                                content = "This token was not recognized.", append = T,
+                                style = "info")
+                }
+            }
+        }
+        
+
+        
+        
+    })
+    
 
     output$downloadDemo <- downloadHandler(
         filename <- function() {
@@ -1878,7 +1969,7 @@ server <- function(session, input, output) {
         if("error" %in% class(dw)) {
             
             createAlert(session, "fileHasError", "exampleAlert",
-                        content = dw$message, append = FALSE,
+                        content = dw$message, append = T,
                         style = "danger")
             
             rm(dw)
@@ -1886,7 +1977,7 @@ server <- function(session, input, output) {
         } else if ("warning" %in% class(dw)) {
             
             createAlert(session, "fileHasWarning", "exampleAlert",
-                        content = dw$message, append = FALSE,
+                        content = dw$message, append = T,
                         style = "warning")
             
         } else {
@@ -1998,6 +2089,7 @@ server <- function(session, input, output) {
                 shinyjs::show("Modal2Spinner")
                 
                 all_missing <- upload_data(i = "auto")
+                maindata$fpath <- input$file1$datapath
                 
                 if(all_missing) {
                     createAlert(session, "noneConverted", "exampleAlert",
@@ -2119,7 +2211,7 @@ server <- function(session, input, output) {
                     geom_point(size = 5, aes(text = rownames(mydf))) +
                     xlab(paste0("PC", input$pcaDims[1])) +
                     ylab(paste0("PC", input$pcaDims[2])) +
-                    scale_color_manual(values = app_meta$palette) +
+                    scale_color_manual(values = appMeta$palette) +
                     theme_light() + theme(legend.title = element_blank())) -> p
         } else {
             suppressWarnings(
@@ -2127,7 +2219,7 @@ server <- function(session, input, output) {
                     geom_point(size = 5, aes(text = rownames(mydf))) +
                     xlab(paste0("PC", input$pcaDims[1])) +
                     ylab(paste0("PC", input$pcaDims[2])) +
-                    scale_color_manual(values = app_meta$palette) +
+                    scale_color_manual(values = appMeta$palette) +
                     theme_light() + theme(legend.title = element_blank())) -> p
         }
     })
@@ -2161,7 +2253,7 @@ server <- function(session, input, output) {
                                  text = rownames(p.pca$x),
                                  hoverinfo = "text",
                                  color = sampleinfo$samples$treatment,
-                                 colors = app_meta$palette
+                                 colors = appMeta$palette
             ) %>%
                 plotly::add_markers(marker=list(size = 15, line=list(width = 1, color = "black"))) %>%
                 plotly::layout(scene = list(xaxis = list(title = paste0("PC", input$pcaDims[1])),
@@ -2345,6 +2437,22 @@ server <- function(session, input, output) {
                 test_dupl_acc
             )
         )
+        
+        if(appMeta$hasToken == T) {
+            
+            current_md5 <- getFilemd5sum(input$file1$datapath)
+            
+            if(appMeta$token_decrypted$inFilemd5 == current_md5) {
+                createAlert(session, "md5Alert",
+                            content = "Uploaded file is identical to loaded experiment settings.", append = T,
+                            style = "success")
+            } else {
+                createAlert(session, "md5Alert",
+                            content = paste0("Uploaded file is not identical to loaded experiment settings. ", "MD5 should match: ", appMeta$token_decrypted$inFilemd5), append = T,
+                            style = "warning")
+            }
+            
+        }
         
         if(any(test_res$Passed == F)) {
             createAlert(session, "fileFormattingError", "exampleAlert",
