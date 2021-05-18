@@ -8,6 +8,15 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+##### May 18, 2021
+
+Version 1.0.4
+
+* UI Fix
+* Fixed links to socials
+* Improved **Identifier tools -> Convert IDs**. Can now show single matches or all matches in case of one-to-many mapping between identifier types.
+* Updated documentation (3.1 Identifier tools)
+
 ##### April 15, 2021
 
 * Easier data import

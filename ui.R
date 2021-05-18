@@ -25,7 +25,7 @@ notifications <- shinydashboard::dropdownMenuOutput("notifMenu")
 header <- dashboardHeader(
     help,
     notifications,
-    title = list(span(class = "no-touch", tags$a(href = "https://proteomill.com/", tags$img(id = "mill", class = "normal", src = "mill.png"), "ProteoMill"))),
+    title = list(span(id = "about", class = "no-touch", tags$a(href = "https://proteomill.com/", tags$img(id = "mill", class = "normal", src = "mill.png"), "ProteoMill"))),
     tags$li(class = "dropdown",
             id = "notifications-wrapper",
             tags$div(id = 'load-process', style = 'display: none; position: absolute; margin-left: 6px',
@@ -39,14 +39,14 @@ header <- dashboardHeader(
                                tags$span(class = "line line1"),
                                tags$span(class = "letters2")
                      )
-            )
+            ),
+            bsTooltip("about", "ProteoMill version 1.0.4.",
+                      "right", options = list(container = "body"))
     )
+
 )
 
 # Sidebar menu ----
-
-
-
 sidebar <- dashboardSidebar(
     tags$div(id = 'test', "Analysis", style = "
              letter-spacing: 4px;
@@ -105,7 +105,7 @@ sidebar <- dashboardSidebar(
     sidebarMenu(id = "sidebarmenu",
                 menuItem("News", tabName = "news", icon = icon("bullhorn"), badgeLabel = "Updates", badgeColor = "blue"),
                 menuItem("Documentation", icon = icon("book"),
-                         badgeLabel = "New", badgeColor = "red", href = "https://bookdown.org/martin_ryden/proteomill_documentation/"),
+                         href = "https://bookdown.org/martin_ryden/proteomill_documentation/"),
                 menuItem("Settings", tabName = "settings", icon = icon("sliders-h"))
                 
     ),
@@ -120,15 +120,11 @@ body <- dashboardBody(
     # Import css and js
     tags$head(
         tags$meta(name="google-site-verification", content="JC0Ph8rzlXWiAL6lWXnusIUEOhJSqf8u2yVzK5g2P04"),
-        tags$link(rel = "stylesheet", type = "text/css", href = "custom.css?v=1.2"),
+        tags$link(rel = "stylesheet", type = "text/css", href = "custom.css?v=1.04"),
         tags$link(rel = "stylesheet", type = "text/css", href = "https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"),
         tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Quicksand"),
-        tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Exo+2:wght@100;900&display=swap"),
-        tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Patrick+Hand"),
-        tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Spectral+SC"),
-        tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Poiret+One"),
         tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Open+Sans"),
-        tags$script(src = "https://cdnjs.cloudflare.com/ajax/libs/animejs/2.0.2/anime.min.js"), # To do: keep local copy
+        tags$script(src = "anime.min.js"),
         tags$script(inactivity)
     ),
     
@@ -154,6 +150,7 @@ body <- dashboardBody(
              tags$h1(class = "ml9",
                      tags$span(class = "text-wrapper",
                                tags$span(class = "letters", "ProteoMill"))),
+             tags$h6(class = "versiondiv", "ver. 1.0.4", style = "padding-left: 28em; margin-top: -28px; opacity: 0;"),
              tags$div(class = 'begindiv',
                       actionLink('removeBanner', label = 'LAUNCH')
              ),
@@ -161,8 +158,62 @@ body <- dashboardBody(
                       tags$video(playsinline = "playsinline", loop = "true", autoplay = "autoplay", muted = "muted", width="60%", height="auto",
                                  tags$source(src = "media1.mp4", type="video/mp4")))
     ),
-    tags$script(src = "custom.js?v=1.1"),
-    tags$script(src = "animate-notifs.js?v=1.1"),
+    tags$script(src = "custom.js?v=1.04"),
+    tags$script(src = "animate-notifs.js?v=1.04"),
+    
+    
+    bsModal(id ="citeModal",
+            title = "Cite ProteoMill", 
+            trigger = "cite",
+            size = "s",
+            
+            fluidRow(
+                column(width = 6,
+                       box(width = NULL,
+                           selectizeInput(inputId = "citeFormat", "Select format", choices = list(
+                               ".ris (Mendelay, Papers, Zotero)",
+                               ".enw (EndNote)",
+                               ".bibtex (BibText)",
+                               ".txt (Medlars, RefWorks)"
+                           ))
+                       )))),
+    bsModal(id = "settingsModal",
+            title = "Settings",
+            trigger = "settingstrigger",
+            size = "s",
+            
+            fluidRow(
+                column(width = 12,
+                       box(width = NULL,
+                           
+                           h6("Display options"),
+                           hr(),
+                           radioButtons(inputId = "toggleToolTip", label = "Display tool-tip", choices = list("Yes", "No"), selected = "Yes", inline = T),
+                           bsTooltip("toggleToolTip", "This is a tooltip and it\\'s currently visible.",
+                                     "right", options = list(container = "body")),
+                           img(src = "/img/palettes.png", width = "75%"),
+                           radioButtons(inputId = "palette", label = "Palette",
+                                        choices = list("Accent", "Dark2", "Paired", "Pastel1", "Pastel2", "Set1", "Set2", "Set3"), inline = T),
+                           br(),
+                           
+                           h6("Identifier type"),
+                           hr(),
+                           selectInput("displayIdentifier",
+                                       label = "Display ID labels as",
+                                       choices = list(
+                                           "UniProtKB" = 2,
+                                           "Entrez" = 3,
+                                           "Gene Symbol" = 4,
+                                           "Ensembl Gene ID" = 5,
+                                           "Ensembl Protein ID" = 6
+                                       ),
+                                       selected = 1),
+                           bsTooltip("displayIdentifier", "This option determines how identifiers are displayed (regardless of the identifier type used in your dataset). It can be changed at any time.",
+                                     "right", options = list(container = "body"))
+                       )
+                )
+            )
+            ),
     
     tabItems(
         # File input ----
@@ -209,11 +260,6 @@ body <- dashboardBody(
                                                                   bsTooltip("organism", "In order to use correct annotation databases, we need to know the species your data is derived from.",
                                                                             "right", options = list(container = "body"))
                                                                   
-                                                                  # selectInput("DataType", "Type of data",
-                                                                  #             list("Proteins",
-                                                                  #                  "Peptides + proteins")),
-                                                                  # bsTooltip("DataType", "ProteoMill supports peptide-level and protein-level data.",
-                                                                  #           "right", options = list(container = "body"))
                                                               )
                                                        ),
                                                        
@@ -222,7 +268,7 @@ body <- dashboardBody(
                                                                   title = "Data configuration",
                                                                   
                                                                   checkboxInput("LogTransformData", "Log₂-transform data", value = T),
-                                                                  bsTooltip("LogTransformData", "Throughout the analysis, log-transformed data will be used. If your data is already log₂-transformed, uncheck this box.",
+                                                                  bsTooltip("LogTransformData", "Throughout the analysis, log-transformed data will be used. If your data is already log₂-transformed, uncheck this box. Please note that DESeq2 is not available for already log₂-transformed data.",
                                                                             "left", options = list(container = "body")),
 
                                                                   textAreaInput("inputToken", "Reproducibility token"),
@@ -330,8 +376,6 @@ body <- dashboardBody(
                                                        
                                                        
                                                    )),
-                                                   # div(id = "previewDTInfo", tags$h4("Data preview"),
-                                                   #   style = "display:none"),
                                                    div(id = "previewDTInfo", style = "display:none;",
                                                        box(
                                                            width = NULL,
@@ -367,7 +411,6 @@ body <- dashboardBody(
                                                    actionButton("EndStep3", "Finish")
                                                    
                                            )
-                                           
                                            
                                   ),
                                   tabPanel(
@@ -475,9 +518,18 @@ body <- dashboardBody(
                                DT::DTOutput("obsolete"))
                     ),
                     column(width = 6,
-                           box(width = NULL,
+                           box(width = NULL, style = "height: 750px; overflow-y: auto;",
                                title = "Convert IDs",
-                               helpText("Insert a list of identifiers. Separators are automatically detected."),
+                               selectInput("organism2",
+                                           "Select organism",
+                                           list("Homo sapiens | HSA | 9606",
+                                                "Mus musculus | MMU | 10090",
+                                                "Rattus norvegicus | RNO | 10116")),
+                               radioButtons("multiVals", "Filter multiple matches", choices = list("Single", "All matches"), selected = "Single", inline = T),
+                               #helpText("Insert a list of supported identifiers. Separators are automatically detected."),
+                               tags$span("Insert a list of ", a("supported identifiers. ", href = "https://bookdown.org/martin_ryden/proteomill_documentation/additional-tools.html#identifier-tools", target = "_blank"), "Separators are automatically detected."),
+                               p(),
+                               actionLink("example1", "Example 1"), actionLink("example2", "Example 2"),
                                textAreaInput("idstoconvert", "", height = "150px"),
                                actionButton("convertids", label = "Convert IDs"),
                                p(),
@@ -839,52 +891,23 @@ body <- dashboardBody(
                            )
                     )
                 )
-        ),
-        
-        
-        tabItem(tabName = "settings",
-                fluidRow(
-                    column(width = 5,
-                           box(title = "Settings", width = NULL,
-                               
-                               h6("Display options"),
-                               hr(),
-                               radioButtons(inputId = "toggleToolTip", label = "Display tool-tip", choices = list("Yes", "No"), selected = "Yes", inline = T),
-                               bsTooltip("toggleToolTip", "This is a tooltip and it\\'s currently visible.",
-                                         "right", options = list(container = "body")),
-                               img(src = "/img/palettes.png", width = "75%"),
-                               radioButtons(inputId = "palette", label = "Palette",
-                                            choices = list("Accent", "Dark2", "Paired", "Pastel1", "Pastel2", "Set1", "Set2", "Set3"), inline = T),
-                               br(),
-                               
-                               h6("Identifier type"),
-                               hr(),
-                               selectInput("displayIdentifier",
-                                           label = "Display ID labels as",
-                                           choices = list(
-                                               "UniProtKB" = 2,
-                                               "Entrez" = 3,
-                                               "Gene Symbol" = 4,
-                                               "Ensembl Gene ID" = 5,
-                                               "Ensembl Protein ID" = 6
-                                           ),
-                                           selected = 1),
-                               bsTooltip("displayIdentifier", "This option determines how identifiers are displayed (regardless of the identifier type used in your dataset). It can be changed at any time.",
-                                         "right", options = list(container = "body")),
-                           )
-                    )
-                )
         )
     ),
+    
     div(class = "footer_wrapper",
         div(class = "sticky_footer",
-            div(span(shiny::icon("github", class = "padded-icons"),
-                     shiny::icon("twitter", class = "padded-icons"),
-                     shiny::icon("linkedin", class = "padded-icons"),
-                     shiny::icon("youtube", class = "padded-icons"),
-                     shiny::icon("at", class = "padded-icons"),
-                     style = "font-size: 14pt; line-height: 50px;")),
-            div(class = "gradient no-touch", span("© 2021 · ProteoMill | Martin Rydén", style = "font-size: 12pt; line-height: 50px; padding-left: 25px;"))))
+            div(class = "footer_links",
+                span(
+                    tags$a(href = "https://github.com/martinry/ProteoMill", title = "GitHub repo", target = "_blank", shiny::icon("github", class = "padded-icons")),
+                    # tags$a(href = "https://twitter.com/clinepi_lu?lang=en", title = "Clinical Epidemiology group at Lund University twitter", target = "_blank", shiny::icon("twitter", class = "padded-icons")),
+                    # tags$a(href = "https://www.linkedin.com/in/martin-ryd%C3%A9n-64039146/", title = "LinkedIn profile", target = "_blank", shiny::icon("linkedin", class = "padded-icons")),
+                    tags$a(href = "https://www.youtube.com/channel/UCkOYz0fEKQwy4yC5esLINJQ", title = "YouTube training videos (coming soon)", target = "_blank", shiny::icon("youtube", class = "padded-icons")),
+                    actionLink(inputId = "cite", shiny::icon("quote-right", label = "", title = "Cite us!", class = "padded-icons")),
+                    tags$a(href = "mailto:martin.ryden@med.lu.se", target = "_blank", title = "Send us an email", shiny::icon("at", class = "padded-icons")),
+                    style = "font-size: 14pt; line-height: 50px; color: #fff;")),
+            div(class = "gradient no-touch", span("© 2021 · ProteoMill | Martin Rydén", style = "font-size: 12pt; line-height: 50px; padding-left: 25px;"))
+            )
+        )
 )
 
 # Load dashboard page ----

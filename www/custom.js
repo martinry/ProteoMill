@@ -25,6 +25,11 @@ $( window ).ready(function() {
   }, 25);
 });
 
+$('.versiondiv').delay(380).queue(function (next) {
+    $(this).fadeTo( 1600 , 1);
+    next();
+});
+
 $('.begindiv').delay(1650).queue(function (next) {
     $(this).fadeTo( 1500 , 1);
     next();

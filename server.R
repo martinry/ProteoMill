@@ -364,6 +364,10 @@ server <- function(session, input, output) {
             }
         }
         
+        if(input$sidebarmenu == "settings") {
+            toggleModal(session = session, modalId = "settingsModal")
+        }
+        
     })
     
     # Clicked notification item
@@ -884,6 +888,7 @@ server <- function(session, input, output) {
     observeEvent(input$setcutoff, {
         
         if(!is.null(maindata$udat)) {
+            
             data_wide <- maindata$udat@main
             
             subsample_data()
@@ -902,6 +907,7 @@ server <- function(session, input, output) {
 
             updateTasks(text = "Set a filter", value = 100, color = "green", i = 0003)
             updateNotifications(paste0("NA cutoff set to ", input$missingValues, ".") ,"check-circle", "success")
+            
         } else {
             updateNotifications("Upload a dataset first.","exclamation-triangle", "danger")
         }
@@ -938,6 +944,7 @@ server <- function(session, input, output) {
     }
     
     observeEvent(input$setContrast, {
+
         if(!input$organism == "Other") {
             output$enrichment <- renderMenu({
                 menuItem("Enrichment analysis", icon = icon("flask"), href = NULL,
@@ -966,12 +973,13 @@ server <- function(session, input, output) {
         
         contrast <- diff_exp(contrasts, pairing)
         
-        rcont$contrasts <- contrasts
-        rcont$contrast <- contrast
-        
-        updateNotifications("A DE contrast has been set.","check-circle", "success")
-        updateTasks(text = "Set contrast", value = 100, color = "green", i = 0005)   
-        
+        if(!is.null(contrast)){
+            rcont$contrasts <- contrasts
+            rcont$contrast <- contrast
+            
+            updateNotifications("A DE contrast has been set.","check-circle", "success")
+            updateTasks(text = "Set contrast", value = 100, color = "green", i = 0005)
+        }
     })
     
     observeEvent(input$diffexppairing, {
@@ -1006,50 +1014,57 @@ server <- function(session, input, output) {
         
         if(input$setDEengine == 2) {
             
-            isolate(updateNotifications(paste0("This process may take a while. Please wait."), "info-circle", "info"))
-            
-            # Replace NA -> 0
-            for(j in seq_along(dw)){
-                set(dw, i = which(is.na(dw[[j]]) & is.numeric(dw[[j]])), j = j, value = 0)
-            }
-            
-            dw <- as.matrix(dw)
-            
-            sid <- sampleinfo$sID
-            
-            rn <- as.character(maindata$udat@identifiers[, ..sid][[1]])
-            
-            rownames(dw) <- rn
-            
-            if(pairing == 1) {
-                # Paired
+            if(input$LogTransformData == F) {
+                isolate(updateNotifications(paste0("DESeq2 needs raw counts as input."), "exclamation-triangle", "danger"))
                 
-                design <- DESeqDataSetFromMatrix(countData  = round(2**dw),
-                                                 colData    = sinfo,
-                                                 design     = ~ 0 + treatment + replicate)
-                
+                return(NULL)
             } else {
-                # Unpaired
-                design <- DESeqDataSetFromMatrix(countData  = round(2**dw),
-                                                 colData    = sinfo,
-                                                 design     = ~ 0 + treatment)
+                
+                isolate(updateNotifications(paste0("This process may take a while. Please wait."), "info-circle", "info"))
+                
+                # Replace NA -> 0
+                for(j in seq_along(dw)){
+                    set(dw, i = which(is.na(dw[[j]]) & is.numeric(dw[[j]])), j = j, value = 0)
+                }
+                
+                dw <- as.matrix(dw)
+                
+                sid <- sampleinfo$sID
+                
+                rn <- as.character(maindata$udat@identifiers[, ..sid][[1]])
+                
+                rownames(dw) <- rn
+                
+                if(pairing == 1) {
+                    # Paired
+                    
+                    design <- DESeqDataSetFromMatrix(countData  = round(dw),
+                                                     colData    = sinfo,
+                                                     design     = ~ 0 + treatment + replicate)
+                    
+                } else {
+                    # Unpaired
+                    design <- DESeqDataSetFromMatrix(countData  = round(dw),
+                                                     colData    = sinfo,
+                                                     design     = ~ 0 + treatment)
+                }
+                
+                dds <- DESeq(design)
+                
+                contrast <- results(dds, contrast=c("treatment", sub("treatment", "", input$contrast1), sub("treatment", "", input$contrast2)))
+                
+                colnames(contrast) <- c("baseMean", "logFC", "logFC.SE", "stat", "P.Value", "adj.P.Val")
+                
+                contrast <- suppressWarnings(data.table::as.data.table(contrast, keep.rownames = T))
+                
+                contrast <- contrast[, -"stat"]
+                
+                setcolorder(contrast, c("rn", "logFC", "logFC.SE", "baseMean", "P.Value", "adj.P.Val"))
+                
+                contrast <- contrast[order(contrast[, 1])]
+                
+                maindata$udat@deoutput <- contrast[, 2:ncol(contrast)]
             }
-            
-            dds <- DESeq(design)
-            
-            contrast <- results(dds, contrast=c("treatment", sub("treatment", "", input$contrast1), sub("treatment", "", input$contrast2)))
-            
-            colnames(contrast) <- c("baseMean", "logFC", "logFC.SE", "stat", "P.Value", "adj.P.Val")
-            
-            contrast <- suppressWarnings(data.table::as.data.table(contrast, keep.rownames = T))
-            
-            contrast <- contrast[, -"stat"]
-            
-            setcolorder(contrast, c("rn", "logFC", "logFC.SE", "baseMean", "P.Value", "adj.P.Val"))
-            
-            contrast <- contrast[order(contrast[, 1])]
-            
-            maindata$udat@deoutput <- contrast[, 2:ncol(contrast)]
             
         } else if(input$setDEengine == 1) {
             
@@ -1830,8 +1845,63 @@ server <- function(session, input, output) {
         
     })
     
+    observeEvent(input$example1, {
+        updateTextAreaInput(session = session, inputId = "idstoconvert",
+                            value = "CRTAC1
+RTN4
+NANS
+OLFML3
+CYTL1
+EMILIN3
+SLTM
+RMND1
+DNAH9
+EHD2
+FBLN5
+MARCO
+SEPT9
+CYB5R1
+ANGPTL2
+HDAC9
+PCOLCE2
+COL17A1
+COLQ
+TRAF3IP3
+CLEC11A
+RPH3A
+TLN1
+RBM8A
+HEBP2
+CLIC4")
+    })
+    
+    # Entrez example
+    observeEvent(input$example2, {
+        updateTextAreaInput(session = session, inputId = "idstoconvert",
+                            value = "396; 10109; 10092; 54829; 79058; 445; 55729; 498; 506; 513; 515; 563; 566; 567; 10409; 55212; 56898; 633; 645; 712; 713; 714; 338761; 715; 716; 717; 84417; 718; 110384692; 100293534; 722; 729; 730")
+    })
     
     observeEvent(input$convertids, {
+        
+        if(input$organism2 == "Homo sapiens | HSA | 9606") {
+            
+            library(EnsDb.Hsapiens.v86)
+            
+            maindata$organism2 <- EnsDb.Hsapiens.v86
+            
+        } else if(input$organism2 == "Mus musculus | MMU | 10090") {
+            
+            library(EnsDb.Mmusculus.v79)
+            
+            maindata$organism2 <- EnsDb.Mmusculus.v79
+            
+        } else if(input$organism2 == "Rattus norvegicus | RNO | 10116") {
+            
+            library(EnsDb.Rnorvegicus.v79)
+            
+            maindata$organism2 <- EnsDb.Rnorvegicus.v79
+            
+        }
         
         if(input$idstoconvert != "") {
             
@@ -1839,21 +1909,13 @@ server <- function(session, input, output) {
             
             keys <- strsplit(gsub("[^[:alnum:] ]", " ", keys), " +")[[1]]
             
-            tr1 <- AnnotationDbi::mapIds(maindata$organism, keys = keys, column = "SYMBOL", keytype = "UNIPROTID", multiVals = "first")
-            tr2 <- AnnotationDbi::mapIds(maindata$organism, keys = keys, column = "UNIPROTID", keytype = "ENTREZID", multiVals = "first")
-            tr3 <- AnnotationDbi::mapIds(maindata$organism, keys = keys, column = "UNIPROTID", keytype = "SYMBOL", multiVals = "first")
-            tr4 <- AnnotationDbi::mapIds(maindata$organism, keys = keys, column = "UNIPROTID", keytype = "GENEID", multiVals = "first")
-            tr5 <- AnnotationDbi::mapIds(maindata$organism, keys = keys, column = "UNIPROTID", keytype = "PROTEINID", multiVals = "first")
+            i <- infer_id(maindata$organism2, keys)
             
-            trs <- list(tr1[!is.na(tr1)],
-                        tr2[!is.na(tr2)],
-                        tr3[!is.na(tr3)],
-                        tr4[!is.na(tr4)],
-                        tr5[!is.na(tr5)])
+            tr_all <- data.table(AnnotationDbi::select(maindata$organism2, keys = keys, columns = convertColumns, keytype = i))
             
-            i <- convertColumns[which.max(lapply(lapply(trs, lengths), sum))]
-            
-            tr_all <- data.table(AnnotationDbi::select(maindata$organism, keys = keys, columns = convertColumns, keytype = i))
+            if(input$multiVals == "Single") {
+                tr_all <- tr_all[!duplicated(get(i))]
+            } 
             
             output$convertedids <- DT::renderDT({
                 tr_all
@@ -2431,6 +2493,8 @@ server <- function(session, input, output) {
         
         # Throw error if any false
         
+        assign("dt", dt, envir = .GlobalEnv)
+        
         # Columns check
         test_col <- ncol(dt) >= 5
         test_row <- dt[, .N] >= 5
@@ -2509,8 +2573,6 @@ server <- function(session, input, output) {
         }
         
     }
-    
-    
     
     
     

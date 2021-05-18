@@ -13,6 +13,7 @@
 	 padding: 5px;
 }
 
+
 #shiny-tab-interactions > div:nth-child(2) > div:nth-child(1) > div > div {
 	height: 255px !important;
 	overflow-y: scroll;
@@ -41,7 +42,6 @@
 .main-sidebar {
 	height: 865px;
 	min-height: inherit !important;
-	overflow-y: scroll;
 }
 
 #currentVal span {
@@ -84,9 +84,26 @@
 
 /* social icons */
 
+.fa-quote-right:hover {
+	color: #336699;
+    -o-transition:.1s;
+    -ms-transition:.1s;
+    -moz-transition:.1s;
+    -webkit-transition:.1s;
+    transition:.1s;
+}
+
+.fa-quote-right {
+	color: #fff;
+    -o-transition:.1s;
+    -ms-transition:.1s;
+    -moz-transition:.1s;
+    -webkit-transition:.1s;
+    transition:.1s;
+}
 
 .fa-at:hover {
-    color: #000;  /* #ea4c89; */
+    color: #a6b1b7;  /* #ea4c89; */
     -o-transition:.1s;
     -ms-transition:.1s;
     -moz-transition:.1s;
@@ -95,6 +112,7 @@
 }
 
 .fa-at{
+	color: #fff;
     -o-transition:.1s;
     -ms-transition:.1s;
     -moz-transition:.1s;
@@ -112,6 +130,7 @@
 }
 
 .fa-linkedin{
+	color: #fff;
     -o-transition:.1s;
     -ms-transition:.1s;
     -moz-transition:.1s;
@@ -129,6 +148,7 @@
 }
 
 .fa-youtube{
+	color: #fff;
     -o-transition:.1s;
     -ms-transition:.1s;
     -moz-transition:.1s;
@@ -146,6 +166,7 @@
 }
 
 .fa-twitter{
+	color: #fff;
     -o-transition:.1s;
     -ms-transition:.1s;
     -moz-transition:.1s;
@@ -154,7 +175,7 @@
 }
 
 .fa-github:hover {
-    color: #8aba56;
+    color: #8aba56 !important;
     -o-transition:.1s;
     -ms-transition:.1s;
     -moz-transition:.1s;
@@ -163,6 +184,7 @@
 }
 
 .fa-github{
+	color: #fff;
     -o-transition:.1s;
     -ms-transition:.1s;
     -moz-transition:.1s;
