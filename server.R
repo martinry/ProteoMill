@@ -1846,6 +1846,16 @@ server <- function(session, input, output) {
     })
     
     observeEvent(input$example1, {
+        
+        updateSelectInput(session = session,
+                          inputId = "organism2",
+                          label = "Select organism",
+                          choices = 
+                          list("Homo sapiens | HSA | 9606",
+                               "Mus musculus | MMU | 10090",
+                               "Rattus norvegicus | RNO | 10116"),
+                          selected = "Homo sapiens | HSA | 9606")
+        
         updateTextAreaInput(session = session, inputId = "idstoconvert",
                             value = "CRTAC1
 RTN4
@@ -1877,6 +1887,16 @@ CLIC4")
     
     # Entrez example
     observeEvent(input$example2, {
+        
+        updateSelectInput(session = session,
+                          inputId = "organism2",
+                          label = "Select organism",
+                          choices = 
+                              list("Homo sapiens | HSA | 9606",
+                                   "Mus musculus | MMU | 10090",
+                                   "Rattus norvegicus | RNO | 10116"),
+                          selected = "Homo sapiens | HSA | 9606")
+        
         updateTextAreaInput(session = session, inputId = "idstoconvert",
                             value = "396; 10109; 10092; 54829; 79058; 445; 55729; 498; 506; 513; 515; 563; 566; 567; 10409; 55212; 56898; 633; 645; 712; 713; 714; 338761; 715; 716; 717; 84417; 718; 110384692; 100293534; 722; 729; 730")
     })
@@ -2020,6 +2040,19 @@ CLIC4")
     })
     
 
+    
+    output$downloadRef <- downloadHandler(
+        filename <- function() {
+            input$citeFormat
+        },
+        
+        content <- function(file) {
+            print(input$citeFormat)
+            file.copy(file.path("reports/", input$citeFormat), file)
+        }
+    )
+    
+    
     output$downloadDemo <- downloadHandler(
         filename <- function() {
             paste0("Sample dataset ", input$selectDemoData, ".csv")

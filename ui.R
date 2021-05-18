@@ -168,14 +168,23 @@ body <- dashboardBody(
             size = "s",
             
             fluidRow(
-                column(width = 6,
+                column(width = 12,
                        box(width = NULL,
+                           
+                           tags$span("Martin Rydén, Martin Englund, Neserin Ali, ProteoMill: Efficient network-based functional analysis portal for proteomics data, Bioinformatics, 2021;, btab373,  ", a("https://doi.org/10.1093/bioinformatics/btab373", href = "https://doi.org/10.1093/bioinformatics/btab373", target = "_blank")),
+                           
+                           p(),
+                           
                            selectizeInput(inputId = "citeFormat", "Select format", choices = list(
-                               ".ris (Mendelay, Papers, Zotero)",
-                               ".enw (EndNote)",
-                               ".bibtex (BibText)",
-                               ".txt (Medlars, RefWorks)"
-                           ))
+                               ".ris (Mendelay, Papers, Zotero)" = "proteomill-citation.ris",
+                               ".enw (EndNote)" = "proteomill-citation.enw",
+                               ".bibtex (BibText)" = "proteomill-citation.bibtex",
+                               ".txt (Medlars, RefWorks)" = "proteomill-citation.txt"
+                           )),
+                           
+                           downloadButton('downloadRef',"Download")
+                           
+                           
                        )))),
     bsModal(id = "settingsModal",
             title = "Settings",
