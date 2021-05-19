@@ -36,6 +36,33 @@
 #
 #	Only some of these files (the ones described as processed) are necessary for running the ProteoMill app, but the raw files are necessary for updates.
 #
+
+#	! NB make sure your work directory is set appropriately !
+
+if(basename(getwd()) != "ProteoMill") stop('Please set working directory to "ProteoMill"')
+
+typewrite <- function(m, pace = .03, wait = 1) {
+	m <- unlist(strsplit(m, ""))
+	for(l in m){cat(l); Sys.sleep(pace)}
+	Sys.sleep(wait)
+	cat("\n")
+}
+
+# Some additional information about this script ----
+typewrite("This script will download all necessary external data (interaction data, pathway data, etc.) to your local machine.")
+typewrite("The total disk usage in lib/ will be about 430MB.")
+typewrite("=================================================", pace = 0.01)
+typewrite("This takes a while. When the script has finished and all files are downloaded, the following sound will play:", wait = 2)
+beepr::beep()
+typewrite("Ping!", wait = 2)
+typewrite("=================================================", pace = 0.01)
+typewrite("Starting in 3...")
+typewrite("2...")
+typewrite("1...")
+Sys.sleep(1)
+typewrite("=================================================", pace = 0.01)
+typewrite("Collecting data...")
+
 #	Now let's begin downloading and processing the files.
 
 # 	Function to download and gzip files ----
@@ -44,7 +71,9 @@
 #	If the file exists as .gz it will be returned as is.
 #	If the file does not exist it will be downloaded, gzipped (if not already) and returned.
 
-#	! NB make sure your work directory is set appropriately !
+library(data.table)
+library(R.utils)
+library(beepr)
 
 Bundle <- function (source_fp, subdir = "") {
 	
@@ -60,6 +89,8 @@ Bundle <- function (source_fp, subdir = "") {
 	} else if(file.exists(paste0(target_fp, ".gz"))) {
 		Bundle(paste0(target_fp, ".gz"), subdir)
 	} else {
+		print(paste0("File ", basename(source_fp), " not found in ", subdir))
+		print(paste0("Downloading from ", source_fp, "..."))
 		download.file(url = source_fp, destfile = target_fp, method = "auto", mode = "w")
 		Bundle(source_fp, subdir)
 	}
@@ -160,7 +191,7 @@ species_ <- data.table(sp = c("Homo sapiens", "Mus musculus", "Rattus norvegicus
 #	Iterate over our species dt and collect data with above function
 for(i in 1:species_[, .N]) {
 	
-	print(species_[i][[1]])
+	print(paste0("Preparing pathway files for ", species_[i][[1]], ". Please wait..."))
 	
 	hres <- hierarchy(species_[i][[1]])
 	
@@ -183,7 +214,6 @@ for(i in 1:species_[, .N]) {
 get_interactions <- function(taxid){
 	
 	subd <- file.path("lib", taxid)
-	
 
 	interactions <- fread(Bundle(paste0("https://stringdb-static.org/download/protein.actions.v11.0/", taxid, ".protein.actions.v11.0.txt.gz"), subdir = subd))
 	all_organisms <- fread(Bundle("https://string-db.org/mapping_files/uniprot/all_organisms.uniprot_2_string.2018.tsv.gz", subdir = "lib"), skip = 1, header = F)
@@ -256,7 +286,7 @@ species_ <- data.table(sp = c("Homo sapiens", "Mus musculus", "Rattus norvegicus
 # Interaction file. TBD merge these functions/loops.
 for(i in 1:species_[, .N]) {
 	
-	print(species_[i][[1]])
+	print(paste0("Preparing interaction files for ", species_[i][[1]], ". Please wait..."))
 	
 	taxid <- species_[i][[2]]
 	
@@ -273,7 +303,7 @@ for(i in 1:species_[, .N]) {
 # Description file. TBD merge these functions/loops.
 for(i in 1:species_[, .N]) {
 	
-	print(species_[i][[1]])
+	print(paste0("Preparing description files for ", species_[i][[1]], ". Please wait..."))
 	
 	taxid <- species_[i][[2]]
 	
@@ -285,3 +315,6 @@ for(i in 1:species_[, .N]) {
 	
 	fwrite(protein_info, file = file.path("lib", taxid, fname), compress = "gzip")
 }
+
+beepr::beep()
+print("All done!")

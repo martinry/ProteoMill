@@ -3,7 +3,6 @@ require(data.table)
 source("bin/All_Classes.R")
 source("bin/obsolete.R")
 source("bin/ora.R")
-source("bin/taxonomy.R")
 
 # Upload dataset ----
 
