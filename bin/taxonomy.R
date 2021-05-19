@@ -60,7 +60,7 @@ Bundle <- function (source_fp, subdir = "") {
 	} else if(file.exists(paste0(target_fp, ".gz"))) {
 		Bundle(paste0(target_fp, ".gz"), subdir)
 	} else {
-		download.file(url = source_fp, destfile = target_fp, mode = "curl")
+		download.file(url = source_fp, destfile = target_fp, method = "auto", mode = "w")
 		Bundle(source_fp, subdir)
 	}
 }

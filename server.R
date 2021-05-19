@@ -42,9 +42,11 @@ require(rmarkdown)
 require(R.utils)
 require(knitr)
 
-# Data encryption
+# Data encryption and user authentication
 require(safer)
 require(digest)
+require(googleAuthR)
+
 
 # Generic functions ----
 
@@ -172,6 +174,7 @@ server <- function(session, input, output) {
     
     # Remove text "Loading packages, please wait..."
     removeUI(selector = "#notifications-wrapper > span")
+    
     
     # Define reactive variables ----
     notifications <- reactiveValues()

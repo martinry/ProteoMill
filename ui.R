@@ -7,6 +7,7 @@ library(shinyBS)
 require(visNetwork)
 require(DT)
 require(plotly)
+library(googleAuthR)
 
 # Credit to https://stackoverflow.com/questions/50368690/change-backdrop-for-a-bsmodal-in-shiny-app#answer-50570420
 # for this solution
@@ -21,6 +22,7 @@ bsModalNoClose <-function(...) {
 # Notification menus ----
 help <- shinydashboard::dropdownMenuOutput("helpMenu")
 notifications <- shinydashboard::dropdownMenuOutput("notifMenu")
+
 
 header <- dashboardHeader(
     help,
@@ -120,7 +122,7 @@ body <- dashboardBody(
     # Import css and js
     tags$head(
         tags$meta(name="google-site-verification", content="JC0Ph8rzlXWiAL6lWXnusIUEOhJSqf8u2yVzK5g2P04"),
-        tags$link(rel = "stylesheet", type = "text/css", href = "custom.css?v=1.04"),
+        tags$link(rel = "stylesheet", type = "text/css", href = "custom.css?v=1.051"),
         tags$link(rel = "stylesheet", type = "text/css", href = "https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"),
         tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Quicksand"),
         tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Open+Sans"),
@@ -139,9 +141,6 @@ body <- dashboardBody(
                      link = number + link;
                      Shiny.onInputChange('linkClicked',link);
                      }")),
-    
-    
-
     
     
     # Intro animation

@@ -1,6 +1,16 @@
 
 /* force rewrite the skin min css */
 
+.btn-primary {
+    background-color: #1c5fb3 !important;
+    border-color: #015a8e !important;
+}
+
+.login-wrapper {
+	position: fixed;
+    right: 0;
+    margin: -8px 18px 0 0;
+}
 
 /* text hover effect */
 
