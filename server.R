@@ -45,8 +45,6 @@ require(knitr)
 # Data encryption and user authentication
 require(safer)
 require(digest)
-require(googleAuthR)
-
 
 # Generic functions ----
 
