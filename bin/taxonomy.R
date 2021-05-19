@@ -95,7 +95,7 @@ Bundle <- function (source_fp, subdir = "") {
 		Bundle(source_fp, subdir)
 	}
 }
-	
+
 
 
 
@@ -214,7 +214,7 @@ for(i in 1:species_[, .N]) {
 get_interactions <- function(taxid){
 	
 	subd <- file.path("lib", taxid)
-
+	
 	interactions <- fread(Bundle(paste0("https://stringdb-static.org/download/protein.actions.v11.0/", taxid, ".protein.actions.v11.0.txt.gz"), subdir = subd))
 	all_organisms <- fread(Bundle("https://string-db.org/mapping_files/uniprot/all_organisms.uniprot_2_string.2018.tsv.gz", subdir = "lib"), skip = 1, header = F)
 	
@@ -273,7 +273,7 @@ get_protein_descriptions <- function(taxid){
 	protein_info <- protein_info[, c(4,5)]
 	
 	return(protein_info)
-
+	
 }
 
 #	In case we didn't run part one, here is the species list again:
@@ -311,7 +311,7 @@ for(i in 1:species_[, .N]) {
 	
 	dir.create(file.path("lib", as.character(taxid)), showWarnings = F)
 	
-	fname <- paste0(taxid, "protein.info.txt.gz")
+	fname <- paste0(taxid, ".protein.info.txt.gz")
 	
 	fwrite(protein_info, file = file.path("lib", taxid, fname), compress = "gzip")
 }
