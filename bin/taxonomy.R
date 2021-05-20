@@ -91,7 +91,7 @@ Bundle <- function (source_fp, subdir = "") {
 	} else {
 		print(paste0("File ", basename(source_fp), " not found in ", subdir))
 		print(paste0("Downloading from ", source_fp, "..."))
-		download.file(url = source_fp, destfile = target_fp, method = "auto", mode = "w")
+		download.file(url = source_fp, destfile = target_fp, method = "auto", mode = "wb")
 		Bundle(source_fp, subdir)
 	}
 }
