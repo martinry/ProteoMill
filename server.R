@@ -2527,8 +2527,6 @@ CLIC4")
         
         # Throw error if any false
         
-        assign("dt", dt, envir = .GlobalEnv)
-        
         # Columns check
         test_col <- ncol(dt) >= 5
         test_row <- dt[, .N] >= 5
