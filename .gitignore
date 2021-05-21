@@ -6,3 +6,4 @@
 *.feather
 contact/*
 *.sqlite
+.DS_Store
