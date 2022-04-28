@@ -10,9 +10,6 @@ library(S4Vectors)
 library(AnnotationDbi)
 library(GenomeInfoDb)
 library(GenomicRanges)
-# library(GenomicFeatures)
-# library(AnnotationFilter)
-# library(ensembldb)
 
 # Plotting/UI
 library(heatmaply)
@@ -45,111 +42,14 @@ require(knitr)
 # Data encryption and user authentication
 require(safer)
 require(digest)
+library(googleAuthR)
 
-# Generic functions ----
-
-separator <- function(s) {
-    switch(s,
-           "1" = "auto",
-           "2" = ",",
-           "3" = ";",
-           "4" = "\t")
-}
-
-identifier <- function(i) {
-    switch(i,
-           "1" = "auto",
-           "2" = "UNIPROTID",
-           "3" = "ENTREZID",
-           "4" = "SYMBOL",
-           "5" = "GENEID",
-           "6" = "PROTEINID")
-}
-
-get_delim <- function(c){
-    if(grepl("\n", c)){
-        return("\n")
-    } else if(grepl(",", c)){
-        return(",")
-    } else if(grepl(";", c)){
-        return(";")
-    } else {
-        return ("None")
-    }
-}
-
-npals <- function(s) {
-    switch(s,
-           "Accent"	= 8,
-           "Dark2" = 8,
-           "Paired" = 12,
-           "Pastel1" = 9,
-           "Pastel2" = 8,
-           "Set1" =	9,
-           "Set2" =	8,
-           "Set3" =	12
-    )
-}
-
-getFilemd5sum <- function(fp) {
-    fp <- file.path(fp)
-    return( digest::digest(object = fp, algo = "md5", file = T) )
-}
-
-getlibfPaths <- function(taxid, lib, version = "current", token = NULL) {
-    if(is.null(token)) {
-        if(version == "current") {
-            switch(lib,
-                   "STRINGDB" = paste0("lib/", taxid, "/", taxid, ".string.interactions.txt.gz"),
-                   "REACTOMEDB" = paste0("lib/", taxid, "/", taxid, "_REACTOME_low.tsv.gz"),
-                   "ORGDB" = if(taxid == 9606) {
-                       "EnsDb.Hsapiens.v86"
-                       } else if(taxid == 10090) {
-                       "EnsDb.Mmusculus.v79"
-                       } else if(taxid == 10116) { 
-                           "EnsDb.Rnorvegicus.v79"
-                           })
-        }
-    }
-    
-}
-
-fpaths <- function(s) {
-    switch(s,
-           "1" = "data/donors.uniprot.csv",
-           "2" = "data/E-GEOD-1675-A-AFFY-18-normalized-expressions.txt",
-           "3" = "data/E-GEOD-14226-A-AFFY-23-normalized-expressions.txt"
-    )
-}
-
-
-
-# org_lib <- function(s) {
-#     switch(s,
-#            "Homo sapiens|HSA|9606" = EnsDb("lib/9606/Homo_sapiens.GRCh38.103.sqlite"),
-#            "Bos taurus|BTA|9913" = EnsDb("lib/9913/Bos_taurus_hybrid.UOA_Angus_1.103.sqlite"),
-#            "Caenorhabditis elegans|CEL|6239" = EnsDb("lib/6239/Caenorhabditis_elegans.WBcel235.103.sqlite"),
-#            "Danio rerio|DRE|7955" = EnsDb("lib/7955/Danio_rerio.GRCz11.103.sqlite"),
-#            "Drosophila melanogaster|DME|7227" = EnsDb("lib/7227/Drosophila_melanogaster.BDGP6.32.103.sqlite"),
-#            "Gallus gallus|GGA|9031" = EnsDb("lib/9031/Gallus_gallus.GRCg6a.103.sqlite"),
-#            "Mus musculus|MMU|10090" = EnsDb("lib/10090/Mus_musculus_wsbeij.WSB_EiJ_v1.103.sqlite"),
-#            "Rattus norvegicus|RNO|10116" = EnsDb("lib/10116/Rattus_norvegicus.Rnor_6.0.103.sqlite"),
-#            "Saccharomyces cerevisiae|SCE|4932" = EnsDb("lib/4932/Saccharomyces_cerevisiae.R64-1-1.103.sqlite"),
-#            "Sus scrofa|SSC|9823" = EnsDb("lib/9823/Sus_scrofa_wuzhishan.minipig_v1.0.103.sqlite"),
-#            "Xenopus tropicalis|XTR|8364" = EnsDb("lib/8364/Xenopus_tropicalis.Xenopus_tropicalis_v9.1.103.sqlite")
-#     )
-# }
-
-# Keep only in global.R?
-convertColumns <- c("UNIPROTID", "ENTREZID", "SYMBOL", "GENEID", "PROTEINID")
-assign("convertColumns", convertColumns, envir = .GlobalEnv)
 
 
 # Server ----
 server <- function(session, input, output) {
     
     session$allowReconnect(TRUE)
-    
     options(shiny.maxRequestSize=30*1024^2)
     
     observeEvent(input$timeOut, { 
@@ -164,11 +64,8 @@ server <- function(session, input, output) {
     
     # This code will be run after the client has disconnected to clean up memory
     session$onSessionEnded(function() {
-        
         rm( list = ls()[!ls() %in% c("convertColumns", "history", "ora", "inactivity", "timeoutMinutes")] ) 
-        
     })
-    
     
     # Remove text "Loading packages, please wait..."
     removeUI(selector = "#notifications-wrapper > span")
@@ -179,13 +76,13 @@ server <- function(session, input, output) {
     tasks <- reactiveValues()
     sampleinfo <- reactiveValues()
     maindata <- reactiveValues()
-    appMeta <- reactiveValues(hasToken = F)
+    appMeta <- reactiveValues(hasToken = F, signInButtonClicked = F)
     rcont <- reactiveValues()
     pathways <- reactiveValues()
     libfPaths <- reactiveValues()
     
     sampleinfo$sID <- identifier(2) # Set UNIPROTID as default
-
+    
     
     # Notifications ----
     
@@ -323,7 +220,7 @@ server <- function(session, input, output) {
         }
         
         setIcon <- function() {
-            return(status)
+            return(paste0("fa fa-", icon, " text-", status))
         }
         
         session$sendCustomMessage("background-color", setMessage())
@@ -331,6 +228,83 @@ server <- function(session, input, output) {
         
     }
     
+    # Authentication ----
+    
+    sign_ins <- shiny::callModule(googleSignIn, "demo")
+    
+    onclick("demo-signout", {
+        # Hide user info in profile menu
+        shinyjs::addClass(id = "profileData", class = "visibleOnLogin")
+        
+        toggleModal(session = session, modalId = "profileModal", toggle = "close")
+        
+        updateNotifications(paste0("You have logged out."), "info-circle", "info")
+    })
+
+    
+    onclick("profileData", {
+        toggleModal(session = session, modalId = "profileModal", toggle = "toggle")
+    })
+    
+    onclick("demo-signin", {
+        
+        appMeta$signInButtonClicked <- T
+        
+    })
+    
+
+    observeEvent(sign_ins(), {
+        
+        id <- as.character(sign_ins()$id)
+        
+        # Open db connection
+        conn <- dbConnect(RSQLite::SQLite(), file.path("auth/userData.sqlite"))
+        
+        # Check if user exists in db
+        if (userExists(conn, id)) {
+            print("User exists.")
+            
+            user_info <- get_user_info(conn, id)
+            user_fn <- sub(" .*", "", user_info$name)
+            isolate(updateNotifications(paste0("Welcome back, ", user_fn, "."), "smile-beam", "primary"))
+            
+        } else {
+            # If the user is not in db, we must add them
+            print("User does not exist.")
+            
+            create_user(conn,
+                        user_id = sign_ins()$id,
+                        name = sign_ins()$name,
+                        email = sign_ins()$email)
+            
+            user_info <- get_user_info(conn, id)
+            user_fn <- sub(" .*", "", user_info$name)
+            isolate(updateNotifications(paste0("Welcome , ", user_fn, "."), "smile-beam", "primary"))
+            
+        }
+        
+        RSQLite::dbDisconnect(conn)
+        
+        # Reveal user info in profile menu
+        shinyjs::removeClass(id = "profileData", class = "visibleOnLogin")
+        
+        
+        # Toggle modal only when button is clicked and user has signed in
+        if(appMeta$signInButtonClicked) {
+            toggleModal(session = session, modalId = "profileModal", toggle = "close")
+            appMeta$signInButtonClicked <- F
+        }
+        
+        shinyjs::runjs("myFunction()")
+        
+    })
+    
+    output$g_id = renderText({ sign_ins()$id })
+    output$g_name = renderText({ sign_ins()$name })
+    output$g_email = renderText({ sign_ins()$email })
+    output$g_image = renderUI({ img(src=sign_ins()$image) })
+
+
     #### ANALYSIS ####
     # Sidebar menu: rules ----
     
@@ -354,6 +328,8 @@ server <- function(session, input, output) {
                                     width = "100%",
                                     height = "600px",
                                     frameborder = "0")})))
+            shinyjs::runjs("document.querySelector('.active').classList.remove('active')")
+            shinyjs::runjs("Shiny.setInputValue('sidebarmenu', '');")
         }
         
         
@@ -367,6 +343,14 @@ server <- function(session, input, output) {
         
         if(input$sidebarmenu == "settings") {
             toggleModal(session = session, modalId = "settingsModal")
+            shinyjs::runjs("document.querySelector('.active').classList.remove('active')")
+            shinyjs::runjs("Shiny.setInputValue('sidebarmenu', '');")
+        }
+        
+        if(input$sidebarmenu == "profile") {
+            toggleModal(session = session, modalId = "profileModal")
+            shinyjs::runjs("document.querySelector('.active').classList.remove('active')")
+            shinyjs::runjs("Shiny.setInputValue('sidebarmenu', '');")
         }
         
     })
@@ -472,7 +456,6 @@ server <- function(session, input, output) {
         treatment <- as.factor(gsub('_.*', '', samples))
         replicate <- as.factor(gsub('.*_', '', samples))
         
-        # We use data.frame instead of data.table here because Biobase requires it
         samples <- data.frame(samples, treatment, replicate)
         rownames(samples) <- samples$samples
         
@@ -637,16 +620,15 @@ server <- function(session, input, output) {
                                  "PROTEINID" = "")
             all_missing <- F
         }
-            
-       
+        
         
         udat <- new("userdata",
-                   raw            = data_wide[, 2:ncol(data_wide)],
-                   main           = data_wide[, 2:ncol(data_wide)],
-                   rawidentifiers = tr_all,
-                   identifiers    = tr_all,
-                   descriptions   = pdesc,
-                   deoutput       = data.table())
+                    raw            = data_wide[, 2:ncol(data_wide)],
+                    main           = data_wide[, 2:ncol(data_wide)],
+                    rawidentifiers = tr_all,
+                    identifiers    = tr_all,
+                    descriptions   = pdesc,
+                    deoutput       = data.table())
         
         maindata$udat <- udat
         
@@ -703,10 +685,10 @@ server <- function(session, input, output) {
         updateNotifications("Demo data uploaded.","check-circle", "success")
         updateTasks(text = "Upload a dataset", value = 100, color = "green", i = 0001)
         updateTasks(text = "Upload annotation data", value = 100, color = "green", i = 0002)
-
-
+        
+        
     }
-
+    
     # File input: Demo data ----
     observeEvent(input$useDemoData, {
         
@@ -849,13 +831,13 @@ server <- function(session, input, output) {
             }
             
         }
-
+        
     })
     
     # Missing values: frequency plot ----
     
     nafrequencies <- reactive({
-            
+        
         data_wide <- maindata$udat@main
         
         # Which elements are NA?
@@ -881,7 +863,7 @@ server <- function(session, input, output) {
                 ggthemes::theme_clean() +
                 theme(axis.text.x = element_text(vjust = 0.6), legend.position = "none") +
                 scale_color_grey()
-        
+            
         }
         
     })
@@ -905,7 +887,7 @@ server <- function(session, input, output) {
             
             maindata$udat@main <- data_wide
             maindata$udat@identifiers <- ids
-
+            
             updateTasks(text = "Set a filter", value = 100, color = "green", i = 0003)
             updateNotifications(paste0("NA cutoff set to ", input$missingValues, ".") ,"check-circle", "success")
             
@@ -918,6 +900,7 @@ server <- function(session, input, output) {
     
     
     # Differential expression: set contrasts ----
+    
     observeEvent(input$contrast1, {
         subsample_data()
         updateContrasts()
@@ -945,7 +928,7 @@ server <- function(session, input, output) {
     }
     
     observeEvent(input$setContrast, {
-
+        
         if(!input$organism == "Other") {
             output$enrichment <- renderMenu({
                 menuItem("Enrichment analysis", icon = icon("flask"), href = NULL,
@@ -961,7 +944,7 @@ server <- function(session, input, output) {
                                      icon = shiny::icon("angle-double-right"), selected = F))
             })
             
-
+            
             
             removeUI(selector = "#enrichrm")
             removeUI(selector = "#networkrm")
@@ -998,7 +981,7 @@ server <- function(session, input, output) {
             }
         }
         
-
+        
         
         
     }, ignoreInit = T)
@@ -1011,7 +994,7 @@ server <- function(session, input, output) {
         sinfo <- sampleinfo$samples
         treatment <- sampleinfo$samples$treatment
         repl <- sampleinfo$samples$replicate
-
+        
         
         if(input$setDEengine == 2) {
             
@@ -1092,7 +1075,7 @@ server <- function(session, input, output) {
             
             # Fit the linear model
             fit <- lmFit(exampleSet, design)
-
+            
             # Decide possible contrasts
             c <- expand.grid(sampleinfo$group, sampleinfo$group)
             cc <- factor(ifelse(c$Var1 != c$Var2, paste(c$Var1, c$Var2, sep = '-'), NA ))
@@ -1329,7 +1312,7 @@ server <- function(session, input, output) {
                                                  list(width = '60px', targets = c(6, 7))
                                              )))
             }
-
+            
         }
     )
     
@@ -1338,7 +1321,7 @@ server <- function(session, input, output) {
         if(maindata$udat@deoutput[, .N] > 0) {
             gp <- generate_pathways()
             if(gp){
-            
+                
                 DOWNREGULATED_pathways <- pathways$DOWNREGULATED_pathways
                 DT::datatable(DOWNREGULATED_pathways[, -c("genes", "background")],
                               selection = 'single',
@@ -1352,7 +1335,7 @@ server <- function(session, input, output) {
         }
     )
     
-
+    
     
     # Volcano plot
     
@@ -1490,7 +1473,7 @@ server <- function(session, input, output) {
                            modeBarButtonsToAdd = list(
                                'drawopenpath',
                                'eraseshape'))
-                    
+                
                 
             }
             
@@ -1521,9 +1504,9 @@ server <- function(session, input, output) {
             description <- maindata$udat@descriptions[get(sampleinfo$sID) == input$hovered_node, annotation]
             
             HTML(
-                    paste(paste(tags$strong("Name:"), name, sep = " "),
-                          paste(tags$strong("Description:"), description, sep = " "),
-                          sep = "<br/>")
+                paste(paste(tags$strong("Name:"), name, sep = " "),
+                      paste(tags$strong("Description:"), description, sep = " "),
+                      sep = "<br/>")
             )
             
         }
@@ -1550,7 +1533,7 @@ server <- function(session, input, output) {
                                  data.table(Pathway_name = DOWNREGULATED_genes[, TopReactomeName], TopReactomeName = "Down-regulated"),
                                  df))
         }
-
+        
         links <- df[, .N, by = c(names(df))]
         colnames(links) <- c("target", "source", "value")
         
@@ -1566,7 +1549,7 @@ server <- function(session, input, output) {
     output$sankey <- renderSankeyNetwork({
         
         if(!is.null(pathways$UPREGULATED_pathways)){
-        
+            
             s <- processSankey()
             
             sankeyNetwork(Links = s$links, Nodes = s$nodes, Source = "source",
@@ -1575,8 +1558,8 @@ server <- function(session, input, output) {
                           fontSize = 10, nodeWidth = 60, sinksRight = F)
         }
     })
-
-
+    
+    
     make_network <- reactive({
         sID <- sampleinfo$sID
         contrast <- cbind(maindata$udat@identifiers, maindata$udat@deoutput)
@@ -1680,8 +1663,8 @@ server <- function(session, input, output) {
         }
         
     })
-
-
+    
+    
     
     output$interaction_network <- renderVisNetwork({
         
@@ -1706,8 +1689,8 @@ server <- function(session, input, output) {
                     ;}"
                     )
             }
-    
-
+            
+            
         }
     })
     
@@ -1852,10 +1835,8 @@ server <- function(session, input, output) {
                           inputId = "organism2",
                           label = "Select organism",
                           choices = 
-                          list("Homo sapiens | HSA | 9606",
-                               "Mus musculus | MMU | 10090",
-                               "Rattus norvegicus | RNO | 10116"),
-                          selected = "Homo sapiens | HSA | 9606")
+                              organisms,
+                          selected = organisms[[9]])
         
         updateTextAreaInput(session = session, inputId = "idstoconvert",
                             value = "CRTAC1
@@ -1893,10 +1874,8 @@ CLIC4")
                           inputId = "organism2",
                           label = "Select organism",
                           choices = 
-                              list("Homo sapiens | HSA | 9606",
-                                   "Mus musculus | MMU | 10090",
-                                   "Rattus norvegicus | RNO | 10116"),
-                          selected = "Homo sapiens | HSA | 9606")
+                              organisms,
+                          selected = organisms[[1]])
         
         updateTextAreaInput(session = session, inputId = "idstoconvert",
                             value = "396; 10109; 10092; 54829; 79058; 445; 55729; 498; 506; 513; 515; 563; 566; 567; 10409; 55212; 56898; 633; 645; 712; 713; 714; 338761; 715; 716; 717; 84417; 718; 110384692; 100293534; 722; 729; 730")
@@ -1904,19 +1883,19 @@ CLIC4")
     
     observeEvent(input$convertids, {
         
-        if(input$organism2 == "Homo sapiens | HSA | 9606") {
+        if(input$organism2 == "Homo sapiens [9606]") {
             
             library(EnsDb.Hsapiens.v86)
             
             maindata$organism2 <- EnsDb.Hsapiens.v86
             
-        } else if(input$organism2 == "Mus musculus | MMU | 10090") {
+        } else if(input$organism2 == "Mus musculus [10090]") {
             
             library(EnsDb.Mmusculus.v79)
             
             maindata$organism2 <- EnsDb.Mmusculus.v79
             
-        } else if(input$organism2 == "Rattus norvegicus | RNO | 10116") {
+        } else if(input$organism2 == "Rattus norvegicus [10116]") {
             
             library(EnsDb.Rnorvegicus.v79)
             
@@ -1946,13 +1925,13 @@ CLIC4")
         
     })
     
-    # Generate report ----
+    # Create token ----
     
-    # Create token
+    #tokenServer("token", maindata, appMeta)
     
     generateToken <- reactive({
         
-        mylist <- list("date" = format(Sys.time(), "%A %B %d %Y"),
+        mylist <- list("date" = as.integer(format(Sys.Date(), "%Y%m%d")),
                        "taxid" = maindata$taxid,
                        "STRINGDB" = getFilemd5sum(getlibfPaths(taxid = maindata$taxid, lib = "STRINGDB")),
                        "REACTOMEDB" = getFilemd5sum(getlibfPaths(taxid = maindata$taxid, lib = "REACTOMEDB")),
@@ -1975,15 +1954,15 @@ CLIC4")
         if(!is.null(maindata$udat) & !is.null(maindata$taxid)) {
             
             toggleModal(session = session, "tokenModal")
-        
+            
             mykey <- generateToken()
             
             updateTextAreaInput(session = session, inputId = "repToken", value = mykey)
         } else {
             updateNotifications("Upload a dataset first.","exclamation-triangle", "danger")
         }
-
-
+        
+        
     })
     
     observeEvent(input$useInputToken, {
@@ -1997,8 +1976,12 @@ CLIC4")
             token <- input$inputToken
             
             token <- tryCatch({as.raw(as.hexmode(unlist(strsplit(token, " "))));},
-                           error = function(err){return(err)} ,
-                           warning = function(war){return(war)}, silent=F)
+                              error = function(err){
+                                  return(err)
+                              },
+                              warning = function(war){
+                                  return(war)
+                              }, silent=F)
             
             if("error" %in% class(token)) {
                 
@@ -2035,12 +2018,12 @@ CLIC4")
             }
         }
         
-
+        
         
         
     })
     
-
+    # Downloads | File handlers ----
     
     output$downloadRef <- downloadHandler(
         filename <- function() {
@@ -2063,8 +2046,6 @@ CLIC4")
             file.copy("data/donors.uniprot.csv", file)
         }
     )
-    
-    
     
     output$downloadReport <- downloadHandler(
         
@@ -2170,53 +2151,35 @@ CLIC4")
                         content = "Please note that proceeding with organism 'other' means Pathway and Network analysis is unavailable. We are continuously adding support for more species.", append = FALSE,
                         style = "info")
         }
-
+        
         
     })
     
+    get_tax_id <- function(selection){
+        if(selection == "Other") {
+            return(0)
+        } else {
+            r <- regexec("\\[(.*?)\\]", selection)
+            r <- regmatches(selection, r)[[1]][2]
+            return(r)
+        }
+    }
     
     observeEvent(input$EndStep1, {
         
         shinyjs::show("Modal1Spinner")
         
-        if(input$organism == "Homo sapiens | HSA | 9606") {
-            
-            library(EnsDb.Hsapiens.v86)
-            
-            maindata$organism <- EnsDb.Hsapiens.v86
-            maindata$taxid <- 9606
-            
-        } else if(input$organism == "Mus musculus | MMU | 10090") {
-            
-            library(EnsDb.Mmusculus.v79)
-            
-            maindata$organism <- EnsDb.Mmusculus.v79
-            maindata$taxid <- 10090
-            
-        } else if(input$organism == "Rattus norvegicus | RNO | 10116") {
-            
-            library(EnsDb.Rnorvegicus.v79)
-            
-            maindata$organism <- EnsDb.Rnorvegicus.v79
-            maindata$taxid <- 10116
-            
-        } else if(input$organism == "Other") {
-            
-            maindata$organism <- NULL
-            maindata$taxid <- NULL
-        }
-        
+        maindata$taxid <- get_tax_id(input$organism)
         
         toggleModal(session, "ImportModal1", toggle = "toggle")
         shinyjs::hide("Modal1Spinner")
         toggleModal(session, "ImportModal2", toggle = "toggle")
         
-        
     })
     
     
     observeEvent(input$EndStep2, {
-
+        
         if(is.null(maindata$data_wide_tmp)) {
             createAlert(session, "selectAFile", "exampleAlert",
                         content = "Please select a file.", append = FALSE,
@@ -2254,201 +2217,15 @@ CLIC4")
             }
         }
     })
-
-    
-    # Heatmap Updated ----
-    
-    prepare_heatmap <- reactive({
-        
-        dw_cor <- maindata$udat@main
-        
-        if(!is.null(dw_cor)){
-            dw_cor[is.na(dw_cor)] <- 0 # Impute
-            dw_cor <- round(cor(dw_cor, method = input$corMethod), 2)
-        }
-    })
-    
-    output$heatmap <- renderPlotly({
-        
-        dw_cor <- prepare_heatmap()
-        
-        if(input$showGrid) gg = 0.75
-        else gg = 0
-        
-        heatmaply_cor(dw_cor,
-                      limits = c(min(dw_cor), 1),
-                      col = viridis(n = 100),
-                      fontsize_row = 8,
-                      fontsize_col = 8,
-                      grid_gap = gg,
-                      plot_method = "plotly",
-                      column_text_angle = 270,
-                      show_dendrogram = c(T, F),
-                      row_dend_left = T
-        )
-        
-    })
-    
-    # PCA Updated ----
-    
-    observeEvent(input$multilevelPCA, {
-        
-        # Multilevel analysis can only be performed when at least one sample is repeated.
-        sinfo <- sampleinfo$samples
-        sinfo <- as.data.table(sinfo)
-        
-        if(length(Reduce(setdiff, sinfo[, .(list(unique(sinfo$replicate))), sinfo$treatment]$V1)) > 0){
-            
-            updateCheckboxInput(session = session, inputId = "multilevelPCA", value = F)
-            
-            updateNotifications("Multilevel analysis can only be performed when at least one sample is repeated.","exclamation-triangle", "danger")
-        }
-        
-        
-    }, ignoreInit = T)
-    
-    prepare_pca <- reactive({
-        pca.data <- maindata$udat@main
-        
-        if(!is.null(pca.data)) {
-
-            pca.data[is.na(pca.data)] <- 0 # "Impute" missing values as 0
-            pca.data <- IMIFA::pareto_scale(pca.data)
-            
-            if(input$multilevelPCA == T) {
-                
-                ndim <- input$pcaDims[2] - input$pcaDims[1] + 1
-                p.pca = mixOmics::pca(X = t(pca.data), ncomp = NULL, multilevel = sampleinfo$samples$replicate, logratio = 'none', scale = F, center = T)
-               
-                names(p.pca)[2] <- "x"
-                
-            } else {
-                
-                p.pca <- prcomp(t(pca.data), center = TRUE, scale. = F)
-            }
-            p.pca
-        }
-    })
-    
-    pca2d <- reactive({
-        
-        p.pca <- prepare_pca()
-        
-        si_treatment <- sampleinfo$samples$treatment
-
-        mydf <- data.frame(pc1 = p.pca$x[, input$pcaDims[1]],
-                           pc2 = p.pca$x[, input$pcaDims[2]],
-                           si_treatment)
-        
-        poly.df <- mydf %>% 
-            group_by(si_treatment) %>%
-            do(.[chull(.$pc1, .$pc2),]) 
-        
-        if(input$showPolygons) {
-            suppressWarnings(
-                ggplot(mydf, aes(pc1, pc2, colour = as.factor(si_treatment))) +
-                    geom_polygon(data = poly.df, fill = "grey", alpha = .15) +
-                    geom_point(size = 5, aes(text = rownames(mydf))) +
-                    xlab(paste0("PC", input$pcaDims[1])) +
-                    ylab(paste0("PC", input$pcaDims[2])) +
-                    scale_color_manual(values = appMeta$palette) +
-                    theme_light() + theme(legend.title = element_blank())) -> p
-        } else {
-            suppressWarnings(
-                ggplot(mydf, aes(pc1, pc2, colour = as.factor(si_treatment))) +
-                    geom_point(size = 5, aes(text = rownames(mydf))) +
-                    xlab(paste0("PC", input$pcaDims[1])) +
-                    ylab(paste0("PC", input$pcaDims[2])) +
-                    scale_color_manual(values = appMeta$palette) +
-                    theme_light() + theme(legend.title = element_blank())) -> p
-        }
-    })
-    
-    output$PCAplots <- renderPlotly({
-        
-        if(input$pcaDims[2] - input$pcaDims[1] == 1) {
-            pcaplot <- pca2d()
-            ggplotly(pcaplot, tooltip = "text") %>% layout(legend = list(title=list(text='<b> Treatment </b>'))) %>% 
-                config(displaylogo = F,
-                       showTips = F,
-                       scrollZoom = F,
-                       modeBarButtonsToRemove = list(
-                           'sendDataToCloud',
-                           'toImage',
-                           'autoScale2d',
-                           'resetScale2d',
-                           'hoverClosestCartesian',
-                           'hoverCompareCartesian',
-                           'pan2d',
-                           'zoomIn2d',
-                           'zoomOut2d'),
-                       modeBarButtonsToAdd = list(
-                           'drawopenpath',
-                           'eraseshape'))
-        } else if (input$pcaDims[2] - input$pcaDims[1] == 2) {
-            p.pca <- prepare_pca()
-            plotly::plot_ly(x = p.pca$x[,input$pcaDims[1]],
-                                 y = p.pca$x[,(input$pcaDims[2] - 1)],
-                                 z = p.pca$x[,input$pcaDims[2]],
-                                 text = rownames(p.pca$x),
-                                 hoverinfo = "text",
-                                 color = sampleinfo$samples$treatment,
-                                 colors = appMeta$palette
-            ) %>%
-                plotly::add_markers(marker=list(size = 15, line=list(width = 1, color = "black"))) %>%
-                plotly::layout(scene = list(xaxis = list(title = paste0("PC", input$pcaDims[1])),
-                                            yaxis = list(title = paste0("PC", (input$pcaDims[2] - 1))),
-                                            zaxis = list(title = paste0("PC", input$pcaDims[2]))),
-                               legend = list(title=list(text='<b> Treatment </b>'))) %>% 
-                config(displaylogo = F,
-                       showTips = F,
-                       scrollZoom = T,
-                       modeBarButtonsToRemove = list(
-                           'sendDataToCloud',
-                           'toImage',
-                           'autoScale2d',
-                           'resetScale2d',
-                           'hoverClosestCartesian',
-                           'hoverCompareCartesian',
-                           'pan2d',
-                           'zoomIn2d',
-                           'zoomOut2d'),
-                       modeBarButtonsToAdd = list(
-                           'drawopenpath',
-                           'eraseshape'))
-        }
-        
-        
-    })
-    
-
-    output$scree <- renderPlot({
-        
-        p.pca <- prepare_pca()
-        
-        var_explained_df <- data.frame(PC = paste0("PC",1:length(sampleinfo$samples$samples)),
-                                       var_explained=(p.pca$sdev)^2/sum((p.pca$sdev)^2))
-        
-        var_explained_df$PC <- factor(var_explained_df$PC, levels = var_explained_df$PC)
-        
-        var_explained_df %>%
-            ggplot(aes(x = PC, y = var_explained))+
-            geom_col() +
-            labs(title="Scree plot: PCA on scaled data") +
-            ggthemes::theme_clean() +
-            theme(axis.text.x = element_text(vjust = 0.6), legend.position = "none") +
-            scale_color_grey()
-        
-    })
     
     
-    observeEvent(input$pcaDims, {
-        
-        if( (input$pcaDims[2] - input$pcaDims[1] > 2) | (input$pcaDims[2] - input$pcaDims[1] < 1)) {
-            updateSliderInput(session = session, inputId = "pcaDims", value = c(input$pcaDims[1], (input$pcaDims[1] + 2)))
-        }
-        
-    })
+    # Heatmap ----
+    
+    heatmapServer("correlationHeatmap", dw = maindata$udat@main)
+    
+    # PCA ----
+    
+    pcaServer("pca", pcadata = maindata$udat@main, sampleinfo = sampleinfo, palette = appMeta$palette)
     
     # Differential expression volcano plot ----
     
@@ -2490,13 +2267,13 @@ CLIC4")
             mycolors <- c(colorRampPalette(brewer.pal(npals(input$palette), input$palette))(nb.cols))
             
             plot_ly(data = diff_df,
-                         type = "scattergl",
-                         x = ~`Fold-change`,
-                         y = ~(-log10(FDR)),
-                         text = ~get(sampleinfo$sID),
-                         mode = "markers",
-                         color = ~group,
-                         colors = mycolors) %>%
+                    type = "scattergl",
+                    x = ~`Fold-change`,
+                    y = ~(-log10(FDR)),
+                    text = ~get(sampleinfo$sID),
+                    mode = "markers",
+                    color = ~group,
+                    colors = mycolors) %>%
                 layout(yaxis = list(type = "log1p", showgrid = T,  ticks = "outside", autorange = T)) %>% 
                 config(displaylogo = F,
                        showTips = F,
@@ -2515,9 +2292,9 @@ CLIC4")
                            'drawopenpath',
                            'eraseshape'))
         }
-
+        
     })
-
+    
     
     # Data validation ----
     

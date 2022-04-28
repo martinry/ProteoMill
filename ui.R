@@ -8,14 +8,28 @@ require(visNetwork)
 require(DT)
 require(plotly)
 
+library(googleAuthR)
+
 # Credit to https://stackoverflow.com/questions/50368690/change-backdrop-for-a-bsmodal-in-shiny-app#answer-50570420
 # for this solution
-bsModalNoClose <-function(...) {
+bsModalNoClose <- function(...) {
     b = bsModal(...)
     b[[2]]$`data-backdrop` = "static"
     b[[2]]$`data-keyboard` = "false"
     return(b)
 }
+
+jsCode <- "
+shinyjs.resiz = function() {
+  console.log('i was run');
+  anime.timeline({loop: false})
+  .add({
+      targets: '#g_image > img',
+      width: '45px',
+      easing: 'easeOutBack',
+      duration: 400
+    });
+}"
 
 
 # Notification menus ----
@@ -29,10 +43,6 @@ header <- dashboardHeader(
     title = list(span(id = "about", class = "no-touch", tags$a(href = "https://proteomill.com/", tags$img(id = "mill", class = "normal", src = "mill.png"), "ProteoMill"))),
     tags$li(class = "dropdown",
             id = "notifications-wrapper",
-            tags$div(id = 'load-process', style = 'display: none; position: absolute; margin-left: 6px',
-                     tags$img(id = 'load-img', src = 'dna.svg', style = 'margin-top: -12px; margin-left: 5px; width: 45px; opacity: .9;'),
-                     tags$span(id = "process-counter", 0, style = 'font-size: 14px; font-family: "Courier"; vertical-align: top; padding-left: 3px;')
-            ),
             tags$span(class = "loading-menus", tags$text("Loading libraries, please wait...")),
             tags$i(id = "notif-icon"),
             tags$div(class = "ml11",
@@ -41,10 +51,11 @@ header <- dashboardHeader(
                                tags$span(class = "letters2")
                      )
             ),
-            bsTooltip("about", "ProteoMill version 1.0.4.",
-                      "right", options = list(container = "body"))
+            bsTooltip("about", "ProteoMill version 1.1.0.",
+                      "right", options = list(container = "body")),
+            tags$div(class = "visibleOnLogin", id = "profileData", uiOutput("g_image"))
     )
-
+    
 )
 
 # Sidebar menu ----
@@ -104,13 +115,15 @@ sidebar <- dashboardSidebar(
              margin-top: 2px;
              color: #fff;"),
     sidebarMenu(id = "sidebarmenu",
+                #menuItem("Profile", tabName = "profile", icon = icon("user-circle"), badgeLabel = "New", badgeColor = "red"),
                 menuItem("News", tabName = "news", icon = icon("bullhorn"), badgeLabel = "Updates", badgeColor = "blue"),
                 menuItem("Documentation", icon = icon("book"),
                          href = "https://bookdown.org/martin_ryden/proteomill_documentation/"),
                 menuItem("Settings", tabName = "settings", icon = icon("sliders-h"))
                 
     ),
-    useShinyjs()
+    useShinyjs(),
+    extendShinyjs(text = jsCode, functions = "resiz")
 )
 
 
@@ -121,11 +134,12 @@ body <- dashboardBody(
     # Import css and js
     tags$head(
         tags$meta(name="google-site-verification", content="JC0Ph8rzlXWiAL6lWXnusIUEOhJSqf8u2yVzK5g2P04"),
-        tags$link(rel = "stylesheet", type = "text/css", href = "custom.css?v=1.051"),
-        tags$link(rel = "stylesheet", type = "text/css", href = "https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"),
+        tags$link(rel = "stylesheet", type = "text/css", href = "css/custom.css?v=1.056"),
+        tags$link(rel = "stylesheet", type = "text/css", href = "css/fontawesome.min.css"),
         tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Quicksand"),
         tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css?family=Open+Sans"),
-        tags$script(src = "anime.min.js"),
+        tags$script(src = "js/fontawesome.min.js"),
+        tags$script(src = "js/anime.min.js"),
         tags$script(inactivity)
     ),
     
@@ -142,13 +156,15 @@ body <- dashboardBody(
                      }")),
     
     
+    
+    
     # Intro animation
     
     tags$div(class = "overlay",
              tags$h1(class = "ml9",
                      tags$span(class = "text-wrapper",
                                tags$span(class = "letters", "ProteoMill"))),
-             tags$h6(class = "versiondiv", "ver. 1.0.4", style = "padding-left: 28em; margin-top: -28px; opacity: 0;"),
+             tags$h6(class = "versiondiv", "ver. 1.1.0", style = "padding-left: 28em; margin-top: -28px; opacity: 0;"),
              tags$div(class = 'begindiv',
                       actionLink('removeBanner', label = 'LAUNCH')
              ),
@@ -156,9 +172,8 @@ body <- dashboardBody(
                       tags$video(playsinline = "playsinline", loop = "true", autoplay = "autoplay", muted = "muted", width="60%", height="auto",
                                  tags$source(src = "media1.mp4", type="video/mp4")))
     ),
-    tags$script(src = "custom.js?v=1.04"),
-    tags$script(src = "animate-notifs.js?v=1.04"),
-    
+    tags$script(src = "js/custom.js?v=1.054"),
+    tags$script(src = "js/animate-notifs.js?v=1.052"),
     
     bsModal(id ="citeModal",
             title = "Cite ProteoMill", 
@@ -220,7 +235,35 @@ body <- dashboardBody(
                        )
                 )
             )
-            ),
+    ),
+    
+    bsModal(id = "profileModal",
+            title = "Profile",
+            trigger = "profiletrigger",
+            size = "s",
+            
+            fluidRow(
+                column(width = 12,
+                       box(width = NULL,
+                           tags$div(class = "visibleOnLogin", id = "profileData",
+                                    
+                                    p(
+                                        h4("Name"),
+                                        textOutput("g_name")
+                                        ),
+                                    
+                                    p(
+                                        h4("Email"),
+                                        textOutput("g_email")
+                                        )
+                           ),
+                           
+                           p(googleSignInUI("demo"))
+
+                       )
+                )
+            )
+    ),
     
     tabItems(
         # File input ----
@@ -240,183 +283,185 @@ body <- dashboardBody(
                                            actionButton("ImportWizard", "Data import wizard...", icon = icon("magic")),
                                            
                                            bsModalNoClose(id ="ImportModal1",
-                                                   title = "Data import wizard", 
-                                                   trigger = "ImportWizard",
-                                                   size = "large",
-                                                   
-                                                   bsAlert("unsupportedOrganism"),
-                                                   bsAlert("invalidToken"),
-                                                   bsAlert("validToken"),
-                                                   
-                                                   fluidRow(
-                                                       column(width = 6,
-                                                              box(width = NULL,
-                                                                  title = "Sample information",
-                                                                  
-                                                                  
-                                                                  # Currently only three organisms support UniprotID in ensembldb package
-                                                                  # Will write to developer
-                                                                  
-                                                                  selectInput("organism",
-                                                                              "Select organism",
-                                                                              list("Homo sapiens | HSA | 9606",
-                                                                                   "Mus musculus | MMU | 10090",
-                                                                                   "Rattus norvegicus | RNO | 10116",
-                                                                                   "Other")),
-                                                                  
-                                                                  bsTooltip("organism", "In order to use correct annotation databases, we need to know the species your data is derived from.",
-                                                                            "right", options = list(container = "body"))
-                                                                  
-                                                              )
-                                                       ),
-                                                       
-                                                       column(width = 6,
-                                                              box(width = NULL,
-                                                                  title = "Data configuration",
-                                                                  
-                                                                  checkboxInput("LogTransformData", "Log₂-transform data", value = T),
-                                                                  bsTooltip("LogTransformData", "Throughout the analysis, log-transformed data will be used. If your data is already log₂-transformed, uncheck this box. Please note that DESeq2 is not available for already log₂-transformed data.",
-                                                                            "left", options = list(container = "body")),
-
-                                                                  textAreaInput("inputToken", "Reproducibility token"),
-                                                                  actionButton("useInputToken", "Load experiment"),
-                                                                  bsTooltip("inputToken", "If you want to load settings from a previous experiment, enter the reproducibility token that was generated for that experiment. You can create a new token under \\'Generate report\\'.",
-                                                                            "left", options = list(container = "body"))
-                                                                  
-                                                              ))
-                                                       
-                                                   ),
-                                                   
-                                                   
-                                                   tags$head(tags$style("#Modal1Spinner {display:none}")),
-                                                   shinycssloaders::withSpinner(
-                                                       textOutput("plot"), type = 6, color = "#e80032dd", id = "Modal1Spinner", size = 0.4, proxy.height = "50px"
-                                                   ),
-                                                   
-                                                   tags$p(tags$hr()),
-                                                   modalButton("Cancel"),
-                                                   actionButton("EndStep1", "Next"),
-                                                   tags$head(tags$style("#ImportModal1 .modal-footer{ display:none}"))
-                                                   
+                                                          title = "Data import wizard", 
+                                                          trigger = "ImportWizard",
+                                                          size = "large",
+                                                          
+                                                          bsAlert("unsupportedOrganism"),
+                                                          bsAlert("invalidToken"),
+                                                          bsAlert("validToken"),
+                                                          
+                                                          fluidRow(
+                                                              column(width = 6,
+                                                                     box(width = NULL,
+                                                                         title = "Sample information",
+                                                                         
+                                                                         
+                                                                         # Currently only three organisms support UniprotID in ensembldb package
+                                                                         # Will write to developer
+                                                                         
+                                                                         # selectInput("organism",
+                                                                         #             "Select organism",
+                                                                         #             list("Homo sapiens | HSA | 9606",
+                                                                         #                  "Mus musculus | MMU | 10090",
+                                                                         #                  "Rattus norvegicus | RNO | 10116",
+                                                                         #                  "Other")),
+                                                                         
+                                                                         selectizeInput(inputId = "organism", label = "Select organism", organisms),
+                                                                         
+                                                                         bsTooltip("organism", "In order to use correct annotation databases, we need to know the species your data is derived from.",
+                                                                                   "right", options = list(container = "body"))
+                                                                         
+                                                                     )
+                                                              ),
+                                                              
+                                                              column(width = 6,
+                                                                     box(width = NULL,
+                                                                         title = "Data configuration",
+                                                                         
+                                                                         checkboxInput("LogTransformData", "Log₂-transform data", value = T),
+                                                                         bsTooltip("LogTransformData", "Throughout the analysis, log-transformed data will be used. If your data is already log₂-transformed, uncheck this box. Please note that DESeq2 is not available for already log₂-transformed data.",
+                                                                                   "left", options = list(container = "body")),
+                                                                         
+                                                                         textAreaInput("inputToken", "Reproducibility token"),
+                                                                         actionButton("useInputToken", "Load experiment"),
+                                                                         bsTooltip("inputToken", "If you want to load settings from a previous experiment, enter the reproducibility token that was generated for that experiment. You can create a new token under \\'Generate report\\'.",
+                                                                                   "left", options = list(container = "body"))
+                                                                         
+                                                                     ))
+                                                              
+                                                          ),
+                                                          
+                                                          
+                                                          tags$head(tags$style("#Modal1Spinner {display:none}")),
+                                                          shinycssloaders::withSpinner(
+                                                              textOutput("plot"), type = 6, color = "#e80032dd", id = "Modal1Spinner", size = 0.4, proxy.height = "50px"
+                                                          ),
+                                                          
+                                                          tags$p(tags$hr()),
+                                                          modalButton("Cancel"),
+                                                          actionButton("EndStep1", "Next"),
+                                                          tags$head(tags$style("#ImportModal1 .modal-footer{ display:none}"))
+                                                          
                                            ),
                                            
                                            bsModalNoClose(id = "ImportModal2",
-                                                   title = "Data import wizard",
-                                                   trigger = "BeginStep2",
-                                                   size = "large",
-                                                   
-                                                   tags$head(tags$style("#ImportModal2 .modal-footer{ display:none}")),
-                                                   tags$head(tags$style("#showHideBox1,#showHideBox2 {display:none}")),
-                                                   
-                                                   bsAlert("selectAFile"),
-                                                   bsAlert("noneConverted"),
-                                                   bsAlert("fileHasError"),
-                                                   bsAlert("fileHasWarning"),
-                                                   bsAlert("fileFormattingError"),
-                                                   bsAlert("checkRequirements"),
-                                                   bsAlert("md5Alert"),
-                                                   
-                                                   
-                                                   fluidRow(
-                                                       column(width = 12,
-                                                              tags$p(tags$strong("A minimal example."), actionLink(inputId = "ShowHide1", "Show/Hide")),
-                                                              box(id = "showHideBox1",
-                                                                  width = NULL,
-                                                                  
-                                                                  tags$p(img(src = "/img/yellow.png", width = "10px"), tags$strong("Protein IDs."), "In the first column, row two and onwards contains protein IDs (see accepted ID types below)."),
-                                                                  
-                                                                  tags$p(img(src = "/img/blue.png", width = "10px"), tags$strong("Sample names."), "In the first row, column two and onward contains the sample names, with treatments and replicates separated by an underscore character. Sample column order does not matter."),
-                                                                  
-                                                                  tags$p(img(src = "/img/green.png", width = "10px"), tags$strong("Quantitative values."), 'Only numeric values greater than or equal to 0, or NA. Period (.) should be used for decimal character.'),
-                                                                  
-                                                                  img(src = "/img/minimal_example.png", width = "75%")
+                                                          title = "Data import wizard",
+                                                          trigger = "BeginStep2",
+                                                          size = "large",
+                                                          
+                                                          tags$head(tags$style("#ImportModal2 .modal-footer{ display:none}")),
+                                                          tags$head(tags$style("#showHideBox1,#showHideBox2 {display:none}")),
+                                                          
+                                                          bsAlert("selectAFile"),
+                                                          bsAlert("noneConverted"),
+                                                          bsAlert("fileHasError"),
+                                                          bsAlert("fileHasWarning"),
+                                                          bsAlert("fileFormattingError"),
+                                                          bsAlert("checkRequirements"),
+                                                          bsAlert("md5Alert"),
+                                                          
+                                                          
+                                                          fluidRow(
+                                                              column(width = 12,
+                                                                     tags$p(tags$strong("A minimal example."), actionLink(inputId = "ShowHide1", "Show/Hide")),
+                                                                     box(id = "showHideBox1",
+                                                                         width = NULL,
+                                                                         
+                                                                         tags$p(img(src = "/img/yellow.png", width = "10px"), tags$strong("Protein IDs."), "In the first column, row two and onwards contains protein IDs (see accepted ID types below)."),
+                                                                         
+                                                                         tags$p(img(src = "/img/blue.png", width = "10px"), tags$strong("Sample names."), "In the first row, column two and onward contains the sample names, with treatments and replicates separated by an underscore character. Sample column order does not matter."),
+                                                                         
+                                                                         tags$p(img(src = "/img/green.png", width = "10px"), tags$strong("Quantitative values."), 'Only numeric values greater than or equal to 0, or NA. Period (.) should be used for decimal character.'),
+                                                                         
+                                                                         img(src = "/img/minimal_example.png", width = "75%")
+                                                                     ),
+                                                                     tags$p(tags$strong("Dataset checklist."), actionLink(inputId = "ShowHide2", "Show/Hide")),
+                                                                     box(id = "showHideBox2",
+                                                                         width = NULL,
+                                                                         
+                                                                         tags$ul(
+                                                                             tags$li("Experiment must contain at least two groups/treatments"),
+                                                                             tags$li("Each treatment must contain at least two replicates"),
+                                                                             tags$li("File must have a header row"),
+                                                                             tags$li("First column should contain protein IDs"),
+                                                                             tags$li("Column two and onwards should contain sample names"),
+                                                                             tags$li("Sample names should be in the form treatment_replicate")
+                                                                         )
+                                                                         
+                                                                     )
+                                                              )
+                                                          ),
+                                                          
+                                                          fluidRow(
+                                                              column(width = 4,
+                                                                     box(width = NULL,
+                                                                         fileInput(inputId = "file1",
+                                                                                   label = "Upload a dataset",
+                                                                                   multiple = F,
+                                                                                   accept = c(
+                                                                                       "text/csv",
+                                                                                       "text/comma-separated-values,text/plain",
+                                                                                       ".csv")),
+                                                                         
+                                                                         bsTooltip("file1", "Upload a dataset of filetyp .csv, .tsv, or .txt.",
+                                                                                   "right", options = list(container = "bsModal"))
+                                                                         
+                                                                     )
                                                               ),
-                                                              tags$p(tags$strong("Dataset checklist."), actionLink(inputId = "ShowHide2", "Show/Hide")),
-                                                              box(id = "showHideBox2",
+                                                              column(width = 8,
+                                                                     tags$div(id = "dataDetailsWrapper", style = "display: none;",
+                                                                              box(width = NULL,
+                                                                                  height = 119,
+                                                                                  title = "Dataset details",
+                                                                                  htmlOutput("dataDetails")
+                                                                              )
+                                                                     )
+                                                              )
+                                                          ),
+                                                          
+                                                          tags$head(tags$style(
+                                                              HTML("#DataTables_Table_0_length {visibility:hidden}"),
+                                                              HTML("#DataTables_Table_0_filter {visibility:hidden}"),
+                                                              HTML("#DataTables_Table_0_info {visibility:hidden}"),
+                                                              HTML("#DataTables_Table_0_paginate {visibility:hidden}")
+                                                              
+                                                              
+                                                          )),
+                                                          div(id = "previewDTInfo", style = "display:none;",
+                                                              box(
                                                                   width = NULL,
-                                                                  
-                                                                  tags$ul(
-                                                                      tags$li("Experiment must contain at least two groups/treatments"),
-                                                                      tags$li("Each treatment must contain at least two replicates"),
-                                                                      tags$li("File must have a header row"),
-                                                                      tags$li("First column should contain protein IDs"),
-                                                                      tags$li("Column two and onwards should contain sample names"),
-                                                                      tags$li("Sample names should be in the form treatment_replicate")
-                                                                  )
-                                                                  
+                                                                  title = "Data preview",
+                                                                  tags$div(DTOutput("previewDT"), style = "font-size: 58%; margin-top: -35px; max-width: 100%")
                                                               )
-                                                       )
-                                                   ),
-                                                   
-                                                   fluidRow(
-                                                       column(width = 4,
-                                                              box(width = NULL,
-                                                                  fileInput(inputId = "file1",
-                                                                            label = "Upload a dataset",
-                                                                            multiple = F,
-                                                                            accept = c(
-                                                                                "text/csv",
-                                                                                "text/comma-separated-values,text/plain",
-                                                                                ".csv")),
-                                                                  
-                                                                  bsTooltip("file1", "Upload a dataset of filetyp .csv, .tsv, or .txt.",
-                                                                            "right", options = list(container = "bsModal"))
-                                                                  
-                                                              )
-                                                       ),
-                                                       column(width = 8,
-                                                              tags$div(id = "dataDetailsWrapper", style = "display: none;",
-                                                                       box(width = NULL,
-                                                                           height = 119,
-                                                                           title = "Dataset details",
-                                                                           htmlOutput("dataDetails")
-                                                                       )
-                                                              )
-                                                       )
-                                                   ),
-                                                   
-                                                   tags$head(tags$style(
-                                                       HTML("#DataTables_Table_0_length {visibility:hidden}"),
-                                                       HTML("#DataTables_Table_0_filter {visibility:hidden}"),
-                                                       HTML("#DataTables_Table_0_info {visibility:hidden}"),
-                                                       HTML("#DataTables_Table_0_paginate {visibility:hidden}")
-                                                       
-                                                       
-                                                   )),
-                                                   div(id = "previewDTInfo", style = "display:none;",
-                                                       box(
-                                                           width = NULL,
-                                                           title = "Data preview",
-                                                           tags$div(DTOutput("previewDT"), style = "font-size: 58%; margin-top: -35px; max-width: 100%")
-                                                       )
-                                                   ),
-                                                   
-                                                   
-                                                   tags$head(tags$style("#Modal2Spinner {display:none}")),
-                                                   shinycssloaders::withSpinner(
-                                                       textOutput("plot2"), type = 6, color = "#e80032dd", id = "Modal2Spinner", size = 0.4, proxy.height = "50px"
-                                                   ),
-                                                   
-                                                   
-                                                   tags$p(tags$hr()),
-                                                   modalButton("Cancel"),
-                                                   actionButton("EndStep2", "Next")
-                                                   
+                                                          ),
+                                                          
+                                                          
+                                                          tags$head(tags$style("#Modal2Spinner {display:none}")),
+                                                          shinycssloaders::withSpinner(
+                                                              textOutput("plot2"), type = 6, color = "#e80032dd", id = "Modal2Spinner", size = 0.4, proxy.height = "50px"
+                                                          ),
+                                                          
+                                                          
+                                                          tags$p(tags$hr()),
+                                                          modalButton("Cancel"),
+                                                          actionButton("EndStep2", "Next")
+                                                          
                                            ),
                                            
                                            bsModalNoClose(id = "ImportModal3",
-                                                   title = "Data import wizard",
-                                                   trigger = "BeginStep3",
-                                                   size = "large",
-                                                   
-                                                   DT::DTOutput("SamplePreview"),
-                                                   
-                                                   tags$head(tags$style("#ImportModal3 .modal-footer{ display:none}")),
-                                                   
-                                                   tags$p(tags$hr()),
-                                                   modalButton("Cancel"),
-                                                   actionButton("EndStep3", "Finish")
-                                                   
+                                                          title = "Data import wizard",
+                                                          trigger = "BeginStep3",
+                                                          size = "large",
+                                                          
+                                                          DT::DTOutput("SamplePreview"),
+                                                          
+                                                          tags$head(tags$style("#ImportModal3 .modal-footer{ display:none}")),
+                                                          
+                                                          tags$p(tags$hr()),
+                                                          modalButton("Cancel"),
+                                                          actionButton("EndStep3", "Finish")
+                                                          
                                            )
                                            
                                   ),
@@ -529,9 +574,7 @@ body <- dashboardBody(
                                title = "Convert IDs",
                                selectInput("organism2",
                                            "Select organism",
-                                           list("Homo sapiens | HSA | 9606",
-                                                "Mus musculus | MMU | 10090",
-                                                "Rattus norvegicus | RNO | 10116")),
+                                           organisms),
                                radioButtons("multiVals", "Filter multiple matches", choices = list("Single", "All matches"), selected = "Single", inline = T),
                                #helpText("Insert a list of supported identifiers. Separators are automatically detected."),
                                tags$span("Insert a list of ", a("supported identifiers. ", href = "https://bookdown.org/martin_ryden/proteomill_documentation/additional-tools.html#identifier-tools", target = "_blank"), "Separators are automatically detected."),
@@ -613,8 +656,8 @@ body <- dashboardBody(
                                    )),
                                
                                downloadButton("downloadReport", "Generate report")
-                               )
-                           ),
+                           )
+                    ),
                     column(width = 6,
                            box(width = NULL,
                                title = "Reproducibility token",
@@ -629,9 +672,9 @@ body <- dashboardBody(
                                                   To reproduce the experiment, an identical version of the input file must be used."),
                                               p("Results may still deviate from the original experiment due to differences in package versions,
                                                 or issues loading the original settings.")
-                                              )
                                )
-                        
+                           )
+                           
                     )
                 )
                 
@@ -639,90 +682,47 @@ body <- dashboardBody(
         
         # Quality control: PCA: 2D, 3D
         
-        tabItem(tabName = "PCA",
-                fluidRow(
-                    column(width = 3,
-                           shinydashboard::box(title = "PCA settings",
-                                               status = "warning",
-                                               width = NULL,
-                                               shiny::sliderInput("pcaDims", "Dimensions", min = 1, max = 10, value = c(1, 2)),
-                                               checkboxInput("showPolygons", "Show polygons", value = T),
-                                               checkboxInput("multilevelPCA", "Multi-level", value = F),
-                                               bsTooltip("pcaDims", "Should the plot be displayed in 2D or 3D? Which principal components should be visualized?",
-                                                         "right", options = list(container = "body")),
-                                               bsTooltip("showPolygons", "Should the area between samples be displayed?",
-                                                         "right", options = list(container = "body")),
-                                               bsTooltip("multilevelPCA", "Should PCA adjust for paired samples?",
-                                                         "right", options = list(container = "body"))
-                           )
-                    ),
-                    column(width = 9,
-                           shinydashboard::box(width = NULL,
-                               #shinycssloaders::withSpinner(, type = 5, color = "#e80032dd", id = "PCASpinner", size = 1),
-                               plotly::plotlyOutput("PCAplots", width = "95%", height = "500px"),
-                               shinycssloaders::withSpinner(plotOutput("scree", height = "250px"), type = 5, color = "#e80032dd", id = "ScreeSpinner", size = 1),
-                               bsTooltip("scree", "This plot tells us the number of components that are of relevance to our PCA. Each principal component in the screen plot is less informative than the previous one in terms of how much variation is explained. What we are typically looking for is a steep drop to be able to determine where which principal components are of value to our analysis.",
-                                         "left", options = list(container = "body")))
-                    ))),
+        tabItem(tabName = "PCA", pcaUI("pca")), 
         
-        tabItem(tabName = "samplecorr",
-                fluidRow(
-                    column(width = 3,
-                           box(title = "Heatmap settings",
-                               width = NULL,
-                               status = "warning",
-                               selectInput("corMethod", "Corr. method", choices = list("Pearson" = "pearson",
-                                                                                       "Spearman" = "spearman"),
-                                           selected = "pearson"),
-                               shiny::checkboxInput("showGrid", "Show grid", value = T),
-                               bsTooltip("corMethod", "If method is \\'spearman\\', Spearman\\'s rho statistic is used to estimate a rank-based measure of association. These are more robust and have been recommended if the data do not necessarily come from a bivariate normal distribution.",
-                                         "right", options = list(container = "body"))
-                           )),
-                    
-                    column(width = 9,
-                           box(title = "Sample-sample correlation heatmap", width = NULL,
-                               shinycssloaders::withSpinner(plotlyOutput("heatmap", height = "600px"), type = 5, color = "#e80032dd", id = "HeatmapSpinner", size = 1),
-                               )
-                    ))
-                
-        ),
+        tabItem(tabName = "samplecorr", heatmapUI("correlationHeatmap")),
         
         # Differential expression analysis
         
+        
         tabItem(tabName = "contrasts",
                 fluidRow(
-                    column(width = 4,
-                           box(width = NULL,
-                               title = "Set contrasts", status = "primary", solidHeader = F,
-                               helpText("Which treatments should be compared?"),
-                               selectInput("contrast1", label = "Treatment 1",
-                                           choices = list("Treatment1" = 1,
-                                                          "Treatment2" = 2,
-                                                          "Treatment3" = 3),
-                                           selected = 1),
-                               selectInput("contrast2", label = "Treatment 2",
-                                           choices = list("Treatment1" = 1,
-                                                          "Treatment2" = 2,
-                                                          "Treatment3" = 3),
-                                           selected = 2),
-                               
-                               actionButton("setContrast", "Select")
-                           )
-                    ),
-                    column(width = 4,
-                           box(width = NULL,
-                               selectInput("setDEengine",
-                                           label = "Set engine",
-                                           choices = list("Limma version 3.39.1" = 1,
-                                                          "DESeq2 version 3.10" = 2),
-                                           selected = 1),
-                               bsTooltip("setDEengine", "Limma and DESeq2 are common tools for differential expression. If you are unsure what to choose, a general guideline is that DESeq2 is better suited for RNA-seq data, while limma is more appropriate for MS-proteomics and microarray data.",
-                                         "left", options = list(container = "body")),
-                               radioButtons("diffexppairing", "Pairing", choices = list("Paired" = 1, "Unpaired" = 2), inline = T, selected = 2),
-                               bsTooltip("diffexppairing", "Should the statistical test adjust for paired samples?",
-                                         "left", options = list(container = "body"))
-                               )
-                           )
+                  column(width = 4,
+                         box(width = NULL,
+                             title = "Set contrasts", status = "primary", solidHeader = F,
+                             helpText("Which treatments should be compared?"),
+                             selectInput("contrast1", label = "Treatment 1",
+                                         choices = list("Treatment1" = 1,
+                                                        "Treatment2" = 2,
+                                                        "Treatment3" = 3),
+                                         selected = 1),
+                             selectInput("contrast2", label = "Treatment 2",
+                                         choices = list("Treatment1" = 1,
+                                                        "Treatment2" = 2,
+                                                        "Treatment3" = 3),
+                                         selected = 2),
+                             
+                             actionButton("setContrast", "Select")
+                         )
+                  ),
+                  column(width = 4,
+                         box(width = NULL,
+                             selectInput("setDEengine",
+                                         label = "Set engine",
+                                         choices = list("Limma version 3.39.1" = 1,
+                                                        "DESeq2 version 3.10" = 2),
+                                         selected = 1),
+                             bsTooltip("setDEengine", "Limma and DESeq2 are common tools for differential expression. If you are unsure what to choose, a general guideline is that DESeq2 is better suited for RNA-seq data, while limma is more appropriate for MS-proteomics and microarray data.",
+                                       "left", options = list(container = "body")),
+                             radioButtons("diffexppairing", "Pairing", choices = list("Paired" = 1, "Unpaired" = 2), inline = T, selected = 2),
+                             bsTooltip("diffexppairing", "Should the statistical test adjust for paired samples?",
+                                       "left", options = list(container = "body"))
+                         )
+                  )
                 )
                 
         ),
@@ -730,33 +730,33 @@ body <- dashboardBody(
                 plotOutput("contrasttable", width = "800px", height = "1600px")),
         tabItem(tabName = "differentialexpression",
                 fluidRow(
-                    column(width = 6,
-                           box(width = NULL,
-                               helpText("Filter table by:"),
-                               br(),
-                               numericInput("diffexp_limit_fc", "Fold-change >=", min = 0, max = 50, value = 0, step = .5),
-                               numericInput("diffexp_limit_pval", "FDR <", min = 0, max = 1, value = 1, step = .1),
-                               bsTooltip("diffexp_limit_fc", "Filter table to only show proteins with an absolute log2 fold-change greater than or equal to set value.",
-                                         "right", options = list(container = "body")),
-                               bsTooltip("diffexp_limit_pval", "Filter table to only show proteins with adjusted P-value (FDR) less than set value.",
-                                         "right", options = list(container = "body"))
-                           ),
-                           tabBox(width = NULL,
-                                  tabPanel("Summary statistics", tableOutput("diffexptable_summary")),
-                                  tabPanel("Up-regulated proteins", DT::dataTableOutput("diffexptable_up")),
-                                  tabPanel("Down-regulated proteins", DT::dataTableOutput("diffexptable_down")),
-                                  bsTooltip("diffexptable_summary", "Summary statistics from differential expression.",
-                                            "right", options = list(container = "body")),
-                                  bsTooltip("diffexptable_up", "Differential expression results sorted by up-regulation.",
-                                            "right", options = list(container = "body")),
-                                  bsTooltip("diffexptable_down", "Differential expression results sorted by down-regulation.",
-                                            "right", options = list(container = "body"))
-                                  )),
-                    column(width = 6,
-                           box(width = NULL,
-                               shinycssloaders::withSpinner(plotlyOutput("dea_volcano", height = "602px"),
-                                                            type = 5, color = "#e80032dd", id = "VolcanoSpinner1", size = 1)
-                           ))
+                  column(width = 6,
+                         box(width = NULL,
+                             helpText("Filter table by:"),
+                             br(),
+                             numericInput("diffexp_limit_fc", "Fold-change >=", min = 0, max = 50, value = 0, step = .5),
+                             numericInput("diffexp_limit_pval", "FDR <", min = 0, max = 1, value = 1, step = .1),
+                             bsTooltip("diffexp_limit_fc", "Filter table to only show proteins with an absolute log2 fold-change greater than or equal to set value.",
+                                       "right", options = list(container = "body")),
+                             bsTooltip("diffexp_limit_pval", "Filter table to only show proteins with adjusted P-value (FDR) less than set value.",
+                                       "right", options = list(container = "body"))
+                         ),
+                         tabBox(width = NULL,
+                                tabPanel("Summary statistics", tableOutput("diffexptable_summary")),
+                                tabPanel("Up-regulated proteins", DT::dataTableOutput("diffexptable_up")),
+                                tabPanel("Down-regulated proteins", DT::dataTableOutput("diffexptable_down")),
+                                bsTooltip("diffexptable_summary", "Summary statistics from differential expression.",
+                                          "right", options = list(container = "body")),
+                                bsTooltip("diffexptable_up", "Differential expression results sorted by up-regulation.",
+                                          "right", options = list(container = "body")),
+                                bsTooltip("diffexptable_down", "Differential expression results sorted by down-regulation.",
+                                          "right", options = list(container = "body"))
+                         )),
+                  column(width = 6,
+                         box(width = NULL,
+                             shinycssloaders::withSpinner(plotlyOutput("dea_volcano", height = "602px"),
+                                                          type = 5, color = "#e80032dd", id = "VolcanoSpinner1", size = 1)
+                         ))
                 )
                 
         ),
@@ -793,7 +793,7 @@ body <- dashboardBody(
                            tabBox(width = NULL,
                                   tabPanel("Enrichment of up-regulated proteins", DT::dataTableOutput("upregulated_pathways_table")),
                                   tabPanel("Enrichment of down-regulated proteins", DT::dataTableOutput("downregulated_pathways_table"))
-                                  )
+                           )
                     )
                 )
                 ,
@@ -807,7 +807,7 @@ body <- dashboardBody(
                                             choices = list("Differential expression groups" = "group",
                                                            "Enriched pathway (top-level)" = "TopReactomeName",
                                                            "Enriched pathway" = "Pathway_name"
-                                                           ),
+                                            ),
                                             selected = "Pathway_name")
                            ),
                     ),
@@ -815,7 +815,7 @@ body <- dashboardBody(
                            tabBox(width = NULL,
                                   tabPanel("Volcano plot",
                                            shinycssloaders::withSpinner(plotlyOutput("volcano_plot", height = 750), type = 5, color = "#e80032dd", id = "volcanoSpinner2", size = 1)
-                                           ),
+                                  ),
                                   tabPanel("Sankey diagram",
                                            shinycssloaders::withSpinner(networkD3::sankeyNetworkOutput("sankey", height = 750), type = 5, color = "#e80032dd", id = "sankeySpinner", size = 1))
                            )
@@ -909,12 +909,12 @@ body <- dashboardBody(
                     # tags$a(href = "https://twitter.com/clinepi_lu?lang=en", title = "Clinical Epidemiology group at Lund University twitter", target = "_blank", shiny::icon("twitter", class = "padded-icons")),
                     # tags$a(href = "https://www.linkedin.com/in/martin-ryd%C3%A9n-64039146/", title = "LinkedIn profile", target = "_blank", shiny::icon("linkedin", class = "padded-icons")),
                     tags$a(href = "https://www.youtube.com/channel/UCkOYz0fEKQwy4yC5esLINJQ", title = "YouTube training videos (coming soon)", target = "_blank", shiny::icon("youtube", class = "padded-icons")),
-                    actionLink(inputId = "cite", shiny::icon("quote-right", label = "", title = "Cite us!", class = "padded-icons")),
+                    actionLink(inputId = "cite", shiny::icon("quote-right"), label = "", title = "Cite us!", class = "padded-icons"),
                     tags$a(href = "mailto:martin.ryden@med.lu.se", target = "_blank", title = "Send us an email", shiny::icon("at", class = "padded-icons")),
                     style = "font-size: 14pt; line-height: 50px; color: #fff;")),
             div(class = "gradient no-touch", span("© 2021 · ProteoMill | Martin Rydén", style = "font-size: 12pt; line-height: 50px; padding-left: 25px;"))
-            )
         )
+    )
 )
 
 # Load dashboard page ----

@@ -1,6 +1,28 @@
 
 /* force rewrite the skin min css */
 
+#g_image:hover {
+	cursor: pointer;
+}
+
+#g_image {
+	position: fixed;
+    right: 0;
+    margin: -12px 13px 0 0
+}
+
+#g_image > img {
+    border: 9px;
+    border-color: #ececec !important;
+    border-style: double !important;
+    width: 0px;
+    border-radius: 50%;
+}
+
+.visibleOnLogin {
+	display: none;
+}
+
 .btn-primary {
     background-color: #1c5fb3 !important;
     border-color: #015a8e !important;

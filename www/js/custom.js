@@ -1,5 +1,43 @@
+$("#g_image").on('mouseenter',function(){
+  console.log("hii");
+  
+    anime.timeline({loop: false})
+    .add({
+        targets: '#g_image > img',
+        border: 0,
+        easing: 'easeInSine',
+        duration: 150
+      });
+      
+});
+$("#g_image").on('mouseleave',function(){
+  console.log("byee");
+  
+    anime.timeline({loop: false})
+    .add({
+        targets: '#g_image > img',
+        border: "9px",
+        easing: 'easeOutSine',
+        duration: 350
+      });
+      
+});
 
 
+function myFunction() {
+  setTimeout(function() {
+  
+    anime.timeline({loop: false})
+    .add({
+        targets: '#g_image > img',
+        width: '45px',
+        easing: 'easeOutBack',
+        duration: 400
+      });
+      
+  }, 1500);
+  
+}
 
 // Wrap every letter in a span
 $('.ml9 .letters').each(function(){

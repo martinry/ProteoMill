@@ -1,15 +1,18 @@
 
+
 Shiny.addCustomMessageHandler('set-icon', function(icon) {
     
-  var class_name = "";
+  var class_name = icon;
   
-  if (icon == "success") {
-    class_name = "fa fa-check-circle text-success";
-  } else if (icon == "info") {
-    class_name = "fa fa-info-circle text-info";
-  } else if (icon == "danger") {
-    class_name = "fa fa-warning text-danger";
-  } else {return false}
+  //if (icon == "success") {
+  //  class_name = "fa fa-check-circle text-success";
+  //} else if (icon == "info") {
+  //  class_name = "fa fa-info-circle text-info";
+  //} else if (icon == "danger") {
+  //  class_name = "fa fa-warning text-danger";
+  //} else if (icon == "danger") {
+  //  class_name = "fa fa-warning text-danger";
+  //} else {return false}
   
   $('#notif-icon').attr('class',class_name);
 

@@ -1,14 +1,27 @@
 
 #	Readme ----
 #	
-#	Thu Apr 15, 2021
+#	Thu May 25, 2021
 #	
 #	Currently supported species:
-#	Homo sapiens | HSA | 9606
-#	Mus musculus | MMU | 10090
-#	Rattus norvegicus | RNO | 10116
+#							 Name Abbreviation   DbID TaxID
+#	1:                  Bos taurus          BTA  48898  9913
+#	2:      Caenorhabditis elegans          CEL  68320  6239
+#	3:            Canis familiaris          CFA  49646  9615
+#	4:                 Danio rerio          DRE  68323  7955
+#	5:    Dictyostelium discoideum          DDI 170941 44689	IDENTIFIER DATA NOT AVAILABLE
+#	6:     Drosophila melanogaster          DME  56210  7227
+#	7:               Gallus gallus          GGA  49591  9031
+#	8:                Homo sapiens          HSA  48887  9606
+#	9:                Mus musculus          MMU  48892 10090
+#	10: Mycobacterium tuberculosis          MTU 176806  1773	IDENTIFIER DATA NOT AVAILABLE
+#	11:      Plasmodium falciparum          PFA 170928  5833	IDENTIFIER DATA NOT AVAILABLE
+#	12:          Rattus norvegicus          RNO  48895 10116
+#	13:   Saccharomyces cerevisiae          SCE  68322  4932
+#	14:  Schizosaccharomyces pombe          SPO  68324  4896	IDENTIFIER DATA NOT AVAILABLE
+#	15:                 Sus scrofa          SSC  49633  9823
+#	16:         Xenopus tropicalis          XTR 205621  8364
 #	
-#	Adding more is dependent on obtaining .sqlite files via ensembldb package and to have UNIPROTID support in each file.
 #	
 #	This file will collect and prepare annotation data for all currently supported species.
 #	Annotation data is collected from reactome and stringdb.
@@ -39,7 +52,16 @@
 
 #	! NB make sure your work directory is set appropriately !
 
-if(basename(getwd()) != "ProteoMill") stop('Please set working directory to "ProteoMill"')
+if(!basename(getwd()) %in% c("ProteoMill", "proteomill-dev")) stop('Please set working directory to "ProteoMill"')
+
+library(data.table)
+library(R.utils)
+library(beepr)
+library(dplyr)
+library(rvest)
+library(xml2)
+library(RSQLite)
+library(AnnotationHub)
 
 typewrite <- function(m, pace = .03, wait = 1) {
 	m <- unlist(strsplit(m, ""))
@@ -71,9 +93,6 @@ typewrite("Collecting data...")
 #	If the file exists as .gz it will be returned as is.
 #	If the file does not exist it will be downloaded, gzipped (if not already) and returned.
 
-library(data.table)
-library(R.utils)
-library(beepr)
 
 Bundle <- function (source_fp, subdir = "") {
 	
@@ -98,6 +117,77 @@ Bundle <- function (source_fp, subdir = "") {
 
 
 
+#	Step 0 Species data ----
+
+# Get a list of species from REACTOME
+url1 <- "https://reactome.org/content/schema/objects/Species?page=1"
+url2 <- "https://reactome.org/content/schema/objects/Species?page=2"
+
+wnodes <- function(url) {
+	url %>%
+		read_html %>%
+		html_nodes("table") %>%
+		html_table() %>%
+		as.data.table()
+}
+
+w1 <- wnodes(url1) 
+w2 <- wnodes(url2)
+
+# This table contains REACTOME ID and species name
+species_table <- rbindlist(list(w1, w2))
+
+# Get species info (taxonomical ID, etc) by based on above table
+rspecies_lookup <- function(species) {
+	
+	wurl <- paste0('https://reactome.org/content/schema/instance/browser/', species_table[Name == species, Identifier])
+	
+	wnodes <- wurl %>%
+		read_html %>%
+		html_nodes("tr > td") %>% html_nodes("span") %>%
+		xml_contents() %>% as.character() %>% trimws()
+	
+	abbr <- wnodes[1]
+	dbid <- wnodes[2]
+	name <- wnodes[3]
+	taxid <- wnodes[length(wnodes)]
+	
+	data.table("Name" = name, "Abbreviation" = abbr, "DbID" = dbid, "TaxID" = taxid)
+}
+
+# Species of interest
+sp <- c("Drosophila melanogaster",
+		"Rattus norvegicus",
+		"Danio rerio",
+		"Caenorhabditis elegans",
+		"Canis familiaris",
+		"Mus musculus",
+		"Homo sapiens",
+		"Sus scrofa",
+		"Bos taurus",
+		"Gallus gallus",
+		"Plasmodium falciparum",
+		"Xenopus tropicalis",
+		"Schizosaccharomyces pombe",
+		"Dictyostelium discoideum",
+		"Saccharomyces cerevisiae",
+		"Mycobacterium tuberculosis")
+
+# Subset to matching
+species_table <- species_table[Name %in% sp]
+
+# Initialize species_ dt
+species_ <- data.table()
+
+for(i in seq(species_table$Name)) {
+	print(paste0("Fetch details for ", species_table$Name[i]))
+	sp <- rspecies_lookup( species_table$Name[i] )
+	species_ <- rbindlist(list(species_, sp))
+}
+
+# Exception: Canis familiaris, 9615 -> 9612 (according to STRINGdb)
+species_[Name == "Canis familiaris", "TaxID"] <- 9612
+
 
 #	Step 1 Reactome data ----
 
@@ -107,11 +197,19 @@ hierarchy <- function(species = "Homo sapiens"){
 	require(data.table)
 	
 	# Pathways hierarchy relationship
-	REACTOME_hierarchy <- data.table::fread(Bundle("https://reactome.org/download/current/ReactomePathwaysRelation.txt", subdir = "lib"),
-											header = F)
+	if(!exists("xREACTOME_hierarchy")){
+		xREACTOME_hierarchy <<- data.table::fread(Bundle("https://reactome.org/download/current/ReactomePathwaysRelation.txt", subdir = "lib"),
+												  header = F)
+	}
+	
+	REACTOME_hierarchy <- copy(xREACTOME_hierarchy)
 	
 	# All levels of the pathway hierarchy
-	REACTOME_all <- data.table::fread(Bundle("https://reactome.org/download/current/UniProt2Reactome_All_Levels.txt", subdir = "lib"))
+	if(!exists("xREACTOME_all")){
+		xREACTOME_all <<- data.table::fread(Bundle("https://reactome.org/download/current/UniProt2Reactome_All_Levels.txt", subdir = "lib"), header = F)
+	}
+	
+	REACTOME_all <- copy(xREACTOME_all)
 	
 	colnames(REACTOME_all) <- c("UniprotID",
 								"ReactomeID",
@@ -132,8 +230,11 @@ hierarchy <- function(species = "Homo sapiens"){
 	
 	# Lowest level pathway diagram / Subset of the pathway
 	
+	if(!exists("xREACTOME_low")){
+		xREACTOME_low <<- data.table::fread(Bundle("https://reactome.org/download/current/UniProt2Reactome.txt", subdir = "lib"))	
+	}
 	
-	REACTOME_low <- data.table::fread(Bundle("https://reactome.org/download/current/UniProt2Reactome.txt", subdir = "lib"))
+	REACTOME_low <- copy(xREACTOME_low)
 	
 	colnames(REACTOME_low) <- c("UniprotID",
 								"ReactomeID",
@@ -184,18 +285,14 @@ hierarchy <- function(species = "Homo sapiens"){
 	
 }
 
-#	Make a dt of species of interest
-species_ <- data.table(sp = c("Homo sapiens", "Mus musculus", "Rattus norvegicus"),
-					   txid = c(9606, 10090, 10116))
-
 #	Iterate over our species dt and collect data with above function
 for(i in 1:species_[, .N]) {
 	
-	print(paste0("Preparing pathway files for ", species_[i][[1]], ". Please wait..."))
+	print(paste0("Preparing pathway files for ", species_[i, "Name"][[1]], ". Please wait..."))
 	
-	hres <- hierarchy(species_[i][[1]])
+	hres <- hierarchy(species_[i, "Name"][[1]])
 	
-	taxid <- species_[i][[2]]
+	taxid <- species_[i, "TaxID"][[1]]
 	
 	dir.create(file.path("lib", as.character(taxid)), showWarnings = F)
 	
@@ -215,8 +312,16 @@ get_interactions <- function(taxid){
 	
 	subd <- file.path("lib", taxid)
 	
-	interactions <- fread(Bundle(paste0("https://stringdb-static.org/download/protein.actions.v11.0/", taxid, ".protein.actions.v11.0.txt.gz"), subdir = subd))
-	all_organisms <- fread(Bundle("https://string-db.org/mapping_files/uniprot/all_organisms.uniprot_2_string.2018.tsv.gz", subdir = "lib"), skip = 1, header = F)
+	if(!exists("xinteractions")){
+		xinteractions <<- fread(Bundle(paste0("https://stringdb-static.org/download/protein.actions.v11.0/", taxid, ".protein.actions.v11.0.txt.gz"), subdir = subd))
+	}
+	
+	if(!exists("xall_organisms")){
+		xall_organisms <<- fread(Bundle("https://string-db.org/mapping_files/uniprot/all_organisms.uniprot_2_string.2018.tsv.gz", subdir = "lib"), skip = 1, header = F)
+	}
+	
+	interactions <- copy(xinteractions)
+	all_organisms <- copy(xall_organisms)
 	
 	colnames(all_organisms) <- c("Species", "UNIPROTID", "STRINGID", "IDENTITY", "BITSCORE")
 	
@@ -253,9 +358,16 @@ get_protein_descriptions <- function(taxid){
 	
 	subd <- file.path("lib", taxid)
 	
-	protein_info <- fread(Bundle(paste0("https://stringdb-static.org/download/protein.info.v11.0/", taxid, ".protein.info.v11.0.txt.gz"), subdir = subd))
+	if(!exists("xprotein_info")){
+		xprotein_info <<- fread(Bundle(paste0("https://stringdb-static.org/download/protein.info.v11.0/", taxid, ".protein.info.v11.0.txt.gz"), subdir = subd))
+	}
 	
-	all_organisms <- fread(Bundle("https://string-db.org/mapping_files/uniprot/all_organisms.uniprot_2_string.2018.tsv.gz", subdir = "lib"), skip = 1, header = F)
+	if(!exists("xall_organisms")){
+		xall_organisms <<- fread(Bundle("https://string-db.org/mapping_files/uniprot/all_organisms.uniprot_2_string.2018.tsv.gz", subdir = "lib"), skip = 1, header = F)
+	}
+	
+	protein_info <- copy(xprotein_info)
+	all_organisms <- copy(xall_organisms)
 	
 	colnames(all_organisms) <- c("Species", "UNIPROTID", "STRINGID", "IDENTITY", "BITSCORE")
 	
@@ -276,19 +388,12 @@ get_protein_descriptions <- function(taxid){
 	
 }
 
-#	In case we didn't run part one, here is the species list again:
-
-#	Make a dt of species of interest
-species_ <- data.table(sp = c("Homo sapiens", "Mus musculus", "Rattus norvegicus"),
-					   txid = c(9606, 10090, 10116))
-
-
 # Interaction file. TBD merge these functions/loops.
 for(i in 1:species_[, .N]) {
 	
-	print(paste0("Preparing interaction files for ", species_[i][[1]], ". Please wait..."))
+	print(paste0("Preparing interaction files for ", species_[i, "Name"][[1]], ". Please wait..."))
 	
-	taxid <- species_[i][[2]]
+	taxid <- species_[i, "TaxID"][[1]]
 	
 	interactions <- get_interactions(taxid = taxid)
 	
@@ -303,9 +408,9 @@ for(i in 1:species_[, .N]) {
 # Description file. TBD merge these functions/loops.
 for(i in 1:species_[, .N]) {
 	
-	print(paste0("Preparing description files for ", species_[i][[1]], ". Please wait..."))
+	print(paste0("Preparing description files for ", species_[i, "Name"][[1]], ". Please wait..."))
 	
-	taxid <- species_[i][[2]]
+	taxid <- species_[i, "TaxID"][[1]]
 	
 	protein_info <- get_protein_descriptions(taxid)
 	
@@ -315,6 +420,39 @@ for(i in 1:species_[, .N]) {
 	
 	fwrite(protein_info, file = file.path("lib", taxid, fname), compress = "gzip")
 }
+
+
+
+# Get identifier info
+ah <- AnnotationHub()
+
+for(i in 1:species_[, .N]) {
+	name <- species_[i, "Name"][[1]]
+	taxid <- species_[i, "TaxID"][[1]]
+	
+	print(paste0("Preparing identifier files for ", name, ". Please wait..."))
+
+	edb <- query(ah, c("EnsDb", name))
+	
+	if(length(edb) > 0){
+		ah_id <- edb$ah_id[length(edb$ah_id)]
+		ver <- gsub("[A-z ]", "", edb$title[length(edb$ah_id)])
+		edb <- ah[[ah_id]]
+		
+		fname <- paste0(taxid, ".EnsDb.v", ver)
+		
+		if(!file.exists(file.path("lib", taxid, fname))){
+			file.copy(from = file.path(edb@ensdb@dbname), to = file.path("lib", taxid, fname))
+		}
+	} else {
+		print(paste0("No records found for ", name, "..."))
+	}
+	
+
+	
+}
+
+
 
 beepr::beep()
 print("All done!")
