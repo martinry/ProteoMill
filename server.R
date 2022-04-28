@@ -44,6 +44,21 @@ require(safer)
 require(digest)
 #library(googleAuthR)
 
+organisms <- list(
+	"Homo sapiens [9606]",
+	"Bos taurus [9913]",
+	"Caenorhabditis elegans [6239]",
+	"Canis familiaris [9612]",
+	"Danio rerio [7955]",
+	"Drosophila melanogaster [7227]",
+	"Gallus gallus [9031]",
+	"Mus musculus [10090]",
+	"Rattus norvegicus [10116]",
+	"Saccharomyces cerevisiae [4932]",
+	"Sus scrofa [9823]",
+	"Xenopus tropicalis [8364]",
+	"Other"
+)
 
 
 # Server ----
