@@ -230,16 +230,16 @@ server <- function(session, input, output) {
     
     # Authentication ----
     
-    sign_ins <- shiny::callModule(googleSignIn, "demo")
+    #sign_ins <- shiny::callModule(googleSignIn, "demo")
     
-    onclick("demo-signout", {
-        # Hide user info in profile menu
-        shinyjs::addClass(id = "profileData", class = "visibleOnLogin")
-        
-        toggleModal(session = session, modalId = "profileModal", toggle = "close")
-        
-        updateNotifications(paste0("You have logged out."), "info-circle", "info")
-    })
+    # onclick("demo-signout", {
+    #     # Hide user info in profile menu
+    #     shinyjs::addClass(id = "profileData", class = "visibleOnLogin")
+    #     
+    #     toggleModal(session = session, modalId = "profileModal", toggle = "close")
+    #     
+    #     updateNotifications(paste0("You have logged out."), "info-circle", "info")
+    # })
 
     
     onclick("profileData", {

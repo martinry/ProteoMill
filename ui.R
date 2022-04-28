@@ -237,33 +237,33 @@ body <- dashboardBody(
             )
     ),
     
-    bsModal(id = "profileModal",
-            title = "Profile",
-            trigger = "profiletrigger",
-            size = "s",
-            
-            fluidRow(
-                column(width = 12,
-                       box(width = NULL,
-                           tags$div(class = "visibleOnLogin", id = "profileData",
-                                    
-                                    p(
-                                        h4("Name"),
-                                        textOutput("g_name")
-                                        ),
-                                    
-                                    p(
-                                        h4("Email"),
-                                        textOutput("g_email")
-                                        )
-                           ),
-                           
-                           p(googleSignInUI("demo"))
-
-                       )
-                )
-            )
-    ),
+    # bsModal(id = "profileModal",
+    #         title = "Profile",
+    #         trigger = "profiletrigger",
+    #         size = "s",
+    #         
+    #         fluidRow(
+    #             column(width = 12,
+    #                    box(width = NULL,
+    #                        tags$div(class = "visibleOnLogin", id = "profileData",
+    #                                 
+    #                                 p(
+    #                                     h4("Name"),
+    #                                     textOutput("g_name")
+    #                                     ),
+    #                                 
+    #                                 p(
+    #                                     h4("Email"),
+    #                                     textOutput("g_email")
+    #                                     )
+    #                        ),
+    #                        
+    #                        p(googleSignInUI("demo"))
+    # 
+    #                    )
+    #             )
+    #         )
+    # ),
     
     tabItems(
         # File input ----
