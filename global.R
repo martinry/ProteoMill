@@ -124,13 +124,7 @@ getlibfPaths <- function(taxid, lib, version = "current", token = NULL) {
 			switch(lib,
 				   "STRINGDB" = paste0("lib/", taxid, "/", taxid, ".string.interactions.txt.gz"),
 				   "REACTOMEDB" = paste0("lib/", taxid, "/", taxid, "_REACTOME_low.tsv.gz"),
-				   "ORGDB" = if(taxid == 9606) {
-				   	"EnsDb.Hsapiens.v86"
-				   } else if(taxid == 10090) {
-				   	"EnsDb.Mmusculus.v79"
-				   } else if(taxid == 10116) { 
-				   	"EnsDb.Rnorvegicus.v79"
-				   })
+				   "ORGDB" = dir(paste0("lib/", taxid), pattern = "EnsDb", full.names = T)[1])
 		}
 	}
 	
