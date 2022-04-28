@@ -240,70 +240,70 @@ server <- function(session, input, output) {
     #     
     #     updateNotifications(paste0("You have logged out."), "info-circle", "info")
     # })
-
-    
-    onclick("profileData", {
-        toggleModal(session = session, modalId = "profileModal", toggle = "toggle")
-    })
-    
-    onclick("demo-signin", {
-        
-        appMeta$signInButtonClicked <- T
-        
-    })
-    
-
-    observeEvent(sign_ins(), {
-        
-        id <- as.character(sign_ins()$id)
-        
-        # Open db connection
-        conn <- dbConnect(RSQLite::SQLite(), file.path("auth/userData.sqlite"))
-        
-        # Check if user exists in db
-        if (userExists(conn, id)) {
-            print("User exists.")
-            
-            user_info <- get_user_info(conn, id)
-            user_fn <- sub(" .*", "", user_info$name)
-            isolate(updateNotifications(paste0("Welcome back, ", user_fn, "."), "smile-beam", "primary"))
-            
-        } else {
-            # If the user is not in db, we must add them
-            print("User does not exist.")
-            
-            create_user(conn,
-                        user_id = sign_ins()$id,
-                        name = sign_ins()$name,
-                        email = sign_ins()$email)
-            
-            user_info <- get_user_info(conn, id)
-            user_fn <- sub(" .*", "", user_info$name)
-            isolate(updateNotifications(paste0("Welcome , ", user_fn, "."), "smile-beam", "primary"))
-            
-        }
-        
-        RSQLite::dbDisconnect(conn)
-        
-        # Reveal user info in profile menu
-        shinyjs::removeClass(id = "profileData", class = "visibleOnLogin")
-        
-        
-        # Toggle modal only when button is clicked and user has signed in
-        if(appMeta$signInButtonClicked) {
-            toggleModal(session = session, modalId = "profileModal", toggle = "close")
-            appMeta$signInButtonClicked <- F
-        }
-        
-        shinyjs::runjs("myFunction()")
-        
-    })
-    
-    output$g_id = renderText({ sign_ins()$id })
-    output$g_name = renderText({ sign_ins()$name })
-    output$g_email = renderText({ sign_ins()$email })
-    output$g_image = renderUI({ img(src=sign_ins()$image) })
-
+# 
+#     
+#     onclick("profileData", {
+#         toggleModal(session = session, modalId = "profileModal", toggle = "toggle")
+#     })
+#     
+#     onclick("demo-signin", {
+#         
+#         appMeta$signInButtonClicked <- T
+#         
+#     })
+#     
+# 
+#     observeEvent(sign_ins(), {
+#         
+#         id <- as.character(sign_ins()$id)
+#         
+#         # Open db connection
+#         conn <- dbConnect(RSQLite::SQLite(), file.path("auth/userData.sqlite"))
+#         
+#         # Check if user exists in db
+#         if (userExists(conn, id)) {
+#             print("User exists.")
+#             
+#             user_info <- get_user_info(conn, id)
+#             user_fn <- sub(" .*", "", user_info$name)
+#             isolate(updateNotifications(paste0("Welcome back, ", user_fn, "."), "smile-beam", "primary"))
+#             
+#         } else {
+#             # If the user is not in db, we must add them
+#             print("User does not exist.")
+#             
+#             create_user(conn,
+#                         user_id = sign_ins()$id,
+#                         name = sign_ins()$name,
+#                         email = sign_ins()$email)
+#             
+#             user_info <- get_user_info(conn, id)
+#             user_fn <- sub(" .*", "", user_info$name)
+#             isolate(updateNotifications(paste0("Welcome , ", user_fn, "."), "smile-beam", "primary"))
+#             
+#         }
+#         
+#         RSQLite::dbDisconnect(conn)
+#         
+#         # Reveal user info in profile menu
+#         shinyjs::removeClass(id = "profileData", class = "visibleOnLogin")
+#         
+#         
+#         # Toggle modal only when button is clicked and user has signed in
+#         if(appMeta$signInButtonClicked) {
+#             toggleModal(session = session, modalId = "profileModal", toggle = "close")
+#             appMeta$signInButtonClicked <- F
+#         }
+#         
+#         shinyjs::runjs("myFunction()")
+#         
+#     })
+#     
+#     output$g_id = renderText({ sign_ins()$id })
+#     output$g_name = renderText({ sign_ins()$name })
+#     output$g_email = renderText({ sign_ins()$email })
+#     output$g_image = renderUI({ img(src=sign_ins()$image) })
+# 
 
     #### ANALYSIS ####
     # Sidebar menu: rules ----
