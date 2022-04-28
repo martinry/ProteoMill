@@ -439,7 +439,7 @@ for(i in 1:species_[, .N]) {
 		ver <- gsub("[A-z ]", "", edb$title[length(edb$ah_id)])
 		edb <- ah[[ah_id]]
 		
-		fname <- paste0(taxid, ".EnsDb.v", ver)
+		fname <- paste0(taxid, ".EnsDb.v", ver, ".db")
 		
 		if(!file.exists(file.path("lib", taxid, fname))){
 			file.copy(from = file.path(edb@ensdb@dbname), to = file.path("lib", taxid, fname))
