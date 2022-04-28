@@ -36,6 +36,7 @@ organisms <- list(
 	"Other"
 )
 
+assign("organisms", organisms, envir = .GlobalEnv)
 
 # User timeout ----
 
