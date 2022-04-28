@@ -9,6 +9,12 @@ source("bin/tokenization.R")
 #source("bin/differential_expression.R")
 #source("auth/auth.R")
 
+
+# User authentication -----
+
+# options(googleAuthR.webapp.client_id = "667094886680-ts65qsivlmp2l1j95nu5uear5ekos8p0.apps.googleusercontent.com")
+# options(googleAuthR.webapp.client_secret = "ggy9M8DbwpfoZcMtWg2b1zDn")
+
 # Upload dataset ----
 
 convertColumns <- c("UNIPROTID", "ENTREZID", "SYMBOL", "GENEID", "PROTEINID")

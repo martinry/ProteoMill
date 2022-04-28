@@ -8,7 +8,7 @@ require(visNetwork)
 require(DT)
 require(plotly)
 
-library(googleAuthR)
+#library(googleAuthR)
 
 # Credit to https://stackoverflow.com/questions/50368690/change-backdrop-for-a-bsmodal-in-shiny-app#answer-50570420
 # for this solution

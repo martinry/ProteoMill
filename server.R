@@ -42,7 +42,7 @@ require(knitr)
 # Data encryption and user authentication
 require(safer)
 require(digest)
-library(googleAuthR)
+#library(googleAuthR)
 
 
 
